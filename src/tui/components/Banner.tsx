@@ -6,18 +6,18 @@ const RED = '#fc3855';
 const BORDER = 'gray';
 const GRAY = 'gray';
 
-// Compact 3-line PULZd banner - each full line = 35 chars
+// Compact 3-line PUZLd banner - each full line = 35 chars
 const LOGO_WIDTH = 35;
 const BANNER_RAW = [
-  { pulz: '█████▄ ██  ██ ██     ██████ ', d: '▄▄▄▄  ' },
-  { pulz: '██▄▄█▀ ██  ██ ██      ▄▄▀▀  ', d: '██▀██ ' },
-  { pulz: '██     ▀████▀ ██████ ██████ ', d: '████▀ ' },
+  { puzl: '█████▄ ██  ██ ██████ ██     ', d: '▄▄▄▄  ' },
+  { puzl: '██▄▄█▀ ██  ██  ▄▄▀▀  ██     ', d: '██▀██ ' },
+  { puzl: '██     ▀████▀ ██████ ██████ ', d: '████▀ ' },
 ];
 // Pad/truncate to make total exactly LOGO_WIDTH
 const BANNER = BANNER_RAW.map(line => {
-  const combined = line.pulz + line.d;
+  const combined = line.puzl + line.d;
   const padded = (combined + ' '.repeat(LOGO_WIDTH)).slice(0, LOGO_WIDTH);
-  return { pulz: padded.slice(0, line.pulz.length), d: padded.slice(line.pulz.length) };
+  return { puzl: padded.slice(0, line.puzl.length), d: padded.slice(line.puzl.length) };
 });
 
 // Box drawing characters - rounded corners
@@ -54,7 +54,7 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [] }: Bann
   if (minimal) {
     return (
       <Box marginBottom={1}>
-        <Text bold color="white">PULZ</Text>
+        <Text bold color="white">PUZL</Text>
         <Text bold color={RED}>d</Text>
         <Text bold color="white">AI</Text>
         <Text dimColor> v{version}</Text>
@@ -62,14 +62,14 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [] }: Bann
     );
   }
 
-  const defaultAgents: AgentStatus[] = agents.length > 0 ? agents : [
-    { name: 'claude', ready: true },
-    { name: 'gemini', ready: true },
-    { name: 'ollama', ready: false },
-  ];
+  // Default order for display: claude, gemini, codex, ollama
+  const agentOrder = ['claude', 'gemini', 'codex', 'ollama'];
+  const defaultAgents: AgentStatus[] = agents.length > 0
+    ? agentOrder.map(name => agents.find(a => a.name === name) || { name, ready: false })
+    : agentOrder.map(name => ({ name, ready: false }));
 
   // Top line with version tag in top right corner
-  const versionTag = ` Pulzd v${version} `;
+  const versionTag = ` Puzld v${version} `;
   const rightPadding = 3; // 3 dashes before closing corner
   const leftDashes = INNER_WIDTH - versionTag.length - rightPadding;
   const topLine = BOX.tl + BOX.h.repeat(leftDashes) + versionTag + BOX.h.repeat(rightPadding) + BOX.tr;
@@ -88,9 +88,9 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [] }: Bann
       {/* Top border with version tag on left */}
       <Box>
         <Text color={BORDER}>{BOX.tl + BOX.h.repeat(3)}</Text>
-        <Text color={RED}> Pulzd</Text>
+        <Text color={RED}> Puzld</Text>
         <Text dimColor> v{version} </Text>
-        <Text color={BORDER}>{BOX.h.repeat(INNER_WIDTH - 3 - ` Pulzd v${version} `.length) + BOX.tr}</Text>
+        <Text color={BORDER}>{BOX.h.repeat(INNER_WIDTH - 3 - ` Puzld v${version} `.length) + BOX.tr}</Text>
       </Box>
 
       {/* Empty padding line */}
@@ -103,13 +103,13 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [] }: Bann
       {/* Logo section */}
       {BANNER.map((line, index) => {
         // Calculate right padding dynamically based on actual content
-        const contentLen = line.pulz.length + line.d.length;
+        const contentLen = line.puzl.length + line.d.length;
         const rightPad = INNER_WIDTH - logoPadLeft - contentLen;
         return (
           <Box key={index}>
             <Text color={BORDER}>{BOX.v}</Text>
             <Text>{' '.repeat(logoPadLeft)}</Text>
-            <Text bold color="white">{line.pulz}</Text>
+            <Text bold color="white">{line.puzl}</Text>
             <Text bold color={RED}>{line.d}</Text>
             <Text>{' '.repeat(Math.max(0, rightPad))}</Text>
             <Text color={BORDER}>{BOX.v}</Text>
@@ -148,7 +148,8 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [] }: Bann
         const commands = [
           ' /compare claude,gemini "task"',
           ' /workflow code-review "code"',
-          ' /autopilot "complex task"'
+          ' /autopilot "complex task"',
+          ' /help for all commands'
         ];
         const bullet = agent.ready ? '●' : '○';
         const statusText = agent.ready ? 'ready' : 'offline';

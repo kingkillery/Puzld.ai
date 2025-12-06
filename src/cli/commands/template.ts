@@ -2,10 +2,10 @@
  * Template command - manage pipeline templates
  *
  * Usage:
- *   pulzdai template list
- *   pulzdai template show code-review
- *   pulzdai template create my-flow -P "claude:plan,codex:code"
- *   pulzdai template delete my-flow
+ *   puzld template list
+ *   puzld template show code-review
+ *   puzld template create my-flow -P "claude:plan,codex:code"
+ *   puzld template delete my-flow
  */
 
 import pc from 'picocolors';

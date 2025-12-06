@@ -1,11 +1,11 @@
 {
-  "name": "pulzdai",
+  "name": "puzldai",
   "version": "0.1.0",
   "description": "Multi-LLM Orchestrator - Route tasks intelligently across Claude, Gemini, Codex, and local models",
   "type": "module",
   "bin": {
-    "ai": "./dist/cli/index.js",
-    "pulzdai": "./dist/cli/index.js"
+    "puzld": "./dist/cli/index.js",
+    "puzldai": "./dist/cli/index.js"
   },
   "files": ["dist", "web"],
   "scripts": {
@@ -37,8 +37,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/youruser/pulzdai.git"
+    "url": "https://github.com/MedChaouch/Puzld.ai.git"
   },
   "keywords": ["ai", "llm", "claude", "gemini", "codex", "ollama", "orchestrator"],
-  "license": "MIT"
+  "license": "AGPL-3.0-only"
 }

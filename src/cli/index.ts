@@ -18,8 +18,8 @@ import { startTUI } from '../tui';
 const program = new Command();
 
 program
-  .name('ai')
-  .description('PulzdAI - Multi-LLM Orchestrator')
+  .name('puzld')
+  .description('PuzldAI - Multi-LLM Orchestrator')
   .version('0.1.0');
 
 program

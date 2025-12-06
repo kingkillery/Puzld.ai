@@ -18,6 +18,8 @@ import { listTemplates, loadTemplate } from '../executor/templates';
 import { WorkflowsManager } from './components/WorkflowsManager';
 import { CompareView } from './components/CompareView';
 import { generatePlan } from '../executor/planner';
+import { isRouterAvailable } from '../router/router';
+import { adapters } from '../adapters';
 
 interface Message {
   id: string;
@@ -41,6 +43,11 @@ interface CompareResult {
   loading?: boolean;
 }
 
+interface AgentStatus {
+  name: string;
+  ready: boolean;
+}
+
 function App() {
   // Disable mouse tracking to prevent scroll events from triggering input
   useEffect(() => {
@@ -58,6 +65,8 @@ function App() {
   const [mode, setMode] = useState<AppMode>('chat');
   const [compareResults, setCompareResults] = useState<CompareResult[]>([]);
   const [compareKey, setCompareKey] = useState(0); // Increments to reset CompareView state
+  const [notification, setNotification] = useState<string | null>(null);
+  const [agentStatus, setAgentStatus] = useState<AgentStatus[]>([]);
 
   // Value options
   const [currentAgent, setCurrentAgent] = useState('auto');
@@ -70,6 +79,30 @@ function App() {
   const [interactive, setInteractive] = useState(false);
 
   const { addToHistory, navigateHistory } = useHistory();
+
+  // Check router availability on startup
+  useEffect(() => {
+    isRouterAvailable().then(available => {
+      if (!available) {
+        setNotification('Router offline, using fallback agent');
+      }
+    }).catch(() => {
+      setNotification('Router offline, using fallback agent');
+    });
+  }, []);
+
+  // Check agent availability on startup
+  useEffect(() => {
+    const checkAgents = async () => {
+      const status: AgentStatus[] = [];
+      for (const [name, adapter] of Object.entries(adapters)) {
+        const ready = await adapter.isAvailable();
+        status.push({ name, ready });
+      }
+      setAgentStatus(status);
+    };
+    checkAgents();
+  }, []);
 
   // Handle workflow run from WorkflowsManager
   const handleWorkflowRun = async (workflowName: string, task: string) => {
@@ -493,16 +526,18 @@ Compare View:
   return (
     <Box flexDirection="column" padding={1}>
       {/* Banner */}
-      <Banner />
+      <Banner agents={agentStatus} />
+
+      {/* Notification */}
+      {notification && (
+        <Box marginBottom={1}>
+          <Text color="#fc3855">i </Text>
+          <Text>{notification}</Text>
+        </Box>
+      )}
+
       {mode === 'chat' && (
-        isFirstMessage ? (
-          <WelcomeMessage />
-        ) : (
-          <Box marginBottom={1}>
-            <Text dimColor>agent: </Text>
-            <Text color="yellow">{currentAgent}</Text>
-          </Box>
-        )
+        isFirstMessage && <WelcomeMessage />
       )}
 
       {/* Workflows Mode */}
@@ -605,8 +640,8 @@ Compare View:
                 const desc = parts.slice(1).join('  ');
                 return (
                   <Box key={item.value}>
-                    <Text bold={isSelected} color={isSelected ? '#a78bfa' : undefined} dimColor={!isSelected}>{cmd}</Text>
-                    <Text color={isSelected ? '#a78bfa' : undefined} dimColor={!isSelected}> - {desc}</Text>
+                    <Text bold={isSelected} color={isSelected ? '#8CA9FF' : undefined} dimColor={!isSelected}>{cmd}</Text>
+                    <Text color={isSelected ? '#8CA9FF' : undefined} dimColor={!isSelected}> - {desc}</Text>
                   </Box>
                 );
               })}

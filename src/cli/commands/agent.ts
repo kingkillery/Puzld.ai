@@ -15,7 +15,7 @@ export async function agentCommand(options: AgentCommandOptions): Promise<void> 
 
   const agentName = options.agent || 'auto';
 
-  console.log(pc.bold('\nPulzdAI Interactive Agent'));
+  console.log(pc.bold('\nPuzldAI Interactive Agent'));
   console.log(pc.dim(`Mode: ${agentName === 'auto' ? 'Auto-routing' : `Using ${agentName}`}`));
   console.log(pc.dim('Type "exit" or "quit" to leave, Ctrl+C to cancel current task\n'));
 

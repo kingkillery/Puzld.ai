@@ -52,8 +52,8 @@ export async function routeTask(task: string): Promise<RouteResult> {
     }
 
     return parsed as RouteResult;
-  } catch (err) {
-    console.warn('Router failed, using fallback agent:', (err as Error).message);
+  } catch {
+    // Silent fallback - TUI shows router status separately
     return {
       agent: config.fallbackAgent as RouteResult['agent'],
       confidence: 1.0,

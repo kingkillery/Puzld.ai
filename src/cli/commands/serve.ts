@@ -17,7 +17,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
   const port = options.port || config.api.port;
   const host = options.host || config.api.host;
 
-  console.log(pc.bold('\nStarting PulzdAI Server\n'));
+  console.log(pc.bold('\nStarting PuzldAI Server\n'));
 
   try {
     await startServer({ port, host });

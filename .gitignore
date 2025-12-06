@@ -31,3 +31,4 @@ bun.lockb
 
 # Documentation (local only)
 docs/*.md
+*.tgz

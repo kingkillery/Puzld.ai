@@ -11,9 +11,9 @@ import {
 } from '../../executor/templates';
 import { parsePipelineString } from '../../executor';
 
-const HIGHLIGHT_COLOR = '#a78bfa';
+const HIGHLIGHT_COLOR = '#8CA9FF';
 
-// Custom item component with purple highlight
+// Custom item component with blue highlight
 function CustomItem({ isSelected, label }: ItemProps) {
   return (
     <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
@@ -31,7 +31,7 @@ function CustomIndicator({ isSelected }: { isSelected: boolean }) {
   );
 }
 
-type View = 'list' | 'workflow' | 'create' | 'edit' | 'run' | 'confirm-delete';
+type View = 'menu' | 'list' | 'workflow' | 'create' | 'edit' | 'run' | 'confirm-delete';
 
 interface WorkflowsManagerProps {
   onBack: () => void;
@@ -39,18 +39,76 @@ interface WorkflowsManagerProps {
 }
 
 export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>('menu');
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [createStep, setCreateStep] = useState<'name' | 'pipeline' | 'description'>('name');
   const [newWorkflow, setNewWorkflow] = useState({ name: '', pipeline: '', description: '' });
   const [error, setError] = useState<string | null>(null);
 
+  // Edit mode state
+  const [editSteps, setEditSteps] = useState<Array<{ agent: string; action: string }>>([]);
+  const [originalPipeline, setOriginalPipeline] = useState('');
+  const [editPhase, setEditPhase] = useState<'menu' | 'agent' | 'role'>('menu');
+  const [editAgent, setEditAgent] = useState('');
+  const [editActionIndex, setEditActionIndex] = useState(0);
+
+  // Edit menu actions
+  const editActions = [
+    { label: 'Add step', value: 'add', hint: 'Enter to add agent:role' },
+    { label: 'Clear all', value: 'clear', hint: 'Remove all steps' },
+    { label: 'Remove last', value: 'remove-last', hint: '' }
+  ];
+
+  // Handle edit keyboard (menu navigation)
+  useInput((input, key) => {
+    if (view !== 'edit' || editPhase !== 'menu') return;
+
+    if (key.upArrow) {
+      setEditActionIndex(i => Math.max(0, i - 1));
+    } else if (key.downArrow) {
+      setEditActionIndex(i => Math.min(editActions.length - 1, i + 1));
+    } else if (key.return) {
+      const action = editActions[editActionIndex];
+      if (action.value === 'add') {
+        setEditPhase('agent');
+        setInputValue('');
+        setError(null);
+      } else if (action.value === 'clear') {
+        if (editSteps.length === 0) {
+          setError('New pipeline is empty. Add steps first.');
+        } else {
+          setEditSteps([]);
+          setError(null);
+        }
+      } else if (action.value === 'remove-last') {
+        if (editSteps.length === 0) {
+          setError('New pipeline is empty. Add steps first.');
+        } else {
+          setEditSteps(prev => prev.slice(0, -1));
+          setError(null);
+        }
+      }
+    }
+  }, { isActive: view === 'edit' && editPhase === 'menu' });
+
   // Handle Esc to go back
   useInput((input, key) => {
     if (key.escape) {
-      if (view === 'list') {
+      if (view === 'menu') {
         onBack();
+      } else if (view === 'list') {
+        setView('menu');
+      } else if (view === 'edit') {
+        if (editPhase === 'menu') {
+          // Save and go back to workflow
+          handleEditSave();
+        } else {
+          // Go back to menu
+          setEditPhase('menu');
+          setEditAgent('');
+          setInputValue('');
+        }
       } else {
         setView('list');
         setSelectedWorkflow(null);
@@ -62,43 +120,110 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
   // Get workflows list
   const workflows = listTemplates();
 
-  // Build items for the main list
-  const listItems = [
-    ...workflows.map(name => {
-      const t = loadTemplate(name);
-      const isBuiltIn = t?.createdAt === 0;
-      return {
-        label: name,
-        value: name,
-        isBuiltIn
-      };
-    }),
-    { label: '+ Create new workflow', value: '__create__', isBuiltIn: false },
-    { label: '← Back', value: '__back__', isBuiltIn: false }
+  // Menu items
+  const menuItems = [
+    { label: 'Workflows List', value: 'list', hint: 'Enter to view' },
+    { label: 'Create new workflow', value: 'create', hint: 'Enter to create' }
   ];
 
-  // Handle selection from main list
-  const handleListSelect = (item: { value: string }) => {
-    if (item.value === '__back__') {
-      onBack();
-    } else if (item.value === '__create__') {
+  // Track menu selection index
+  const [menuIndex, setMenuIndex] = useState(0);
+
+  // Handle menu keyboard
+  useInput((input, key) => {
+    if (view !== 'menu') return;
+    if (key.upArrow) {
+      setMenuIndex(i => Math.max(0, i - 1));
+    } else if (key.downArrow) {
+      setMenuIndex(i => Math.min(menuItems.length - 1, i + 1));
+    } else if (key.return) {
+      const item = menuItems[menuIndex];
+      if (item.value === 'create') {
+        setView('create');
+        setCreateStep('name');
+        setNewWorkflow({ name: '', pipeline: '', description: '' });
+        setInputValue('');
+      } else if (item.value === 'list') {
+        setView('list');
+      }
+    }
+  }, { isActive: view === 'menu' });
+
+  // Handle menu selection (kept for compatibility but won't be used)
+  const handleMenuSelect = (item: { value: string }) => {
+    if (item.value === 'create') {
       setView('create');
       setCreateStep('name');
       setNewWorkflow({ name: '', pipeline: '', description: '' });
       setInputValue('');
-    } else {
-      setSelectedWorkflow(item.value);
-      setView('workflow');
+    } else if (item.value === 'list') {
+      setView('list');
     }
+  };
+
+  // Build items for the workflows list - built-in first, then custom
+  const listItems = workflows.map(name => {
+    const t = loadTemplate(name);
+    const isBuiltIn = t?.createdAt === 0;
+    return {
+      label: name,
+      value: name,
+      isBuiltIn
+    };
+  }).sort((a, b) => {
+    if (a.isBuiltIn && !b.isBuiltIn) return -1;
+    if (!a.isBuiltIn && b.isBuiltIn) return 1;
+    return a.label.localeCompare(b.label);
+  });
+
+  // Track list selection index
+  const [listIndex, setListIndex] = useState(0);
+
+  // Handle list keyboard
+  useInput((input, key) => {
+    if (view !== 'list') return;
+    if (key.upArrow) {
+      setListIndex(i => Math.max(0, i - 1));
+    } else if (key.downArrow) {
+      setListIndex(i => Math.min(listItems.length - 1, i + 1));
+    } else if (key.return) {
+      const item = listItems[listIndex];
+      if (item) {
+        setSelectedWorkflow(item.value);
+        setView('workflow');
+      }
+    }
+  }, { isActive: view === 'list' });
+
+  // Handle selection from workflows list (kept for compatibility)
+  const handleListSelect = (item: { value: string }) => {
+    setSelectedWorkflow(item.value);
+    setView('workflow');
   };
 
   // Workflow action items
   const workflowActions = [
-    { label: '▶ Run', value: 'run' },
-    { label: '✎ Edit', value: 'edit' },
-    { label: '✕ Delete', value: 'delete' },
-    { label: '← Back', value: 'back' }
+    { label: 'Edit', value: 'edit', hint: 'Enter to modify' },
+    { label: 'Delete', value: 'delete', hint: 'Enter to remove' }
   ];
+
+  // Track workflow action index
+  const [actionIndex, setActionIndex] = useState(0);
+
+  // Handle workflow keyboard
+  useInput((input, key) => {
+    if (view !== 'workflow') return;
+    if (key.upArrow) {
+      setActionIndex(i => Math.max(0, i - 1));
+    } else if (key.downArrow) {
+      setActionIndex(i => Math.min(workflowActions.length - 1, i + 1));
+    } else if (key.return) {
+      const item = workflowActions[actionIndex];
+      if (item) {
+        handleWorkflowAction({ value: item.value });
+      }
+    }
+  }, { isActive: view === 'workflow' });
 
   // Handle workflow action
   const handleWorkflowAction = (item: { value: string }) => {
@@ -106,16 +231,18 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
     const isBuiltIn = template?.createdAt === 0;
 
     switch (item.value) {
-      case 'run':
-        setView('run');
-        setInputValue('');
-        break;
       case 'edit':
         if (isBuiltIn) {
           setError('Cannot edit built-in workflow. Create a copy instead.');
         } else {
           setView('edit');
-          setInputValue(template?.steps.map(s => s.agent + ':' + s.action).join(',') || '');
+          const steps = template?.steps || [];
+          setOriginalPipeline(steps.map(s => s.agent + ':' + s.action).join(','));
+          setEditSteps([]);
+          setEditPhase('menu');
+          setEditAgent('');
+          setInputValue('');
+          setEditActionIndex(0);
         }
         break;
       case 'delete':
@@ -124,11 +251,6 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
         } else {
           setView('confirm-delete');
         }
-        break;
-      case 'back':
-        setView('list');
-        setSelectedWorkflow(null);
-        setError(null);
         break;
     }
   };
@@ -178,25 +300,37 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
     }
   };
 
-  // Handle edit submit
+  // Handle edit submit - agent then role, then back to menu
   const handleEditSubmit = (value: string) => {
-    if (!value.trim() || !selectedWorkflow) return;
-    try {
-      const existing = loadTemplate(selectedWorkflow);
-      if (!existing) return;
+    if (!value.trim()) return;
 
-      const opts = parsePipelineString(value.trim());
-      const updated = {
-        ...existing,
-        steps: opts.steps,
-        updatedAt: Date.now()
-      };
-      saveTemplate(updated);
-      setView('workflow');
-      setError(null);
-    } catch {
-      setError('Invalid pipeline format');
+    if (editPhase === 'agent') {
+      setEditAgent(value.trim());
+      setEditPhase('role');
+      setInputValue('');
+    } else if (editPhase === 'role') {
+      // Add the step and go back to menu
+      setEditSteps(prev => [...prev, { agent: editAgent, action: value.trim() }]);
+      setEditPhase('menu');
+      setEditAgent('');
+      setInputValue('');
     }
+  };
+
+  // Save edit and go back
+  const handleEditSave = () => {
+    if (!selectedWorkflow) return;
+    const existing = loadTemplate(selectedWorkflow);
+    if (!existing) return;
+
+    const updated = {
+      ...existing,
+      steps: editSteps,
+      updatedAt: Date.now()
+    };
+    saveTemplate(updated);
+    setView('workflow');
+    setError(null);
   };
 
   // Handle delete confirm
@@ -205,6 +339,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
       deleteTemplate(selectedWorkflow);
       setView('list');
       setSelectedWorkflow(null);
+      setListIndex(0); // Reset to first item after deletion
     } else {
       setView('workflow');
     }
@@ -213,53 +348,84 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
   // Render based on current view
   const renderView = () => {
     switch (view) {
+      case 'menu':
+        return (
+          <Box flexDirection="column">
+            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+              <Text bold>Manage Workflows</Text>
+              <Text> </Text>
+              {menuItems.map((item, idx) => {
+                const isSelected = idx === menuIndex;
+                return (
+                  <Box key={item.value}>
+                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
+                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                      {idx + 1}. {item.label}
+                    </Text>
+                    <Text dimColor>  {item.hint}</Text>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        );
+
       case 'list':
         return (
           <Box flexDirection="column">
-            <Box marginBottom={1}>
-              <Text bold>Manage Workflows</Text>
-            </Box>
-            <SelectInput
-              items={listItems.map(item => ({
-                label: item.isBuiltIn
-                  ? item.label + '  (built-in)'
-                  : item.label,
-                value: item.value
-              }))}
-              onSelect={handleListSelect}
-              itemComponent={CustomItem}
-              indicatorComponent={CustomIndicator}
-            />
-            <Box marginTop={1}>
-              <Text dimColor>↑↓ navigate · Enter select · Esc back</Text>
+            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+              <Text bold>Workflows List</Text>
+              <Text> </Text>
+              {listItems.map((item, idx) => {
+                const isSelected = idx === listIndex;
+                return (
+                  <Box key={item.value}>
+                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
+                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                      {idx + 1}. {item.label}
+                    </Text>
+                    <Text dimColor>  {item.isBuiltIn ? '(built-in)' : '(custom)'}</Text>
+                    <Text dimColor>  Enter to view</Text>
+                  </Box>
+                );
+              })}
             </Box>
           </Box>
         );
 
       case 'workflow': {
         const template = selectedWorkflow ? loadTemplate(selectedWorkflow) : null;
-        const steps = template?.steps.map((s, i) => (i + 1) + '. ' + s.agent + ':' + s.action).join('\n') || '';
         return (
           <Box flexDirection="column">
-            <Box marginBottom={1} flexDirection="column">
-              <Text bold color="cyan">{selectedWorkflow}</Text>
+            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+              <Text bold>{selectedWorkflow}</Text>
               {template?.description && <Text dimColor>{template.description}</Text>}
-            </Box>
-            <Box marginBottom={1} flexDirection="column">
+              <Text> </Text>
               <Text dimColor>Steps:</Text>
-              <Text>{steps}</Text>
-            </Box>
-            {error && (
-              <Box marginBottom={1}>
-                <Text color="red">{error}</Text>
+              <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
+                {template?.steps.map((s, i) => (
+                  <Text key={i}>{i + 1}. {s.action} ({s.agent})</Text>
+                ))}
               </Box>
-            )}
-            <SelectInput
-              items={workflowActions}
-              onSelect={handleWorkflowAction}
-              itemComponent={CustomItem}
-              indicatorComponent={CustomIndicator}
-            />
+              <Text> </Text>
+              {error && (
+                <Box>
+                  <Text color="red">{error}</Text>
+                </Box>
+              )}
+              {workflowActions.map((action, idx) => {
+                const isSelected = idx === actionIndex;
+                return (
+                  <Box key={action.value}>
+                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
+                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                      {action.label}
+                    </Text>
+                    <Text dimColor>  {action.hint}</Text>
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
         );
       }
@@ -269,7 +435,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
           <Box flexDirection="column">
             <Box marginBottom={1}>
               <Text bold>Run: </Text>
-              <Text color="cyan">{selectedWorkflow}</Text>
+              <Text>{selectedWorkflow}</Text>
             </Box>
             <Box>
               <Text>Task: </Text>
@@ -286,95 +452,184 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
           </Box>
         );
 
-      case 'create':
+      case 'create': {
         return (
           <Box flexDirection="column">
-            <Box marginBottom={1}>
+            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>Create New Workflow</Text>
-            </Box>
-            {error && (
-              <Box marginBottom={1}>
-                <Text color="red">{error}</Text>
-              </Box>
-            )}
-            {createStep === 'name' && (
+              <Text> </Text>
+              {/* Step 1: Name */}
               <Box>
-                <Text>Name: </Text>
-                <TextInput
-                  value={inputValue}
-                  onChange={setInputValue}
-                  onSubmit={handleCreateSubmit}
-                  placeholder="my-workflow"
-                />
+                <Text color={createStep === 'name' ? HIGHLIGHT_COLOR : undefined}>{createStep === 'name' ? '❯' : ' '} </Text>
+                <Text color={createStep === 'name' ? HIGHLIGHT_COLOR : undefined} bold={createStep === 'name'}>1. Name</Text>
+                {newWorkflow.name ? (
+                  <Text color="green">  ✓ {newWorkflow.name}</Text>
+                ) : createStep === 'name' ? (
+                  <Text dimColor>  </Text>
+                ) : (
+                  <Text dimColor>  pending</Text>
+                )}
               </Box>
-            )}
-            {createStep === 'pipeline' && (
-              <Box flexDirection="column">
-                <Box marginBottom={1}>
-                  <Text dimColor>Name: {newWorkflow.name}</Text>
-                </Box>
+              {/* Step 2: Pipeline */}
+              <Box>
+                <Text color={createStep === 'pipeline' ? HIGHLIGHT_COLOR : undefined}>{createStep === 'pipeline' ? '❯' : ' '} </Text>
+                <Text color={createStep === 'pipeline' ? HIGHLIGHT_COLOR : undefined} bold={createStep === 'pipeline'}>2. Pipeline</Text>
+                {newWorkflow.pipeline ? (
+                  <Text color="green">  ✓ {newWorkflow.pipeline}</Text>
+                ) : createStep === 'pipeline' ? (
+                  <Text dimColor>  </Text>
+                ) : (
+                  <Text dimColor>  pending</Text>
+                )}
+              </Box>
+              {/* Step 3: Description */}
+              <Box>
+                <Text color={createStep === 'description' ? HIGHLIGHT_COLOR : undefined}>{createStep === 'description' ? '❯' : ' '} </Text>
+                <Text color={createStep === 'description' ? HIGHLIGHT_COLOR : undefined} bold={createStep === 'description'}>3. Description</Text>
+                <Text dimColor>  (optional)</Text>
+              </Box>
+              <Text> </Text>
+              {error && (
                 <Box>
-                  <Text>Pipeline: </Text>
-                  <TextInput
-                    value={inputValue}
-                    onChange={setInputValue}
-                    onSubmit={handleCreateSubmit}
-                    placeholder="claude:plan,codex:code"
-                  />
+                  <Text color="red">{error}</Text>
                 </Box>
+              )}
+              <Box>
+                {createStep === 'name' && (
+                  <>
+                    <Text>Name: </Text>
+                    <TextInput
+                      value={inputValue}
+                      onChange={setInputValue}
+                      onSubmit={handleCreateSubmit}
+                      placeholder="my-workflow"
+                    />
+                  </>
+                )}
+                {createStep === 'pipeline' && (
+                  <>
+                    <Text>Pipeline: </Text>
+                    <TextInput
+                      value={inputValue}
+                      onChange={setInputValue}
+                      onSubmit={handleCreateSubmit}
+                      placeholder="claude:plan,codex:code"
+                    />
+                  </>
+                )}
+                {createStep === 'description' && (
+                  <>
+                    <Text>Description: </Text>
+                    <TextInput
+                      value={inputValue}
+                      onChange={setInputValue}
+                      onSubmit={handleCreateSubmit}
+                      placeholder="What does this workflow do?"
+                    />
+                  </>
+                )}
               </Box>
-            )}
-            {createStep === 'description' && (
-              <Box flexDirection="column">
-                <Box marginBottom={1}>
-                  <Text dimColor>Name: {newWorkflow.name}</Text>
-                </Box>
-                <Box marginBottom={1}>
-                  <Text dimColor>Pipeline: {newWorkflow.pipeline}</Text>
-                </Box>
-                <Box>
-                  <Text>Description (optional): </Text>
-                  <TextInput
-                    value={inputValue}
-                    onChange={setInputValue}
-                    onSubmit={handleCreateSubmit}
-                    placeholder="What does this workflow do?"
-                  />
-                </Box>
-              </Box>
-            )}
-            <Box marginTop={1}>
-              <Text dimColor>Enter to continue · Esc to cancel</Text>
+              <Text> </Text>
+              <Text dimColor>
+                {createStep === 'description' ? 'Enter to save · Esc to cancel' : 'Enter to continue · Esc to cancel'}
+              </Text>
             </Box>
           </Box>
         );
+      }
 
-      case 'edit':
+      case 'edit': {
+        const newPipelineStr = editSteps.map(s => s.agent + ':' + s.action).join(',');
+        const lastStep = editSteps.length > 0 ? editSteps[editSteps.length - 1] : null;
         return (
           <Box flexDirection="column">
-            <Box marginBottom={1}>
-              <Text bold>Edit: </Text>
-              <Text color="cyan">{selectedWorkflow}</Text>
-            </Box>
-            {error && (
-              <Box marginBottom={1}>
-                <Text color="red">{error}</Text>
+            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+              <Box>
+                <Text bold>Edit: </Text>
+                <Text>{selectedWorkflow}</Text>
               </Box>
-            )}
-            <Box>
-              <Text>Pipeline: </Text>
-              <TextInput
-                value={inputValue}
-                onChange={setInputValue}
-                onSubmit={handleEditSubmit}
-                placeholder="claude:plan,codex:code"
-              />
-            </Box>
-            <Box marginTop={1}>
-              <Text dimColor>Enter to save · Esc to cancel</Text>
+              <Text> </Text>
+              <Box>
+                <Text dimColor>Current: </Text>
+                <Text dimColor>{originalPipeline || '(empty)'}</Text>
+              </Box>
+              <Box>
+                <Text>New:     </Text>
+                <Text color="green">{newPipelineStr || '(empty)'}</Text>
+              </Box>
+              <Text> </Text>
+              {editPhase === 'menu' && (
+                <>
+                  {editActions.map((action, idx) => {
+                    const isSelected = idx === editActionIndex;
+                    const hint = action.value === 'remove-last' && lastStep
+                      ? `Remove ${lastStep.agent}:${lastStep.action}`
+                      : action.hint;
+                    const isDisabled = action.value === 'remove-last' && editSteps.length === 0;
+                    return (
+                      <Box key={action.value}>
+                        <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
+                        <Text
+                          color={isSelected ? HIGHLIGHT_COLOR : undefined}
+                          bold={isSelected}
+                          dimColor={isDisabled}
+                        >
+                          {action.label}
+                        </Text>
+                        <Text dimColor>  {hint}</Text>
+                      </Box>
+                    );
+                  })}
+                  <Text> </Text>
+                  {error && (
+                    <>
+                      <Text color="red">{error}</Text>
+                      <Text> </Text>
+                    </>
+                  )}
+                  <Text dimColor>↑↓ navigate · Enter select · Esc to save & exit</Text>
+                </>
+              )}
+              {editPhase === 'agent' && (
+                <>
+                  <Text dimColor>Add step:</Text>
+                  <Box>
+                    <Text>  Agent: </Text>
+                    <TextInput
+                      value={inputValue}
+                      onChange={setInputValue}
+                      onSubmit={handleEditSubmit}
+                      placeholder="claude, gemini, codex..."
+                    />
+                  </Box>
+                  <Text> </Text>
+                  <Text dimColor>Enter to set role · Esc to cancel</Text>
+                </>
+              )}
+              {editPhase === 'role' && (
+                <>
+                  <Text dimColor>Add step:</Text>
+                  <Box>
+                    <Text>  Agent: </Text>
+                    <Text color="green">✓ {editAgent}</Text>
+                  </Box>
+                  <Box>
+                    <Text>  Role: </Text>
+                    <TextInput
+                      value={inputValue}
+                      onChange={setInputValue}
+                      onSubmit={handleEditSubmit}
+                      placeholder="code, review, plan..."
+                    />
+                  </Box>
+                  <Text> </Text>
+                  <Text dimColor>Enter to add step · Esc to cancel</Text>
+                </>
+              )}
             </Box>
           </Box>
         );
+      }
 
       case 'confirm-delete':
         return (
