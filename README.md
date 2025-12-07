@@ -133,7 +133,7 @@ puzld compare claude,gemini "explain async/await"
 
 ---
 
-## Pipeline Mode
+## Pipeline Mode (CLI)
 
 Chain multiple agents together for complex tasks. Each agent handles a specific step.
 
