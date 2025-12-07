@@ -175,14 +175,16 @@ puzld run "task" -T code-review
 
 ## Autopilot Mode
 
-Describe the goal. AI builds and executes the plan automatically.
+Describe the goal. AI analyzes the task, builds a multi-step plan, and executes it automatically using the best agents for each step.
 
 ```bash
 # TUI
 /autopilot "build a todo app with authentication"
+/execute                # Toggle auto-execution on/off
 
 # CLI
-puzld plan "build a todo app" -x
+puzld plan "task"       # Generate plan only
+puzld plan "task" -x    # Generate and execute
 ```
 
 <p align="center">
