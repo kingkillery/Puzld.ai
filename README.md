@@ -160,7 +160,15 @@ puzld run "task" -T code-review
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/1.png" width="700" alt="Workflow Mode">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/1.png" width="700" alt="Workflow Mode 1">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/2.png" width="700" alt="Workflow Mode 2">
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/3.png" width="700" alt="Workflow Mode 3">
 </p>
 
 ---
