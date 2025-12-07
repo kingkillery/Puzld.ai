@@ -4,18 +4,80 @@
  * Handles token estimation, limits, and truncation per adapter.
  */
 
+import { getConfig } from '../lib/config';
+
 export interface TokenConfig {
   maxTokens: number;
   reserveTokens: number;
   chunkSize: number;
 }
 
-export const ADAPTER_LIMITS: Record<string, TokenConfig> = {
+// Known Ollama model context limits
+const KNOWN_MODEL_LIMITS: Record<string, number> = {
+  'llama3.2': 8000,
+  'llama3.1': 128000,
+  'llama3': 8000,
+  'llama2': 4096,
+  'mixtral': 32000,
+  'mistral': 8000,
+  'codellama': 16000,
+  'gemma2': 8000,
+  'gemma': 8000,
+  'phi3': 4096,
+  'qwen2': 32000,
+  'deepseek': 32000,
+  'command-r': 128000,
+};
+
+const DEFAULT_OLLAMA_LIMIT = 8000;
+
+// Base limits (ollama is dynamic)
+const BASE_LIMITS: Record<string, TokenConfig> = {
   claude: { maxTokens: 100000, reserveTokens: 4000, chunkSize: 8000 },
   gemini: { maxTokens: 128000, reserveTokens: 4000, chunkSize: 8000 },
   codex:  { maxTokens: 32000,  reserveTokens: 2000, chunkSize: 4000 },
-  ollama: { maxTokens: 8000,   reserveTokens: 1000, chunkSize: 2000 },
 };
+
+/**
+ * Get Ollama token limit dynamically
+ */
+function getOllamaLimit(): number {
+  const config = getConfig();
+
+  // 1. User override wins
+  if (config.adapters.ollama.maxTokens) {
+    return config.adapters.ollama.maxTokens;
+  }
+
+  // 2. Check known models
+  const model = config.adapters.ollama.model || 'llama3.2';
+  const modelBase = model.split(':')[0].toLowerCase();
+
+  if (KNOWN_MODEL_LIMITS[modelBase]) {
+    return KNOWN_MODEL_LIMITS[modelBase];
+  }
+
+  // 3. Safe fallback
+  return DEFAULT_OLLAMA_LIMIT;
+}
+
+/**
+ * Get adapter limits (ollama is dynamic based on model)
+ */
+export function getAdapterLimits(): Record<string, TokenConfig> {
+  const ollamaLimit = getOllamaLimit();
+  return {
+    ...BASE_LIMITS,
+    ollama: {
+      maxTokens: ollamaLimit,
+      reserveTokens: Math.min(1000, Math.floor(ollamaLimit * 0.1)),
+      chunkSize: Math.min(2000, Math.floor(ollamaLimit * 0.25))
+    }
+  };
+}
+
+// Legacy export for compatibility
+export const ADAPTER_LIMITS = getAdapterLimits();
 
 const CHARS_PER_TOKEN = 4;
 
@@ -25,7 +87,8 @@ export function estimateTokens(text: string): number {
 }
 
 export function getTokenConfig(agent: string): TokenConfig {
-  return ADAPTER_LIMITS[agent] || ADAPTER_LIMITS.ollama;
+  const limits = getAdapterLimits();
+  return limits[agent] || limits.ollama;
 }
 
 export function getAvailableTokens(agent: string, usedTokens: number = 0): number {

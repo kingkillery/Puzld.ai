@@ -26,3 +26,15 @@ export {
   isSummarizerAvailable,
   type SummaryOptions
 } from './summarizer';
+
+// Context Window Manager
+export {
+  ContextWindowManager,
+  createContextItem,
+  getAgentRules,
+  buildContextForAgent,
+  type ContextItem,
+  type ContextItemType,
+  type ContextConfig,
+  type AgentContextRules
+} from './manager';

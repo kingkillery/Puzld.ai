@@ -13,7 +13,7 @@ export interface PulzdConfig {
     claude: { enabled: boolean; path: string };
     gemini: { enabled: boolean; path: string };
     codex: { enabled: boolean; path: string };
-    ollama: { enabled: boolean; model: string; host: string };
+    ollama: { enabled: boolean; model: string; host: string; maxTokens?: number };
   };
   api: { port: number; host: string };
   ttyd: { port: number; enabled: boolean };
