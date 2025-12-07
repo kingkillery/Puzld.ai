@@ -9,7 +9,7 @@ import { join } from 'path';
 import { homedir } from 'os';
 import type { PipelineTemplate, PipelineStep } from './types';
 
-const TEMPLATES_DIR = join(homedir(), '.pulzdai', 'templates');
+const TEMPLATES_DIR = join(homedir(), '.puzldai', 'templates');
 
 /**
  * Ensure templates directory exists

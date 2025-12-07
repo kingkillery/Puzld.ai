@@ -240,7 +240,7 @@ puzld template delete <name>    # Delete template
 
 ## Configuration
 
-`~/.pulzdai/config.json`
+`~/.puzldai/config.json`
 
 ```json
 {

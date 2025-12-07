@@ -77,7 +77,7 @@ export async function templateEditCommand(
   // Check if it's a built-in (createdAt === 0)
   if (existing.createdAt === 0) {
     console.error(pc.red('Cannot edit built-in template: ' + name));
-    console.log(pc.dim('Create a copy instead: pulzdai template create my-' + name + ' -P "..."'));
+    console.log(pc.dim('Create a copy instead: puzldai template create my-' + name + ' -P "..."'));
     process.exit(1);
   }
 

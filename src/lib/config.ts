@@ -19,7 +19,7 @@ export interface PulzdConfig {
   ttyd: { port: number; enabled: boolean };
 }
 
-const CONFIG_DIR = join(homedir(), '.pulzdai');
+const CONFIG_DIR = join(homedir(), '.puzldai');
 const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 
 const DEFAULT_CONFIG: PulzdConfig = {

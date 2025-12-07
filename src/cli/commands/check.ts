@@ -5,7 +5,7 @@ import type { CheckResult } from '../../lib/types';
 import { getConfig } from '../../lib/config';
 
 export async function checkCommand(): Promise<void> {
-  console.log(pc.bold('\nPulzdAI Dependency Check\n'));
+  console.log(pc.bold('\nPuzldAI Dependency Check\n'));
 
   const spinner = createSpinner('Checking dependencies...').start();
   const results = await checkDependencies();
