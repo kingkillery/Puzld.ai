@@ -16,6 +16,7 @@ const COMMANDS: Command[] = [
   // Options - Values
   { label: '/agent', value: '/agent ', description: 'Show/set agent' },
   { label: '/router', value: '/router ', description: 'Show/set routing agent' },
+  { label: '/planner', value: '/planner ', description: 'Show/set autopilot planner agent' },
   // Options - Toggles
   { label: '/sequential', value: '/sequential', description: 'Toggle: compare one-at-a-time' },
   { label: '/pick', value: '/pick', description: 'Toggle: select best from compare' },

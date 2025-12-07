@@ -71,6 +71,7 @@ function App() {
   // Value options
   const [currentAgent, setCurrentAgent] = useState('auto');
   const [currentRouter, setCurrentRouter] = useState('ollama');
+  const [currentPlanner, setCurrentPlanner] = useState('ollama');
 
   // Toggle options
   const [sequential, setSequential] = useState(false);
@@ -288,6 +289,7 @@ function App() {
 Options:
   /agent [name]     - Show/set agent (claude, gemini, codex, ollama, auto)
   /router [name]    - Show/set routing agent
+  /planner [name]   - Show/set autopilot planner agent
   /sequential       - Toggle: compare one-at-a-time
   /pick             - Toggle: select best from compare
   /execute          - Toggle: auto-run autopilot plans
@@ -335,6 +337,15 @@ Compare View:
           addMessage('Router set to: ' + rest);
         } else {
           addMessage('Current router: ' + currentRouter);
+        }
+        break;
+
+      case 'planner':
+        if (rest) {
+          setCurrentPlanner(rest);
+          addMessage('Planner set to: ' + rest);
+        } else {
+          addMessage('Current planner: ' + currentPlanner);
         }
         break;
 
@@ -444,7 +455,7 @@ Compare View:
         setLoadingText('generating plan...');
 
         try {
-          const plan = await generatePlan(task);
+          const plan = await generatePlan(task, currentPlanner as AgentName);
 
           // Format plan display
           let planDisplay = 'Plan: ' + plan.name + '\n\n';
