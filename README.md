@@ -71,6 +71,28 @@ puzld check
 
 ---
 
+## Features
+
+- **Auto-routing** — Ask anything. The right agent answers.
+- **Compare** — Same question, multiple agents, side-by-side.
+- **Pipelines** — Chain agents on-the-fly: `gemini:analyze → claude:code` (CLI)
+- **Workflows** — Save pipelines as templates, run anywhere (TUI & CLI)
+- **Autopilot** — Describe the goal. AI builds the plan.
+- **TUI** — Full terminal UI with autocomplete, history, keyboard nav.
+
+---
+
+## Supported Agents
+
+| Agent | Source | Requirement |
+|-------|--------|-------------|
+| Claude | Anthropic | [Claude CLI](https://docs.anthropic.com) |
+| Gemini | Google | [Gemini CLI](https://ai.google.dev) |
+| Codex | OpenAI | [Codex CLI](https://openai.com) |
+| Ollama | Local | [Ollama](https://ollama.ai) running |
+
+---
+
 ## Interface
 
 <p align="center">
@@ -108,28 +130,6 @@ puzld compare claude,gemini "explain async/await"
 <p align="center">
   <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/compare-mode/5.png" width="700" alt="Compare Mode 5">
 </p>
-
----
-
-## Features
-
-- **Auto-routing** — Ask anything. The right agent answers.
-- **Compare** — Same question, multiple agents, side-by-side.
-- **Pipelines** — Chain agents on-the-fly: `gemini:analyze → claude:code` (CLI)
-- **Workflows** — Save pipelines as templates, run anywhere (TUI & CLI)
-- **Autopilot** — Describe the goal. AI builds the plan.
-- **TUI** — Full terminal UI with autocomplete, history, keyboard nav.
-
----
-
-## Supported Agents
-
-| Agent | Source | Requirement |
-|-------|--------|-------------|
-| Claude | Anthropic | [Claude CLI](https://docs.anthropic.com) |
-| Gemini | Google | [Gemini CLI](https://ai.google.dev) |
-| Codex | OpenAI | [Codex CLI](https://openai.com) |
-| Ollama | Local | [Ollama](https://ollama.ai) running |
 
 ---
 
