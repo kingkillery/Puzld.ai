@@ -20,6 +20,11 @@ import {
   sessionDeleteCommand,
   sessionClearCommand
 } from './commands/session';
+import {
+  correctionCommand,
+  debateCommand,
+  consensusCommand
+} from './commands/collaboration';
 import { startTUI } from '../tui';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -155,6 +160,34 @@ sessionCmd
   .command('clear <id>')
   .description('Clear session history (keep session, remove messages)')
   .action(sessionClearCommand);
+
+// Multi-agent collaboration commands
+program
+  .command('correct')
+  .description('Cross-agent correction: one produces, another reviews')
+  .argument('<task>', 'The task to execute')
+  .requiredOption('--producer <agent>', 'Agent to produce initial output')
+  .requiredOption('--reviewer <agent>', 'Agent to review and critique')
+  .option('-f, --fix', 'Have producer fix issues after review')
+  .action(correctionCommand);
+
+program
+  .command('debate')
+  .description('Multi-agent debate on a topic')
+  .argument('<topic>', 'The topic to debate')
+  .requiredOption('-a, --agents <agents>', 'Comma-separated agents to debate')
+  .option('-r, --rounds <n>', 'Number of debate rounds', '2')
+  .option('-m, --moderator <agent>', 'Agent to synthesize conclusion')
+  .action(debateCommand);
+
+program
+  .command('consensus')
+  .description('Build consensus among multiple agents')
+  .argument('<task>', 'The task to reach consensus on')
+  .requiredOption('-a, --agents <agents>', 'Comma-separated agents to participate')
+  .option('-r, --rounds <n>', 'Number of voting rounds', '2')
+  .option('-s, --synthesizer <agent>', 'Agent to synthesize final result')
+  .action(consensusCommand);
 
 // If no arguments, launch TUI; otherwise parse commands
 if (process.argv.length <= 2) {

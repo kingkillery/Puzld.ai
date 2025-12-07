@@ -17,7 +17,10 @@ export type {
   CompareOptions,
   PipelineOptions,
   PipelineStep,
-  PipelineTemplate
+  PipelineTemplate,
+  CorrectionOptions,
+  DebateOptions,
+  ConsensusOptions
 } from './types';
 
 // Context
@@ -38,7 +41,10 @@ export {
   buildComparePlan,
   buildPipelinePlan,
   parsePipelineString,
-  parseAgentsString
+  parseAgentsString,
+  buildCorrectionPlan,
+  buildDebatePlan,
+  buildConsensusPlan
 } from './plan-builders';
 
 // Executor

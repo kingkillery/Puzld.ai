@@ -65,7 +65,10 @@ export type PlanMode =
   | 'single'      // Single agent, single step
   | 'compare'     // Parallel execution, compare results
   | 'pipeline'    // Sequential with dependencies
-  | 'auto';       // LLM-generated plan
+  | 'auto'        // LLM-generated plan
+  | 'debate'      // Multi-round agent debate with moderator
+  | 'consensus'   // Propose → vote → iterate until agreement
+  | 'correction'; // Producer → reviewer → optional fix
 
 // Execution timeline event for UI/logging
 export interface TimelineEvent {
@@ -125,4 +128,28 @@ export interface PipelineTemplate {
   steps: PipelineStep[];
   createdAt: number;
   updatedAt: number;
+}
+
+// --- Multi-Agent Collaboration Options ---
+
+// Cross-correction: one agent produces, another reviews
+export interface CorrectionOptions {
+  producer: AgentName | 'auto';
+  reviewer: AgentName | 'auto';
+  fixAfterReview?: boolean;  // Producer fixes based on review
+}
+
+// Debate: multiple rounds of agent discussion
+export interface DebateOptions {
+  agents: AgentName[];       // Min 2 agents required
+  rounds: number;            // Number of debate rounds
+  moderator?: AgentName;     // Agent that synthesizes final result
+}
+
+// Consensus: agents propose and vote until agreement
+export interface ConsensusOptions {
+  agents: AgentName[];       // Min 2 agents required
+  threshold?: number;        // Agreement threshold 0-1 (default: 0.7)
+  maxRounds?: number;        // Max voting rounds (default: 3)
+  synthesizer?: AgentName;   // Agent that creates final output
 }

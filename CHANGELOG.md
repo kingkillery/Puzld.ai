@@ -4,7 +4,11 @@ All notable changes to PuzldAI will be documented in this file.
 
 ## [Unreleased]
 
-### Added - Phase 1: Foundation
+---
+
+## [0.2.0] - 2025-12-07
+
+### Added - Phase 1-4 Complete
 
 #### Token Management Layer (`src/context/tokens.ts`)
 - Token estimation using ~4 chars/token standard
@@ -67,14 +71,33 @@ All notable changes to PuzldAI will be documented in this file.
 
 #### TUI Settings Panel (`src/tui/components/SettingsPanel.tsx`)
 - `/settings` — Open tabbed settings panel
-- **Status tab:** Version, current agent, router, planner
-- **Session tab:** Active session info, message count, token usage, compression ratio
-- **Config tab:** Toggle sequential, pick, auto-execute, interactive mode
-- Tab to cycle, Enter/Space to toggle, Esc to exit
+- 6 tabs: Status, Session, Config, Correct, Debate, Consensus
+- Tab to cycle, ↑↓ navigate, ←→ change values, Enter/Space toggle
+
+#### Multi-Agent Collaboration (`src/executor/plan-builders.ts`)
+- **Cross-Agent Correction** — One agent produces, another reviews, optional fix step
+  - CLI: `puzld correct "task" --producer claude --reviewer gemini [--fix]`
+  - TUI: `/correct <producer> <reviewer> <task>`
+- **Multi-Agent Debate** — Agents argue positions across configurable rounds
+  - CLI: `puzld debate "topic" -a claude,gemini [-r 3] [-m ollama]`
+  - TUI: `/debate <agents> <topic>`
+- **Consensus Building** — Agents propose, vote, and synthesize best solution
+  - CLI: `puzld consensus "task" -a claude,gemini,ollama [-r 2] [-s claude]`
+  - TUI: `/consensus <agents> <task>`
+
+#### CLI Collaboration Commands (`src/cli/commands/collaboration.ts`)
+- `puzld correct` — Cross-agent correction with --producer, --reviewer, --fix
+- `puzld debate` — Multi-agent debate with -a agents, -r rounds, -m moderator
+- `puzld consensus` — Consensus building with -a agents, -r rounds, -s synthesizer
+
+#### TUI Collaboration Settings
+- **Correct tab** — Toggle fix after review
+- **Debate tab** — Set rounds (1-5), moderator agent
+- **Consensus tab** — Set voting rounds (1-5), synthesizer agent
 
 ---
 
-## [0.1.9] - 2024-12-07
+## [0.1.9] - 2025-12-07
 
 ### Added
 - Auto-migration from `~/.pulzdai` to `~/.puzldai`
@@ -84,23 +107,23 @@ All notable changes to PuzldAI will be documented in this file.
 - Autopilot error handling for plan result
 - Config path consistency (pulzdai → puzldai)
 
-## [0.1.8] - 2024-12-07
+## [0.1.8] - 2025-12-07
 
 ### Fixed
 - Autopilot error when plan generation fails
 
-## [0.1.7] - 2024-12-07
+## [0.1.7] - 2025-12-07
 
 ### Changed
 - Config path updated to `~/.puzldai`
 - Branding consistency fixes
 
-## [0.1.6] - 2024-12-07
+## [0.1.6] - 2025-12-07
 
 ### Added
 - `/planner` command in TUI
 
-## [0.1.5] - 2024-12-07
+## [0.1.5] - 2025-12-07
 
 ### Added
 - Compare mode screenshots
@@ -110,7 +133,7 @@ All notable changes to PuzldAI will be documented in this file.
 ### Fixed
 - Logo URL for npm/GitHub display
 
-## [0.1.0] - 2024-12-07
+## [0.1.0] - 2025-12-07
 
 ### Added
 - Initial release

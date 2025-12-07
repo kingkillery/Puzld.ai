@@ -12,6 +12,9 @@ import { StatusBar } from './components/StatusBar';
 import {
   buildComparePlan,
   buildPipelinePlan,
+  buildCorrectionPlan,
+  buildDebatePlan,
+  buildConsensusPlan,
   parseAgentsString,
   parsePipelineString,
   execute,
@@ -94,6 +97,13 @@ function App() {
   const [pick, setPick] = useState(false);
   const [executeMode, setExecuteMode] = useState(false);
   const [interactive, setInteractive] = useState(false);
+
+  // Collaboration settings
+  const [correctFix, setCorrectFix] = useState(false);
+  const [debateRounds, setDebateRounds] = useState(2);
+  const [debateModerator, setDebateModerator] = useState('none');
+  const [consensusRounds, setConsensusRounds] = useState(2);
+  const [consensusSynthesizer, setConsensusSynthesizer] = useState('auto');
 
   const { addToHistory, navigateHistory } = useHistory();
 
@@ -352,6 +362,11 @@ function App() {
   /workflows                - Manage workflows (interactive)
   /session                  - Start new session
   /resume                   - Resume a previous session
+
+Multi-Agent Collaboration:
+  /correct <prod> <rev> <task>  - Cross-agent correction (fix in settings)
+  /debate <agents> <topic>      - Multi-agent debate (rounds in settings)
+  /consensus <agents> <task>    - Build consensus (rounds in settings)
 
 Options:
   /agent [name]     - Show/set agent (claude, gemini, codex, ollama, auto)
@@ -624,6 +639,152 @@ Compare View:
         break;
       }
 
+      // === MULTI-AGENT COLLABORATION ===
+      case 'correct': {
+        // Parse: /correct producer reviewer "task"
+        const correctMatch = rest.match(/^(\S+)\s+(\S+)\s+(?:"([^"]+)"|(.+))$/);
+        if (!correctMatch) {
+          addMessage('Usage: /correct <producer> <reviewer> <task>\nExample: /correct claude gemini "write a function"');
+          break;
+        }
+        const producer = correctMatch[1];
+        const reviewer = correctMatch[2];
+        const task = correctMatch[3] || correctMatch[4];
+
+        setMessages(prev => [...prev, { id: nextId(), role: 'user', content: '/correct ' + producer + ' ' + reviewer + ' "' + task + '"' }]);
+        setLoading(true);
+        setLoadingText(correctFix ? 'correcting with fix...' : 'running correction...');
+
+        try {
+          const plan = buildCorrectionPlan(task, {
+            producer: producer as AgentName | 'auto',
+            reviewer: reviewer as AgentName | 'auto',
+            fixAfterReview: correctFix
+          });
+
+          const result = await execute(plan);
+
+          let output = '─── Cross-Agent Correction ───\n\n';
+          output += '**Producer (' + producer + '):**\n';
+          output += (result.results[0]?.content || 'Failed') + '\n\n';
+          output += '**Review (' + reviewer + '):**\n';
+          output += (result.results[1]?.content || 'Failed');
+
+          if (correctFix && result.results[2]) {
+            output += '\n\n**Fixed (' + producer + '):**\n';
+            output += result.results[2].content || 'Failed';
+          }
+
+          addMessage(output, 'correction');
+        } catch (err) {
+          addMessage('Error: ' + (err as Error).message);
+        }
+
+        setLoading(false);
+        break;
+      }
+
+      case 'debate': {
+        // Parse: /debate agents "topic" (rounds/moderator from settings)
+        const debateMatch = rest.match(/^(\S+)\s+(?:"([^"]+)"|(.+))$/);
+        if (!debateMatch) {
+          addMessage('Usage: /debate <agents> <topic>\nExample: /debate claude,gemini "Is AI safe?"');
+          break;
+        }
+        const agentsStr = debateMatch[1];
+        const topic = debateMatch[2] || debateMatch[3];
+        const agents = parseAgentsString(agentsStr);
+
+        if (agents.length < 2) {
+          addMessage('Debate needs at least 2 agents.\nExample: /debate claude,gemini "topic"');
+          break;
+        }
+
+        const moderator = debateModerator !== 'none' ? debateModerator as AgentName : undefined;
+
+        setMessages(prev => [...prev, { id: nextId(), role: 'user', content: '/debate ' + agentsStr + ' "' + topic + '"' }]);
+        setLoading(true);
+        setLoadingText('debating (' + debateRounds + ' rounds)...');
+
+        try {
+          const plan = buildDebatePlan(topic, {
+            agents: agents as AgentName[],
+            rounds: debateRounds,
+            moderator
+          });
+
+          const result = await execute(plan);
+
+          let output = '─── Multi-Agent Debate ───\n';
+          for (let round = 0; round <= debateRounds; round++) {
+            output += '\n**Round ' + round + '**\n';
+            for (let i = 0; i < agents.length; i++) {
+              const stepIndex = round * agents.length + i;
+              const stepResult = result.results[stepIndex];
+              output += '\n[' + agents[i] + ']:\n' + (stepResult?.content || '(no response)') + '\n';
+            }
+          }
+
+          if (moderator) {
+            const conclusionStep = result.results[result.results.length - 1];
+            output += '\n**Conclusion (' + moderator + '):**\n';
+            output += conclusionStep?.content || '(no conclusion)';
+          }
+
+          addMessage(output, 'debate');
+        } catch (err) {
+          addMessage('Error: ' + (err as Error).message);
+        }
+
+        setLoading(false);
+        break;
+      }
+
+      case 'consensus': {
+        // Parse: /consensus agents "task" (rounds/synthesizer from settings)
+        const consensusMatch = rest.match(/^(\S+)\s+(?:"([^"]+)"|(.+))$/);
+        if (!consensusMatch) {
+          addMessage('Usage: /consensus <agents> <task>\nExample: /consensus claude,gemini,ollama "best approach for..."');
+          break;
+        }
+        const agentsStr = consensusMatch[1];
+        const task = consensusMatch[2] || consensusMatch[3];
+        const agents = parseAgentsString(agentsStr);
+
+        if (agents.length < 2) {
+          addMessage('Consensus needs at least 2 agents.\nExample: /consensus claude,gemini "task"');
+          break;
+        }
+
+        const synth = consensusSynthesizer !== 'auto' ? consensusSynthesizer as AgentName : undefined;
+
+        setMessages(prev => [...prev, { id: nextId(), role: 'user', content: '/consensus ' + agentsStr + ' "' + task + '"' }]);
+        setLoading(true);
+        setLoadingText('building consensus (' + consensusRounds + ' rounds)...');
+
+        try {
+          const plan = buildConsensusPlan(task, {
+            agents: agents as AgentName[],
+            maxRounds: consensusRounds,
+            synthesizer: synth
+          });
+
+          const result = await execute(plan);
+
+          // Show final consensus
+          const finalResult = result.results[result.results.length - 1];
+          let output = '─── Consensus Result ───\n\n';
+          output += finalResult?.content || '(no consensus reached)';
+
+          addMessage(output, 'consensus');
+        } catch (err) {
+          addMessage('Error: ' + (err as Error).message);
+        }
+
+        setLoading(false);
+        break;
+      }
+
       default:
         addMessage('Unknown command: /' + command + '\nType /help for available commands.');
     }
@@ -682,6 +843,16 @@ Compare View:
           onTogglePick={() => setPick(p => !p)}
           onToggleExecute={() => setExecuteMode(e => !e)}
           onToggleInteractive={() => setInteractive(i => !i)}
+          correctFix={correctFix}
+          debateRounds={debateRounds}
+          debateModerator={debateModerator}
+          consensusRounds={consensusRounds}
+          consensusSynthesizer={consensusSynthesizer}
+          onToggleCorrectFix={() => setCorrectFix(f => !f)}
+          onSetDebateRounds={setDebateRounds}
+          onSetDebateModerator={setDebateModerator}
+          onSetConsensusRounds={setConsensusRounds}
+          onSetConsensusSynthesizer={setConsensusSynthesizer}
         />
       )}
 

@@ -13,6 +13,10 @@ const COMMANDS: Command[] = [
   { label: '/compare', value: '/compare ', description: 'Compare agents side-by-side' },
   { label: '/autopilot', value: '/autopilot ', description: 'AI-generated execution plan' },
   { label: '/workflow', value: '/workflow ', description: 'Run a saved workflow' },
+  // Multi-agent collaboration
+  { label: '/correct', value: '/correct ', description: 'Cross-agent correction (fix: /settings)' },
+  { label: '/debate', value: '/debate ', description: 'Multi-agent debate (rounds: /settings)' },
+  { label: '/consensus', value: '/consensus ', description: 'Build consensus (rounds: /settings)' },
   // Options - Values
   { label: '/agent', value: '/agent ', description: 'Show/set agent' },
   { label: '/router', value: '/router ', description: 'Show/set routing agent' },
