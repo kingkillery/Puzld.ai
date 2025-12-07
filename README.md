@@ -133,6 +133,56 @@ puzld compare claude,gemini "explain async/await"
 
 ---
 
+## Pipeline Mode
+
+Chain multiple agents together for complex tasks. Each agent handles a specific step.
+
+```bash
+puzld run "build a REST API" -P "gemini:analyze,claude:code,gemini:review"
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/pipeline-mode/1.png" width="700" alt="Pipeline Mode">
+</p>
+
+---
+
+## Workflow Mode
+
+Save pipelines as reusable templates. Run them anywhere with a single command.
+
+```bash
+# TUI
+/workflow code-review "my code here"
+
+# CLI
+puzld run "task" -T code-review
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/1.png" width="700" alt="Workflow Mode">
+</p>
+
+---
+
+## Autopilot Mode
+
+Describe the goal. AI builds and executes the plan automatically.
+
+```bash
+# TUI
+/autopilot "build a todo app with authentication"
+
+# CLI
+puzld plan "build a todo app" -x
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/autopilot-mode/1.png" width="700" alt="Autopilot Mode">
+</p>
+
+---
+
 ## Commands
 
 ### TUI Mode
