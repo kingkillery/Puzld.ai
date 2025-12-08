@@ -81,6 +81,7 @@ function App() {
   const [input, setInput] = useState('');
   const [inputKey, setInputKey] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [tokens, setTokens] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('thinking...');
   const [mode, setMode] = useState<AppMode>('chat');
@@ -335,6 +336,10 @@ function App() {
     try {
       const result = await orchestrate(value, { agent: currentAgent });
       const responseContent = result.content || result.error || 'No response';
+      // Track tokens
+      if (result.tokens) {
+        setTokens(prev => prev + (result.tokens?.input || 0) + (result.tokens?.output || 0));
+      }
       setMessages(prev => [
         ...prev,
         {
@@ -1231,7 +1236,7 @@ Compare View:
       )}
 
       {/* Status Bar */}
-      <StatusBar agent={currentAgent} messageCount={messages.length} />
+      <StatusBar agent={currentAgent} messageCount={messages.length} tokens={tokens} />
     </Box>
   );
 }

@@ -1,17 +1,21 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { memo } from 'react';
 import { Box, Text } from 'ink';
-
-// Isolated timer component - disabled for testing
-const SessionTimer = memo(function SessionTimer() {
-  return <Text>0:00</Text>;
-});
 
 interface StatusBarProps {
   agent: string;
   messageCount?: number;
+  tokens?: number;
 }
 
-export const StatusBar = memo(function StatusBar({ agent, messageCount = 0 }: StatusBarProps) {
+export const StatusBar = memo(function StatusBar({ agent, messageCount = 0, tokens = 0 }: StatusBarProps) {
+  // Format tokens with K suffix for thousands
+  const formatTokens = (t: number): string => {
+    if (t >= 1000) {
+      return (t / 1000).toFixed(1) + 'k';
+    }
+    return t.toString();
+  };
+
   return (
     <Box borderStyle="single" borderColor="gray" paddingX={1} marginTop={1} justifyContent="space-between">
       <Box>
@@ -23,8 +27,8 @@ export const StatusBar = memo(function StatusBar({ agent, messageCount = 0 }: St
         <Text>{messageCount}</Text>
       </Box>
       <Box>
-        <Text dimColor>session: </Text>
-        <SessionTimer />
+        <Text dimColor>tokens: </Text>
+        <Text>{formatTokens(tokens)}</Text>
       </Box>
       <Box>
         <Text dimColor>/help for commands</Text>
