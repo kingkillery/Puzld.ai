@@ -677,8 +677,10 @@ Compare View:
           // Format plan display
           let planDisplay = 'Plan: ' + (plan.prompt || task) + '\n\n';
           plan.steps.forEach((step, i) => {
+            // Extract just the description (before "Original task:")
+            const description = step.prompt.split('Original task:')[0].trim();
             planDisplay += (i + 1) + '. [' + (step.agent || 'auto') + '] ' + step.action + '\n';
-            planDisplay += '   ' + step.prompt.slice(0, 80) + (step.prompt.length > 80 ? '...' : '') + '\n';
+            planDisplay += '   ' + description.slice(0, 80) + (description.length > 80 ? '...' : '') + '\n';
           });
 
           if (executeMode) {
