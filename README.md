@@ -33,6 +33,7 @@
 | Want multiple opinions | **Compare mode** runs all agents in parallel |
 | Complex tasks need multiple steps | **Pipelines** chain agents together |
 | Repetitive workflows | **Templates** save and reuse pipelines |
+| Need agents to review each other | **Collaboration** — correct, debate, consensus |
 
 ---
 
@@ -78,6 +79,8 @@ puzld check
 - **Pipelines** — Chain agents on-the-fly: `gemini:analyze → claude:code` (CLI)
 - **Workflows** — Save pipelines as templates, run anywhere (TUI & CLI)
 - **Autopilot** — Describe the goal. AI builds the plan.
+- **Multi-Agent Collaboration** — Correct, debate, and build consensus across agents.
+- **Sessions** — Persist chat history, resume conversations.
 - **TUI** — Full terminal UI with autocomplete, history, keyboard nav.
 
 ---
@@ -161,6 +164,8 @@ puzld run "task" -P "claude:plan,codex:code" -i   # Interactive: pause between s
 
 Save pipelines as reusable templates. Run them anywhere with a single command.
 
+Three views: **side-by-side**, **expanded**, or **stacked**.
+
 ```bash
 # TUI
 /workflow code-review "my code here"
@@ -194,6 +199,8 @@ puzld template delete my-flow  # Delete template
 
 Describe the goal. AI analyzes the task, builds a multi-step plan, and executes it automatically using the best agents for each step.
 
+With `/execute` enabled, results display in **3 view modes**: side-by-side, expanded, or stacked.
+
 ```bash
 # TUI
 /autopilot "build a todo app with authentication"
@@ -220,15 +227,74 @@ puzld plan "task" -p claude    # Use specific agent as planner
 
 ---
 
+## Multi-Agent Collaboration
+
+Get multiple agents to work together through correction, debate, or consensus.
+
+### Correct Mode
+
+One agent produces, another reviews. Optionally fix based on feedback.
+
+```bash
+# TUI
+/correct claude gemini "write a sorting algorithm"
+
+# CLI
+puzld correct "task" --producer claude --reviewer gemini
+puzld correct "task" --producer claude --reviewer gemini --fix
+```
+
+### Debate Mode
+
+Agents debate a topic across multiple rounds. Optional moderator summarizes.
+
+```bash
+# TUI
+/debate claude,gemini "Is functional programming better than OOP?"
+
+# CLI
+puzld debate "topic" -a claude,gemini
+puzld debate "topic" -a claude,gemini -r 3 -m ollama   # 3 rounds + moderator
+```
+
+### Consensus Mode
+
+Agents propose solutions, vote on them, and synthesize a final answer.
+
+```bash
+# TUI
+/consensus claude,gemini,ollama "best database for this use case"
+
+# CLI
+puzld consensus "task" -a claude,gemini,ollama
+puzld consensus "task" -a claude,gemini -r 3 -s claude   # 3 rounds + synthesizer
+```
+
+All collaboration modes support **3 view modes**: side-by-side, expanded, and stacked.
+
+Configure rounds, moderator, and synthesizer in `/settings`.
+
+---
+
 ## Commands
 
 ### TUI Mode
 
 ```
-/compare claude,gemini "task"   Compare agents
+/compare claude,gemini "task"   Compare agents side-by-side
 /autopilot "task"               AI-planned workflow
 /workflow code-review "code"    Run saved workflow
 /workflows                      Manage templates
+
+/correct claude gemini "task"   Cross-agent correction
+/debate claude,gemini "topic"   Multi-agent debate
+/consensus claude,gemini "task" Build consensus
+
+/session                        Start new session
+/resume                         Resume previous session
+/settings                       Open settings panel
+/changelog                      Show version history
+
 /agent claude                   Switch agent
 /router ollama                  Set routing agent
 /planner claude                 Set autopilot planner
@@ -252,9 +318,15 @@ puzld compare "task"            # Compare (default: claude,gemini)
 puzld compare "task" -a a,b,c   # Specify agents
 puzld compare "task" -s         # Sequential mode
 puzld compare "task" -p         # Pick best response
-puzld plan "task"               # Generate plan
-puzld plan "task" -x            # Plan + execute
-puzld plan "task" -p claude     # Use specific planner
+puzld autopilot "task"          # Generate plan
+puzld autopilot "task" -x       # Plan + execute
+puzld autopilot "task" -p claude # Use specific planner
+puzld correct "task" --producer claude --reviewer gemini
+puzld correct "task" --producer claude --reviewer gemini --fix
+puzld debate "topic" -a claude,gemini -r 3 -m ollama
+puzld consensus "task" -a claude,gemini -r 3 -s claude
+puzld session list              # List sessions
+puzld session new               # Create new session
 puzld check                     # Agent status
 puzld agent                     # Interactive agent mode
 puzld agent -a claude           # Force specific agent
