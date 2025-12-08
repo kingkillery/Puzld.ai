@@ -6,6 +6,25 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.4] - 2025-12-08
+
+### Added
+- **Phase 5: Scaffolded Context Windows** - RAG-style chunking for large outputs
+  - 512-token chunks with 10% overlap (research-backed defaults)
+  - Tiered processing: <5k pass, 5-15k summarize, >15k scaffold
+  - Code-aware boundary detection (functions/classes/headings/paragraphs)
+  - Semantic retrieval via Ollama embeddings (nomic-embed-text)
+- "Disabled in config" messaging in `puzldai check` command
+
+### Changed
+- Ollama model token limits updated (phi3, qwen2, llama3.2 → 128k)
+- Scaffold threshold set to 15,000 tokens (was 50,000)
+
+### Fixed
+- Session resume no longer flashes "Session not found" during load
+
+---
+
 ## [0.2.3] - 2025-12-08
 
 ### Added
