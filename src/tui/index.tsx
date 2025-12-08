@@ -263,6 +263,14 @@ function App() {
       // Don't intercept Enter - let TextInput handle submit
     }
 
+    // Skip history navigation in collaboration/compare mode (let those views handle arrows)
+    if (mode === 'collaboration' || mode === 'compare') {
+      if (key.escape) {
+        setInput('');
+      }
+      return;
+    }
+
     if (key.upArrow) {
       setInput(navigateHistory('up', input));
     } else if (key.downArrow) {
