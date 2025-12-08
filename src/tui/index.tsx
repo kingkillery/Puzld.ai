@@ -177,6 +177,7 @@ function App() {
     try {
       const template = loadTemplate(workflowName);
       if (!template) throw new Error('Workflow not found');
+      if (!template.steps || template.steps.length === 0) throw new Error('Workflow has no steps');
 
       const plan = buildPipelinePlan(task, { steps: template.steps });
 
@@ -752,6 +753,10 @@ Compare View:
           addMessage('Workflow not found: ' + wfName + '\nUse /workflows to see available workflows.');
           break;
         }
+        if (!template.steps || template.steps.length === 0) {
+          addMessage('Workflow "' + wfName + '" has no steps.\nEdit it in /workflows to add steps.');
+          break;
+        }
 
         // Add user message to chat history
         setMessages(prev => [...prev, { id: nextId(), role: 'user', content: '/workflow ' + wfName + ' "' + task + '"' }]);
@@ -1194,7 +1199,8 @@ Compare View:
       {/* Chat Mode (also shows compare/collaboration results inline) */}
       {(mode === 'chat' || mode === 'compare' || mode === 'collaboration') && (
         <>
-          {/* Messages */}
+          {/* Messages - hide when active compare/collaboration to prevent terminal scroll */}
+          {mode === 'chat' && (
           <Box flexDirection="column" marginBottom={1} width="100%">
             {messages.map((msg) => (
               msg.role === 'compare' && msg.compareResults ? (
@@ -1260,6 +1266,7 @@ Compare View:
               )
             ))}
           </Box>
+          )}
 
           {/* Compare View (inline) */}
           {mode === 'compare' && (
@@ -1298,12 +1305,12 @@ Compare View:
               value={input}
               onChange={setInput}
               onSubmit={handleSubmit}
-              placeholder="Type a message or /help"
+              placeholder={mode === 'chat' ? "Type a message or /help" : "Type to exit view..."}
             />
           </Box>
 
           {/* Autocomplete suggestions - aligned with input text (border + padding + "> ") */}
-          {autocompleteItems.length > 0 && !loading && (
+          {mode === 'chat' && autocompleteItems.length > 0 && !loading && (
             <Box flexDirection="column" marginTop={1} marginLeft={4}>
               {autocompleteItems.map((item, i) => {
                 const isSelected = i === autocompleteIndex;

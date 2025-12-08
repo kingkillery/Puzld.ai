@@ -34,7 +34,7 @@ PuzldAI is a fast, terminal-native framework for orchestrating multiple AI agent
 | Claude is great at code, Gemini at research | **Auto-routing** picks the best agent |
 | Want multiple opinions | **Compare mode** runs all agents in parallel |
 | Complex tasks need multiple steps | **Pipelines** chain agents together |
-| Repetitive workflows | **Templates** save and reuse pipelines |
+| Repetitive workflows | **Workflows** save and reuse pipelines |
 | Need agents to review each other | **Collaboration** — correct, debate, consensus |
 
 ---
@@ -289,6 +289,10 @@ puzldai debate "topic" -a claude,gemini
 puzldai debate "topic" -a claude,gemini -r 3 -m ollama   # 3 rounds + moderator
 ```
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/Debate%20mode/Debate%20mode.png" width="700" alt="Debate Mode">
+</p>
+
 ### Consensus Mode
 
 Agents propose solutions, vote on them, and synthesize a final answer.
@@ -301,6 +305,10 @@ Agents propose solutions, vote on them, and synthesize a final answer.
 puzldai consensus "task" -a claude,gemini,ollama
 puzldai consensus "task" -a claude,gemini -r 3 -s claude   # 3 rounds + synthesizer
 ```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/consensus-mode/consensus-mode.png" width="700" alt="Consensus Mode">
+</p>
 
 All collaboration modes support **3 view modes**: side-by-side, expanded, and stacked.
 

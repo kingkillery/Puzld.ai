@@ -6,6 +6,22 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.3] - 2025-12-08
+
+### Added
+- Workflow validation warns when workflow has no steps
+- Debate and Consensus mode screenshots in README
+
+### Changed
+- Autopilot planner now creates balanced multi-step plans (claude for code, gemini for analysis, codex for review)
+- Planner guidelines encourage multi-agent workflows instead of single-agent plans
+
+### Fixed
+- Empty workflows no longer cause blank pipeline view
+- WorkflowsManager prevents saving workflows with no steps
+
+---
+
 ## [0.2.2] - 2025-12-08
 
 ### Added
@@ -26,6 +42,7 @@ All notable changes to PuzldAI will be documented in this file.
 ### Fixed
 - Autopilot plan display no longer shows template variables ({{prompt}}, etc.)
 - Arrow keys in collaboration/compare mode now navigate boxes instead of command history
+- Terminal scrolling no longer occurs when navigating collaboration/compare views
 
 ---
 

@@ -323,6 +323,11 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
     const existing = loadTemplate(selectedWorkflow);
     if (!existing) return;
 
+    if (editSteps.length === 0) {
+      setError('Cannot save workflow with no steps. Add at least one step.');
+      return;
+    }
+
     const updated = {
       ...existing,
       steps: editSteps,
@@ -403,9 +408,13 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
               <Text> </Text>
               <Text dimColor>Steps:</Text>
               <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
-                {template?.steps.map((s, i) => (
-                  <Text key={i}>{i + 1}. {s.action} ({s.agent})</Text>
-                ))}
+                {template?.steps && template.steps.length > 0 ? (
+                  template.steps.map((s, i) => (
+                    <Text key={i}>{i + 1}. {s.action} ({s.agent})</Text>
+                  ))
+                ) : (
+                  <Text color="yellow">⚠ No steps defined - edit to add steps</Text>
+                )}
               </Box>
               <Text> </Text>
               {error && (

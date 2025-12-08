@@ -11,10 +11,16 @@ import { getConfig } from '../lib/config';
 const PLANNER_PROMPT = `You are a task planner for a multi-LLM system. Analyze the user's task and create an execution plan.
 
 Available agents:
-- claude: Best for complex coding, debugging, architecture, creative writing
-- gemini: Best for analysis, research, multi-modal tasks, data processing
-- codex: Best for quick code generation, scripts, simple tasks
+- claude: Best for coding, code generation, architecture, creative writing
+- gemini: Best for analysis, research, planning, data processing
+- codex: Best for debugging, security analysis, finding bugs, code review
 - ollama: Best for simple queries, local processing, fast responses
+
+Guidelines:
+- Use claude for code writing steps
+- Use gemini for analysis/planning steps
+- Use codex for review/debug steps
+- Create multi-step plans that leverage different agents' strengths
 
 Actions you can assign:
 - analyze: Examine and provide insights
