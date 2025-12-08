@@ -402,10 +402,11 @@ Options:
   /interactive      - Toggle: pause between steps
 
 Utility:
-  /settings - Open settings panel
-  /help     - Show this help
-  /clear    - Clear chat history
-  /exit     - Exit
+  /settings  - Open settings panel
+  /changelog - Show version history
+  /help      - Show this help
+  /clear     - Clear chat history
+  /exit      - Exit
 
 Keyboard:
   Tab        - Autocomplete command
@@ -449,6 +450,59 @@ Compare View:
       case 'exit':
         process.exit(0);
         break;
+
+      case 'changelog': {
+        try {
+          // Get package root directory (go up from src/tui to project root)
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = dirname(__filename);
+          const changelogPath = join(__dirname, '..', '..', 'CHANGELOG.md');
+          const changelog = readFileSync(changelogPath, 'utf-8');
+
+          // Parse and format the changelog for display
+          const lines = changelog.split('\n');
+          let formatted = '';
+          let inVersion = false;
+          let versionCount = 0;
+          const maxVersions = rest ? parseInt(rest, 10) || 3 : 3;
+
+          for (const line of lines) {
+            // Version headers
+            if (line.startsWith('## [')) {
+              if (line.includes('[Unreleased]')) continue;
+              versionCount++;
+              if (versionCount > maxVersions) break;
+              inVersion = true;
+              const match = line.match(/## \[(.+?)\] - (.+)/);
+              if (match) {
+                formatted += `\n━━━ v${match[1]} (${match[2]}) ━━━\n`;
+              }
+            } else if (inVersion) {
+              // Section headers
+              if (line.startsWith('### ')) {
+                formatted += `\n${line.replace('### ', '▸ ')}\n`;
+              } else if (line.startsWith('#### ')) {
+                formatted += `  ${line.replace('#### ', '• ')}\n`;
+              } else if (line.startsWith('- ')) {
+                formatted += `    ${line}\n`;
+              } else if (line.startsWith('---')) {
+                // Skip separators
+              } else if (line.trim()) {
+                formatted += `  ${line}\n`;
+              }
+            }
+          }
+
+          if (!formatted.trim()) {
+            addMessage('No changelog entries found.');
+          } else {
+            addMessage(`Release Notes (showing ${Math.min(versionCount, maxVersions)} versions):\n${formatted}\nTip: /changelog N to show N versions`);
+          }
+        } catch (err) {
+          addMessage('Could not read changelog: ' + (err as Error).message);
+        }
+        break;
+      }
 
       // === VALUE OPTIONS ===
       case 'agent':
