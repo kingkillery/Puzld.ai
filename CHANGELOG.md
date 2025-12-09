@@ -6,6 +6,17 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.6] - 2025-12-09
+
+### Added
+- Model selection panel via `/model` command in TUI with tabbed interface
+  - Shows aliases as (latest) with specific versions separated below
+- CLI commands: `puzld model show/list/set/clear`
+- `-m, --model` flag for `run` and `agent` commands
+- Syncs default models from agent CLI configs on startup
+
+---
+
 ## [0.2.51] - 2025-12-08
 
 ### Changed
