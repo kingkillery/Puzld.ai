@@ -32,6 +32,7 @@ PuzldAI is a fast, terminal-native framework for orchestrating multiple AI agent
 | Problem | Solution |
 |---------|----------|
 | Claude is great at code, Gemini at research | **Auto-routing** picks the best agent |
+| Need specific model versions | **Model selection** — pick sonnet, opus, haiku, etc. |
 | Want multiple opinions | **Compare mode** runs all agents in parallel |
 | Complex tasks need multiple steps | **Pipelines** chain agents together |
 | Repetitive workflows | **Workflows** save and reuse pipelines |
@@ -42,6 +43,7 @@ PuzldAI is a fast, terminal-native framework for orchestrating multiple AI agent
 ## Features
 
 - **Auto-routing** — Ask anything. The right agent answers.
+- **Model Selection** — Pick specific models per agent (sonnet, opus, haiku, etc.)
 - **Compare** — Same question, multiple agents, side-by-side.
 - **Pipelines** — Chain agents on-the-fly: `gemini:analyze → claude:code` (CLI)
 - **Workflows** — Save pipelines as templates, run anywhere (TUI & CLI)
@@ -108,8 +110,30 @@ puzldai check
 ## Interface
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/interface/tui.png" width="700" alt="PuzldAI TUI">
+  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/interface/TUI.png" width="700" alt="PuzldAI TUI">
 </p>
+
+---
+
+## Model Selection
+
+Pick specific models for each agent. Aliases like `sonnet`, `opus`, `haiku` always point to the latest version. Specific versions like `claude-sonnet-4-20250514` are pinned.
+
+```bash
+# TUI
+/model                            # Open model selection panel
+
+# CLI
+puzldai model show                # Show current models for all agents
+puzldai model list                # List all available models
+puzldai model list claude         # List models for specific agent
+puzldai model set claude opus     # Set model for an agent
+puzldai model clear claude        # Reset to CLI default
+
+# Per-task override
+puzldai run "task" -m opus        # Override model for this run
+puzldai agent -a claude -m haiku  # Interactive mode with specific model
+```
 
 ---
 
@@ -131,6 +155,7 @@ puzldai check
 | Mode | Option | Type | Default | Description |
 |------|--------|------|---------|-------------|
 | Single | `agent` | AgentName | `auto` | Which agent to use |
+| | `model` | string | — | Override model (e.g., sonnet, opus) |
 | Compare | `agents` | AgentName[] | — | Agents to compare (min 2) |
 | | `sequential` | boolean | `false` | Run one-at-a-time vs parallel |
 | | `pick` | boolean | `false` | LLM selects best response |
@@ -336,6 +361,7 @@ Configure rounds, moderator, and synthesizer in `/settings`.
 /changelog                      Show version history
 
 /agent claude                   Switch agent
+/model                          Model selection panel
 /router ollama                  Set routing agent
 /planner claude                 Set autopilot planner
 /sequential                     Toggle: compare one-at-a-time
@@ -351,6 +377,7 @@ Configure rounds, moderator, and synthesizer in `/settings`.
 puzldai                           # Launch TUI
 puzldai run "task"                # Single task
 puzldai run "task" -a claude      # Force agent
+puzldai run "task" -m opus        # Override model
 puzldai run "task" -P "..."       # Pipeline
 puzldai run "task" -T template    # Use template
 puzldai run "task" -i             # Interactive: pause between steps
@@ -370,6 +397,11 @@ puzldai session new               # Create new session
 puzldai check                     # Agent status
 puzldai agent                     # Interactive agent mode
 puzldai agent -a claude           # Force specific agent
+puzldai agent -m sonnet           # With specific model
+puzldai model show                # Show current models
+puzldai model list                # List available models
+puzldai model set claude opus     # Set model for agent
+puzldai model clear claude        # Reset to CLI default
 puzldai serve                     # API server
 puzldai serve -p 8080             # Custom port
 puzldai serve -w                  # With web terminal
@@ -392,9 +424,9 @@ puzldai template delete <name>    # Delete template
   "fallbackAgent": "claude",
   "routerModel": "llama3.2",
   "adapters": {
-    "claude": { "enabled": true, "path": "claude" },
-    "gemini": { "enabled": true, "path": "gemini" },
-    "codex": { "enabled": false, "path": "codex" },
+    "claude": { "enabled": true, "path": "claude", "model": "sonnet" },
+    "gemini": { "enabled": true, "path": "gemini", "model": "gemini-2.5-pro" },
+    "codex": { "enabled": false, "path": "codex", "model": "gpt-5.1-codex" },
     "ollama": { "enabled": true, "model": "llama3.2" }
   }
 }
