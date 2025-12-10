@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { render, Box, Text, useInput } from 'ink';
+import { render, Box, Text, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -82,12 +82,7 @@ interface AgentStatus {
 
 function App() {
   // Disable mouse tracking to prevent scroll events from triggering input
-  useEffect(() => {
-    process.stdout.write('\x1b[?1000l\x1b[?1002l\x1b[?1003l');
-    return () => {
-      process.stdout.write('\x1b[?1000h');
-    };
-  }, []);
+  const { exit } = useApp();
 
   const [input, setInput] = useState('');
   const [inputKey, setInputKey] = useState(0);
@@ -108,6 +103,24 @@ function App() {
   const [updateInfo, setUpdateInfo] = useState<{ current: string; latest: string } | null>(null);
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [ctrlCPressed, setCtrlCPressed] = useState(false);
+
+  // Double Ctrl+C to exit
+  useInput((input, key) => {
+    if (key.ctrl && input === 'c') {
+      if (ctrlCPressed) {
+        exit();
+        process.exit(0);
+      } else {
+        setCtrlCPressed(true);
+        setNotification('Press Ctrl+C again to exit');
+        setTimeout(() => {
+          setCtrlCPressed(false);
+          setNotification(null);
+        }, 2000);
+      }
+    }
+  });
 
   // Value options
   const [currentAgent, setCurrentAgent] = useState('auto');
@@ -1568,5 +1581,8 @@ Compare View:
 }
 
 export function startTUI() {
-  render(<App />);
+  // Disable mouse tracking to prevent escape sequence garbage
+  process.stdout.write('\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l');
+
+  render(<App />, { exitOnCtrlC: false });
 }

@@ -6,6 +6,17 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.66] - 2025-12-10
+
+### Added
+- Double Ctrl+C to exit (first shows warning, second exits)
+
+### Fixed
+- Mouse escape sequences no longer pollute terminal after exit (#2)
+- Clean terminal cleanup using ink's proper exit handling
+
+---
+
 ## [0.2.65] - 2025-12-10
 
 ### Added
