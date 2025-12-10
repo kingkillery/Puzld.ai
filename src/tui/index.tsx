@@ -646,7 +646,7 @@ Compare View:
           let formatted = '';
           let inVersion = false;
           let versionCount = 0;
-          const maxVersions = rest ? parseInt(rest, 10) || 3 : 3;
+          const maxVersions = rest ? parseInt(rest, 10) || Infinity : Infinity;
 
           for (const line of lines) {
             // Version headers
@@ -678,7 +678,7 @@ Compare View:
           if (!formatted.trim()) {
             addMessage('No changelog entries found.');
           } else {
-            addMessage(`Release Notes (showing ${Math.min(versionCount, maxVersions)} versions):\n${formatted}\nTip: /changelog N to show N versions`);
+            addMessage(`Release Notes (${versionCount} versions):\n${formatted}`);
           }
         } catch (err) {
           addMessage('Could not read changelog: ' + (err as Error).message);
