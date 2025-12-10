@@ -25,8 +25,9 @@ export const codexAdapter: Adapter = {
     try {
       // codex exec for non-interactive mode
       // --skip-git-repo-check allows running outside git repos
+      // --json for JSONL output with token usage
       // -m for model selection
-      const args = ['exec', '--skip-git-repo-check'];
+      const args = ['exec', '--skip-git-repo-check', '--json'];
       if (model) {
         args.push('-m', model);
       }
@@ -54,11 +55,45 @@ export const codexAdapter: Adapter = {
         };
       }
 
-      return {
-        content: stdout || '',
-        model: modelName,
-        duration: Date.now() - startTime
-      };
+      // Parse JSONL output - each line is a separate JSON object
+      try {
+        const lines = stdout.trim().split('\n');
+        let content = '';
+        let inputTokens = 0;
+        let outputTokens = 0;
+
+        for (const line of lines) {
+          const json = JSON.parse(line);
+
+          // Extract agent message content
+          if (json.type === 'item.completed' && json.item?.type === 'agent_message') {
+            content = json.item.text || '';
+          }
+
+          // Extract token usage from turn.completed
+          if (json.type === 'turn.completed' && json.usage) {
+            inputTokens = json.usage.input_tokens || 0;
+            outputTokens = json.usage.output_tokens || 0;
+          }
+        }
+
+        return {
+          content,
+          model: modelName,
+          duration: Date.now() - startTime,
+          tokens: (inputTokens || outputTokens) ? {
+            input: inputTokens,
+            output: outputTokens
+          } : undefined
+        };
+      } catch {
+        // Fallback if JSONL parsing fails
+        return {
+          content: stdout || '',
+          model: modelName,
+          duration: Date.now() - startTime
+        };
+      }
     } catch (err: unknown) {
       const error = err as Error;
       const modelName = model ? `codex/${model}` : 'codex';

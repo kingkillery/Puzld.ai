@@ -44,6 +44,7 @@ import {
 import { checkForUpdate } from '../lib/updateCheck';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { StepConfirmation, type ConfirmAction } from './components/StepConfirmation';
+import { AgentPanel } from './components/AgentPanel';
 import { execa } from 'execa';
 import type { PlanStep, StepResult } from '../executor';
 
@@ -65,7 +66,7 @@ interface Message {
 let messageId = 0;
 const nextId = () => String(++messageId);
 
-type AppMode = 'chat' | 'workflows' | 'sessions' | 'settings' | 'model' | 'compare' | 'collaboration';
+type AppMode = 'chat' | 'workflows' | 'sessions' | 'settings' | 'model' | 'compare' | 'collaboration' | 'agent';
 
 interface CompareResult {
   agent: string;
@@ -756,9 +757,10 @@ Compare View:
       case 'agent':
         if (rest) {
           setCurrentAgent(rest);
-          addMessage('Agent set to: ' + rest);
+          setNotification('Agent set to: ' + rest);
+          setTimeout(() => setNotification(null), 2000);
         } else {
-          addMessage('Current agent: ' + currentAgent);
+          setMode('agent');
         }
         break;
 
@@ -1459,6 +1461,21 @@ Compare View:
           onSetGeminiModel={handleSetGeminiModel}
           onSetCodexModel={handleSetCodexModel}
           onSetOllamaModel={handleSetOllamaModel}
+        />
+      )}
+
+      {/* Agent Selection Mode */}
+      {mode === 'agent' && (
+        <AgentPanel
+          currentAgent={currentAgent}
+          agentStatus={agentStatus}
+          onSelect={(agent) => {
+            setCurrentAgent(agent);
+            setMode('chat');
+            setNotification('Agent set to: ' + agent);
+            setTimeout(() => setNotification(null), 2000);
+          }}
+          onBack={() => setMode('chat')}
         />
       )}
 

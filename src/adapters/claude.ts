@@ -25,7 +25,8 @@ export const claudeAdapter: Adapter = {
     try {
       // claude -p "prompt" for non-interactive output
       // --tools "" disables all tools to prevent permission prompts
-      const args = ['-p', prompt, '--tools', ''];
+      // --output-format json to get token usage
+      const args = ['-p', prompt, '--tools', '', '--output-format', 'json'];
       if (model) {
         args.push('--model', model);
       }
@@ -52,11 +53,27 @@ export const claudeAdapter: Adapter = {
         };
       }
 
-      return {
-        content: stdout || '',
-        model: modelName,
-        duration: Date.now() - startTime
-      };
+      // Parse JSON response to extract content and tokens
+      try {
+        const json = JSON.parse(stdout);
+        return {
+          content: json.result || '',
+          model: modelName,
+          duration: Date.now() - startTime,
+          tokens: json.usage ? {
+            input: json.usage.input_tokens || 0,
+            output: json.usage.output_tokens || 0
+          } : undefined,
+          error: json.is_error ? json.result : undefined
+        };
+      } catch {
+        // Fallback if JSON parsing fails
+        return {
+          content: stdout || '',
+          model: modelName,
+          duration: Date.now() - startTime
+        };
+      }
     } catch (err: unknown) {
       const error = err as Error;
       const modelName = model ? `claude/${model}` : 'claude';

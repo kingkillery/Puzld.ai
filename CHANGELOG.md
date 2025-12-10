@@ -6,6 +6,22 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.64] - 2025-12-10
+
+### Added
+- Token counting for Claude, Gemini, and Codex adapters (footer now shows usage)
+  - Claude: Uses `--output-format json` for token extraction
+  - Gemini: Uses `-o json` for token extraction
+  - Codex: Uses `--json` for JSONL token extraction
+- Agent selection panel via `/agent` command (without args)
+  - Navigate with arrow keys, Enter to select, Esc to cancel
+  - Shows agent status (ready/offline) and current selection
+
+### Fixed
+- `/agent X` notification now displays properly (timed 2s notification instead of flickering)
+
+---
+
 ## [0.2.63] - 2025-12-10
 
 ### Added

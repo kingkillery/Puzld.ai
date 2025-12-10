@@ -23,8 +23,8 @@ export const geminiAdapter: Adapter = {
     const model = options?.model ?? config.adapters.gemini.model;
 
     try {
-      // Gemini CLI uses -m for model selection
-      const args: string[] = [];
+      // Gemini CLI uses -m for model selection, -o json for token usage
+      const args: string[] = ['-o', 'json'];
       if (model) {
         args.push('-m', model);
       }
@@ -52,11 +52,37 @@ export const geminiAdapter: Adapter = {
         };
       }
 
-      return {
-        content: stdout || '',
-        model: modelName,
-        duration: Date.now() - startTime
-      };
+      // Parse JSON response to extract content and tokens
+      try {
+        const json = JSON.parse(stdout);
+
+        // Sum tokens from all models used
+        let inputTokens = 0;
+        let outputTokens = 0;
+        if (json.stats?.models) {
+          for (const modelStats of Object.values(json.stats.models) as Array<{ tokens?: { prompt?: number; candidates?: number } }>) {
+            inputTokens += modelStats.tokens?.prompt || 0;
+            outputTokens += modelStats.tokens?.candidates || 0;
+          }
+        }
+
+        return {
+          content: json.response || '',
+          model: modelName,
+          duration: Date.now() - startTime,
+          tokens: (inputTokens || outputTokens) ? {
+            input: inputTokens,
+            output: outputTokens
+          } : undefined
+        };
+      } catch {
+        // Fallback if JSON parsing fails
+        return {
+          content: stdout || '',
+          model: modelName,
+          duration: Date.now() - startTime
+        };
+      }
     } catch (err: unknown) {
       const error = err as Error;
       const modelName = model ? `gemini/${model}` : 'gemini';
