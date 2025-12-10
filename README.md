@@ -468,6 +468,28 @@ User Input
 
 ---
 
+## Authentication & Privacy
+
+PuzldAI doesn't handle your AI credentials directly. Instead, it orchestrates the official CLI tools you already have installed:
+
+| What PuzldAI Does | What PuzldAI Doesn't Do |
+|-------------------|-------------------------|
+| Calls `claude`, `gemini`, `codex` binaries | Store your API keys |
+| Passes prompts, receives responses | Handle OAuth flows |
+| Respects each CLI's auth state | Piggyback on private OAuth clients |
+
+**Why this matters:**
+
+- **No credential exposure** — Your tokens stay with the official CLIs
+- **No piggybacking** — We don't borrow OAuth client IDs or reverse-engineer auth endpoints
+- **No terms violations** — We use CLIs exactly as their creators intended
+- **Always up-to-date** — When CLIs update their auth, you get it automatically
+- **Your auth, your control** — Log in once per CLI, PuzldAI just orchestrates
+
+Some tools bypass official CLIs to call APIs directly using piggybacked credentials or unofficial OAuth flows. PuzldAI takes a different approach: we wrap the tools you trust, nothing more.
+
+---
+
 ## Development
 
 ```bash
