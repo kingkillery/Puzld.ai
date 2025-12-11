@@ -23,8 +23,9 @@ export const geminiAdapter: Adapter = {
     const model = options?.model ?? config.adapters.gemini.model;
 
     try {
-      // Gemini CLI uses -m for model selection, -o json for token usage
-      const args: string[] = ['-o', 'json'];
+      // Gemini CLI uses -m for model selection, --output-format json for token usage
+      // Use full flag name for compatibility with older versions
+      const args: string[] = ['--output-format', 'json'];
       if (model) {
         args.push('-m', model);
       }

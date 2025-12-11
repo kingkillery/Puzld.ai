@@ -6,6 +6,13 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.68] - 2025-12-11
+
+### Fixed
+- **Gemini adapter compatibility** - Use `--output-format` instead of `-o` shorthand for older CLI versions
+
+---
+
 ## [0.2.67] - 2025-12-10
 
 ### Added
