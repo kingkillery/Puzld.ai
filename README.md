@@ -41,6 +41,7 @@ PuzldAI is a terminal-native framework for orchestrating multiple AI agents. Rou
 | Want LLM to edit files safely | **Agentic mode** — propose, review, apply |
 | Context gets lost between sessions | **Memory/RAG** — semantic retrieval of past decisions |
 | Need data to fine-tune models | **Observations** — export DPO training pairs |
+| Need AI to understand your codebase | **Indexing** — AST parsing, semantic search, AGENTS.md |
 
 ---
 
@@ -54,6 +55,7 @@ PuzldAI is a terminal-native framework for orchestrating multiple AI agents. Rou
 - **Autopilot** — Describe the goal. AI builds the plan.
 - **Multi-Agent Collaboration** — Correct, debate, and build consensus across agents.
 - **Agentic Mode** — LLMs propose file edits, you review and apply. [EXPERIMENTAL]
+- **Codebase Indexing** — AST parsing, semantic search, AGENTS.md support.
 - **Memory/RAG** — Semantic retrieval injects relevant context into prompts.
 - **Observation Layer** — Logs all interactions for training data generation.
 - **Sessions** — Persist chat history, resume conversations.
@@ -443,6 +445,39 @@ exportPreferencePairs({ outputPath: 'preferences.jsonl', format: 'jsonl' });
 
 ---
 
+## Codebase Indexing
+
+Index your codebase for semantic search and automatic context injection.
+
+```bash
+# TUI
+/index                    # Open indexing panel
+/index search "auth"      # Search indexed code
+
+# CLI
+puzld index               # Index current directory
+puzld index --quick       # Skip embeddings (faster)
+puzld index --search "handleLogin"
+puzld index --context "fix auth bug"
+puzld index --config      # Show detected config files
+puzld index --graph       # Show dependency graph
+```
+
+**What gets indexed:**
+- Functions, classes, interfaces, types
+- Import/export relationships
+- File dependencies with tsconfig path alias support
+
+**Project instructions (auto-injected into prompts):**
+- `AGENTS.md` — Project-wide instructions
+- `CLAUDE.md`, `CODEX.md` — Agent-specific instructions
+- `.cursorrules`, `copilot-instructions.md` — IDE rules
+- `.puzldai/agents/*.md` — Per-agent instructions
+
+When you run `/agentic`, project instructions are automatically injected into the prompt.
+
+---
+
 ## Commands
 
 ### TUI Mode
@@ -458,6 +493,9 @@ exportPreferencePairs({ outputPath: 'preferences.jsonl', format: 'jsonl' });
 /consensus claude,gemini "task" Build consensus
 
 /agentic "task"                 [EXPERIMENTAL] Review file edits
+
+/index                          Codebase indexing options
+/index search "query"           Search indexed code
 
 /session                        Start new session
 /resume                         Resume previous session
@@ -514,6 +552,11 @@ puzldai template show <name>      # Show template details
 puzldai template create <name> -P "..." -d "desc"
 puzldai template edit <name>      # Edit template
 puzldai template delete <name>    # Delete template
+puzldai index                     # Index codebase
+puzldai index --quick             # Skip embeddings
+puzldai index --search "query"    # Search indexed code
+puzldai index --context "task"    # Get relevant context
+puzldai index --config            # Show project config
 ```
 
 ---
@@ -558,15 +601,21 @@ User Input
         │             │      │ Codex        │
         ▼             ▼      │ Ollama       │
  ┌───────────┐ ┌───────────┐ │ Mistral      │
- │ Agentic   │ │Observation│ └──────────────┘
- │ Executor  │ │  Logger   │
+ │ Indexing  │ │Observation│ └──────────────┘
+ │ (AST/FTS) │ │  Logger   │
  └───────────┘ └───────────┘
         │             │
         ▼             ▼
  ┌───────────┐ ┌───────────┐
- │   Diff    │ │  Export   │
- │  Review   │ │  (DPO)    │
+ │ Agentic   │ │  Export   │
+ │ Executor  │ │  (DPO)    │
  └───────────┘ └───────────┘
+        │
+        ▼
+ ┌───────────┐
+ │   Diff    │
+ │  Review   │
+ └───────────┘
 ```
 
 ---
