@@ -1,6 +1,6 @@
 {
   "name": "puzldai",
-  "version": "0.2.74",
+  "version": "0.2.75",
   "description": "Multi-LLM orchestration framework with agentic execution, memory/RAG, and training data generation",
   "type": "module",
   "bin": {
@@ -34,7 +34,8 @@
     "nanospinner": "^1.2.2",
     "node-pty": "^1.0.0",
     "ollama": "^0.5.11",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "ts-morph": "^27.0.2"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

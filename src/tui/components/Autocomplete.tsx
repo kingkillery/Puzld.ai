@@ -15,6 +15,8 @@ const COMMANDS: Command[] = [
   { label: '/workflow', value: '/workflow ', description: 'Run a saved workflow' },
   { label: '/agentic', value: '/agentic ', description: '[EXPERIMENTAL] Review file edits (any agent)' },
   { label: '/review', value: '/review ', description: 'Review file edits (Claude dry-run)' },
+  { label: '/index', value: '/index', description: 'Codebase indexing options' },
+  { label: '/index search', value: '/index search ', description: 'Search indexed code' },
   // Multi-agent collaboration
   { label: '/correct', value: '/correct ', description: 'Cross-agent correction (fix: /settings)' },
   { label: '/debate', value: '/debate ', description: 'Multi-agent debate (rounds: /settings)' },

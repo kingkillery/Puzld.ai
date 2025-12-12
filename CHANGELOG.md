@@ -6,6 +6,29 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.75] - 2025-12-12
+
+### Added
+- **Phase 12: Codebase Indexing** - Semantic code search and context injection
+  - `src/indexing/ast-parser.ts` - TypeScript/JavaScript AST parsing with ts-morph
+  - `src/indexing/dependency-graph.ts` - File relationship graph with tsconfig path alias support
+  - `src/indexing/embedder.ts` - Embeds code to Phase 11 memory store with content hashing
+  - `src/indexing/searcher.ts` - Multi-strategy search (semantic + FTS5 + structure)
+  - `src/indexing/config-detector.ts` - AGENTS.md and project config detection
+  - `src/indexing/index.ts` - Unified `indexCodebase()` orchestrator
+  - CLI: `puzld index [path]` with options: `--quick`, `--search`, `--context`, `--config`, `--graph`
+  - TUI: `/index` panel with Full/Quick/Search options
+  - Auto-injects AGENTS.md into agentic prompts (enabled by default)
+  - Supports: AGENTS.md, CLAUDE.md, .cursorrules, copilot-instructions.md
+
+### Changed
+- `runAgentic()` now auto-injects project instructions via `autoInjectInstructions` option
+- `wrapPromptWithMemory()` supports `autoInjectInstructions`, `autoSearchCode`, `codeMaxTokens`
+- Autocomplete now supports exact-match execution (e.g., `/index` executes immediately)
+- Added `IndexPanel` component for TUI index options
+
+---
+
 ## [0.2.74] - 2025-12-11
 
 ### Added

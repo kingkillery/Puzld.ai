@@ -7,6 +7,8 @@
 
 import { estimateTokens } from '../context/tokens';
 import { buildInjectionForAgent } from '../memory/injector';
+import { detectProjectConfig, formatInstructions } from '../indexing/config-detector';
+import { getTaskContext } from '../indexing/searcher';
 
 export interface PromptWrapperOptions {
   /** Files to inject as context */
@@ -23,6 +25,12 @@ export interface PromptWrapperOptions {
   autoRetrieveMemory?: boolean;
   /** Max tokens for auto-retrieved memory */
   memoryMaxTokens?: number;
+  /** Auto-inject project instructions (AGENTS.md) */
+  autoInjectInstructions?: boolean;
+  /** Auto-search indexed code for relevant context */
+  autoSearchCode?: boolean;
+  /** Max tokens for code context */
+  codeMaxTokens?: number;
 }
 
 export interface WrappedPrompt {
@@ -165,11 +173,57 @@ export async function wrapPromptWithMemory(
   task: string,
   options: PromptWrapperOptions = {}
 ): Promise<WrappedPrompt> {
-  const { agent = 'claude', memoryMaxTokens = 1000 } = options;
+  const {
+    agent = 'claude',
+    memoryMaxTokens = 1000,
+    projectRoot = process.cwd(),
+    autoInjectInstructions = true,
+    autoSearchCode = false,
+    codeMaxTokens = 4000,
+  } = options;
 
   // Build memory context from retriever
   let memoryContext = options.memoryContext;
+  let fileContext = options.fileContext;
 
+  // Auto-inject project instructions (AGENTS.md, etc.)
+  if (autoInjectInstructions) {
+    try {
+      const projectConfig = detectProjectConfig(projectRoot);
+      const instructions = formatInstructions(projectConfig, agent, 'xml');
+      if (instructions) {
+        memoryContext = memoryContext
+          ? `${instructions}\n\n${memoryContext}`
+          : instructions;
+      }
+    } catch {
+      // Continue without project instructions
+    }
+  }
+
+  // Auto-search indexed code for relevant context
+  if (autoSearchCode) {
+    try {
+      const codeContext = await getTaskContext(task, projectRoot, {
+        maxFiles: 5,
+        maxTotalSize: codeMaxTokens * 4, // ~4 chars per token
+      });
+
+      if (codeContext.files.length > 0) {
+        const codeFiles = codeContext.files
+          .map(f => `--- ${f.path} (${f.reason}) ---\n${f.content}`)
+          .join('\n\n');
+
+        fileContext = fileContext
+          ? `${fileContext}\n\n${codeFiles}`
+          : codeFiles;
+      }
+    } catch {
+      // Continue without code context
+    }
+  }
+
+  // Retrieve memory from vector store
   if (options.autoRetrieveMemory !== false) {
     try {
       const injection = await buildInjectionForAgent(task, agent, {
@@ -192,6 +246,7 @@ export async function wrapPromptWithMemory(
 
   return wrapPrompt(task, {
     ...options,
+    fileContext,
     memoryContext
   });
 }

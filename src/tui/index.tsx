@@ -44,6 +44,7 @@ import {
 import { checkForUpdate, markUpdated } from '../lib/updateCheck';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { AgentPanel } from './components/AgentPanel';
+import { IndexPanel } from './components/IndexPanel';
 import { DiffReview } from './components/DiffReview';
 import { execa } from 'execa';
 import type { PlanStep, StepResult } from '../executor';
@@ -56,6 +57,12 @@ import {
   logReviewDecision,
   completeObservation
 } from '../observation';
+import {
+  indexCodebase,
+  getIndexSummary,
+  getConfigSummary,
+  searchCode
+} from '../indexing';
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -77,7 +84,7 @@ interface Message {
 let messageId = 0;
 const nextId = () => String(++messageId);
 
-type AppMode = 'chat' | 'workflows' | 'sessions' | 'settings' | 'model' | 'compare' | 'collaboration' | 'agent' | 'review';
+type AppMode = 'chat' | 'workflows' | 'sessions' | 'settings' | 'model' | 'compare' | 'collaboration' | 'agent' | 'review' | 'index';
 
 interface CompareResult {
   agent: string;
@@ -482,8 +489,18 @@ function App() {
       await handleSlashCommand(cmd);
       return;
     }
-    // If multiple matches, select highlighted item (user needs to pick)
+    // If multiple matches, check for exact match first
     if (autocompleteItems.length > 1) {
+      const exactMatch = autocompleteItems.find(item => item.value.trim() === value.trim());
+      if (exactMatch) {
+        // Execute exact match
+        setInput('');
+        setInputKey(k => k + 1);
+        addToHistory(value.trim());
+        await handleSlashCommand(value.trim());
+        return;
+      }
+      // Otherwise select highlighted item (user needs to pick)
       handleAutocompleteSelect(autocompleteItems[autocompleteIndex]);
       return;
     }
@@ -583,6 +600,8 @@ function App() {
   /workflows                - Manage workflows (interactive)
   /agentic <task>           - [EXPERIMENTAL] Review file edits (any agent)
   /review <task>            - Review file edits (Claude dry-run mode)
+  /index                    - Codebase indexing options
+  /index search <query>     - Search indexed code
   /session                  - Start new session
   /resume                   - Resume a previous session
 
@@ -629,6 +648,63 @@ Compare View:
         }
         messageId = 0;
         break;
+
+      case 'index': {
+        // Index codebase for semantic search
+        const subCmd = rest.trim().split(/\s+/)[0] || '';
+        const searchQuery = rest.slice(subCmd.length).trim();
+
+        if (!subCmd) {
+          // Open index panel
+          setMode('index');
+          break;
+        }
+
+        if (subCmd === 'search' && !searchQuery) {
+          addMessage('Usage: /index search <query>\nExample: /index search "authentication"', 'system');
+          break;
+        }
+
+        if (subCmd === 'search' && searchQuery) {
+          // Search indexed code
+          setLoading(true);
+          setLoadingText('searching indexed code...');
+          try {
+            const results = await searchCode(searchQuery, process.cwd(), {
+              limit: 10,
+              includeContent: false
+            });
+            if (results.length === 0) {
+              addMessage('No results found.', 'system');
+            } else {
+              const resultList = results.map(r =>
+                '  ' + r.path + ' (' + (r.score * 100).toFixed(0) + '% - ' + r.matchReason + ')'
+              ).join('\n');
+              addMessage('Found ' + results.length + ' matches:\n' + resultList, 'system');
+            }
+          } catch (err) {
+            addMessage('Search error: ' + (err as Error).message, 'system');
+          }
+          setLoading(false);
+        } else {
+          // Index current directory
+          setLoading(true);
+          setLoadingText('indexing codebase...');
+          try {
+            const result = await indexCodebase(process.cwd(), { skipEmbedding: subCmd === 'quick' });
+            const summary = getIndexSummary(result);
+            let msg = summary;
+            if (result.config.configFiles.length > 0) {
+              msg += '\n\nProject Config:\n' + getConfigSummary(result.config);
+            }
+            addMessage(msg, 'system');
+          } catch (err) {
+            addMessage('Index error: ' + (err as Error).message, 'system');
+          }
+          setLoading(false);
+        }
+        break;
+      }
 
       case 'review': {
         // Edit Review Mode - dry-run Claude to capture proposed edits
@@ -1616,6 +1692,35 @@ Compare View:
             setMode('chat');
             setNotification('Agent set to: ' + agent);
             setTimeout(() => setNotification(null), 2000);
+          }}
+          onBack={() => setMode('chat')}
+        />
+      )}
+
+      {/* Index Mode */}
+      {mode === 'index' && (
+        <IndexPanel
+          onSelect={async (option) => {
+            setMode('chat');
+            if (option === 'search') {
+              setInput('/index search ');
+              setInputKey(k => k + 1);
+            } else {
+              setLoading(true);
+              setLoadingText('indexing codebase...');
+              try {
+                const result = await indexCodebase(process.cwd(), { skipEmbedding: option === 'quick' });
+                const summary = getIndexSummary(result);
+                let msg = summary;
+                if (result.config.configFiles.length > 0) {
+                  msg += '\n\nProject Config:\n' + getConfigSummary(result.config);
+                }
+                setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: msg, agent: 'system' }]);
+              } catch (err) {
+                setMessages(prev => [...prev, { id: nextId(), role: 'assistant', content: 'Index error: ' + (err as Error).message, agent: 'system' }]);
+              }
+              setLoading(false);
+            }
           }}
           onBack={() => setMode('chat')}
         />

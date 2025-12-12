@@ -63,6 +63,12 @@ export interface AgenticOptions {
   signal?: AbortSignal;
   /** Max tokens for prompt (warning only) */
   maxTokens?: number;
+  /** Auto-inject project instructions (AGENTS.md) - default: true */
+  autoInjectInstructions?: boolean;
+  /** Auto-search indexed code for context - default: false */
+  autoSearchCode?: boolean;
+  /** Auto-retrieve memory from vector store - default: false */
+  autoRetrieveMemory?: boolean;
 }
 
 /**
@@ -93,20 +99,44 @@ export async function runAgentic(
   task: string,
   options: AgenticOptions
 ): Promise<AgenticResult> {
-  const { adapter, files, memory, projectRoot, model, signal, maxTokens } = options;
+  const {
+    adapter,
+    files,
+    memory,
+    projectRoot,
+    model,
+    signal,
+    maxTokens,
+    autoInjectInstructions = true,
+    autoSearchCode = false,
+    autoRetrieveMemory = false
+  } = options;
 
   // Build context
   const fileContext = files ? formatFileContext(files) : undefined;
   const memoryContext = memory ? formatMemoryContext(memory) : undefined;
 
-  // Wrap prompt with JSON instructions
-  const prompt = wrapPrompt(task, {
-    fileContext,
-    memoryContext,
-    projectRoot,
-    agent: adapter.name,
-    maxTokens
-  });
+  // Use async wrapper if any auto-injection is enabled
+  const useAutoInjection = autoInjectInstructions || autoSearchCode || autoRetrieveMemory;
+
+  const prompt = useAutoInjection
+    ? await wrapPromptWithMemory(task, {
+        fileContext,
+        memoryContext,
+        projectRoot: projectRoot || process.cwd(),
+        agent: adapter.name,
+        maxTokens,
+        autoInjectInstructions,
+        autoSearchCode,
+        autoRetrieveMemory
+      })
+    : wrapPrompt(task, {
+        fileContext,
+        memoryContext,
+        projectRoot,
+        agent: adapter.name,
+        maxTokens
+      });
 
   // Warn if exceeds limit
   if (prompt.exceedsLimit) {

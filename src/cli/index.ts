@@ -31,6 +31,7 @@ import {
   modelSetCommand,
   modelClearCommand
 } from './commands/model';
+import { indexCommand } from './commands/indexing';
 import { startTUI } from '../tui';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -105,6 +106,28 @@ program
   .command('tui')
   .description('Launch interactive terminal UI')
   .action(() => startTUI());
+
+program
+  .command('index [path]')
+  .description('Index codebase for semantic search and context injection')
+  .option('-q, --quick', 'Quick index (skip embedding)')
+  .option('-c, --clear', 'Clear the code index')
+  .option('-s, --stats', 'Show index statistics')
+  .option('-S, --search <query>', 'Search indexed code')
+  .option('-C, --context <task>', 'Get relevant code context for a task')
+  .option('--config', 'Show project configuration details')
+  .option('-g, --graph', 'Show dependency graph summary')
+  .option('-m, --max-files <n>', 'Maximum files to index', '1000')
+  .action((path, opts) => indexCommand(path || '.', {
+    quick: opts.quick,
+    clear: opts.clear,
+    stats: opts.stats,
+    search: opts.search,
+    context: opts.context,
+    config: opts.config,
+    graph: opts.graph,
+    maxFiles: opts.maxFiles ? parseInt(opts.maxFiles, 10) : undefined,
+  }));
 
 // Model subcommands
 const modelCmd = program
