@@ -6,6 +6,25 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.82] - 2025-12-13
+
+### Added
+- **Agentic Tool System** - LLM can explore codebase before proposing changes
+  - `src/agentic/tools/` - Tool implementations (view, glob, grep, bash, edit, write)
+  - `src/agentic/agent-loop.ts` - Agent loop that runs until LLM finishes
+  - Tool call parsing via ```tool JSON blocks (universal for all adapters)
+  - Background tool activity display during agent exploration
+
+- **Permission System** - User approval for file operations (like Claude Code)
+  - `src/agentic/tools/permissions.ts` - PermissionTracker with auto-approval
+  - `src/tui/components/PermissionPrompt.tsx` - Permission prompt UI
+  - `src/tui/components/ToolActivity.tsx` - Background tool activity display
+  - Options: Allow, Allow all in directory, Allow all reads, Deny, Cancel
+  - Arrow key navigation, Enter to select, Esc to cancel
+  - Input box hidden when permission prompt is shown
+
+---
+
 ## [0.2.81] - 2025-12-13
 
 ### Changed

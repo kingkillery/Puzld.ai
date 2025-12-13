@@ -1,13 +1,17 @@
 /**
- * Agentic Execution Layer (Phase 9.2)
+ * Agentic Execution Layer
  *
- * Main orchestrator that ties together:
+ * Phase 9.2: JSON-based file operations
  * - prompt-wrapper: Format prompts with JSON instructions
  * - response-parser: Extract JSON from LLM responses
  * - edit-extractor: Convert to ProposedEdit[]
  * - file-executor: Apply changes to filesystem
  *
- * This makes PuzldAI the execution layer - LLMs propose, we apply.
+ * Phase 13: Tool-based agent loop
+ * - tools/: Tool implementations (view, glob, grep, bash, edit, write)
+ * - agent-loop: Run LLM with tools until completion
+ *
+ * This makes PuzldAI the execution layer - LLMs explore and propose, we apply.
  */
 
 import type { Adapter, ModelResponse, RunOptions } from '../lib/types';
@@ -269,3 +273,32 @@ export {
   validateEdits,
   getOperationCounts
 };
+
+// Phase 13: Agent loop with tools
+export {
+  runAgentLoop,
+  type AgentLoopOptions,
+  type AgentLoopResult,
+} from './agent-loop';
+
+export {
+  allTools,
+  readOnlyTools,
+  writeTools,
+  shellTools,
+  getTool,
+  executeTool,
+  executeTools,
+  toToolDefinition,
+  type Tool,
+  type ToolCall,
+  type ToolResult,
+  type ToolDefinition,
+  // Permission system
+  type PermissionAction,
+  type PermissionDecision,
+  type PermissionRequest,
+  type PermissionResult,
+  type PermissionHandler,
+  permissionTracker,
+} from './tools';

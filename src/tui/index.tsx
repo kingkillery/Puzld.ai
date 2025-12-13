@@ -54,7 +54,20 @@ import { execa } from 'execa';
 import type { PlanStep, StepResult } from '../executor';
 import { claudeAdapter, type DryRunResult } from '../adapters/claude';
 import type { ProposedEdit } from '../lib/edit-review';
-import { runAgentic, formatFileContext, type AgenticResult } from '../agentic';
+import {
+  runAgentic,
+  formatFileContext,
+  runAgentLoop,
+  permissionTracker,
+  type AgenticResult,
+  type ToolCall,
+  type ToolResult,
+  type PermissionRequest,
+  type PermissionResult,
+  type PermissionDecision
+} from '../agentic';
+import { ToolActivity, type ToolCallInfo } from './components/ToolActivity';
+import { PermissionPrompt } from './components/PermissionPrompt';
 import {
   startObservation,
   logResponse,
@@ -147,6 +160,16 @@ function App() {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null); // Current plan content for Tab toggle
   const [currentPlanTask, setCurrentPlanTask] = useState<string | null>(null); // Task that generated the plan
   const [modeChangeNotice, setModeChangeNotice] = useState<string | null>(null); // Brief notification when mode changes
+
+  // Tool activity state (for background display like Claude Code)
+  const [toolActivity, setToolActivity] = useState<ToolCallInfo[]>([]);
+  const [toolIteration, setToolIteration] = useState(0);
+
+  // Permission prompt state
+  const [pendingPermission, setPendingPermission] = useState<{
+    request: PermissionRequest;
+    resolve: (result: PermissionResult) => void;
+  } | null>(null);
 
   // AbortController for cancelling running operations
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -904,7 +927,15 @@ Keep your response concise and focused on the plan, not the implementation.`;
     await runIntelligentChat(value);
   };
 
-  // Intelligent chat - LLM decides: answer, plan, or propose file edits
+  // Handle permission decisions from PermissionPrompt
+  const handlePermissionDecision = (decision: PermissionDecision) => {
+    if (pendingPermission) {
+      pendingPermission.resolve({ decision });
+      setPendingPermission(null);
+    }
+  };
+
+  // Intelligent chat with agentic tool loop - LLM can explore codebase
   const runIntelligentChat = async (userMessage: string) => {
     const agentName = currentAgent === 'auto' ? 'claude' : currentAgent;
     const adapter = adapters[agentName as keyof typeof adapters];
@@ -917,49 +948,65 @@ Keep your response concise and focused on the plan, not the implementation.`;
     setLoading(true);
     setLoadingText(`${agentName} is thinking...`);
 
+    // Reset tool activity
+    setToolActivity([]);
+    setToolIteration(0);
+    permissionTracker.reset();
+
     try {
-      // Build context with file contents if files are mentioned
-      const MAX_FILE_SIZE = 10 * 1024;
-      const filePatterns = userMessage.match(/[\w./\\-]+\.\w+/g) || [];
-      const files: Array<{ path: string; content: string }> = [];
-      for (const pattern of filePatterns) {
-        const filePath = resolve(process.cwd(), pattern);
-        if (existsSync(filePath)) {
-          try {
-            const content = readFileSync(filePath, 'utf-8');
-            files.push({
-              path: pattern,
-              content: content.length <= MAX_FILE_SIZE ? content : content.slice(0, MAX_FILE_SIZE) + '\n... (truncated)'
-            });
-          } catch { /* Skip unreadable */ }
+      const result = await runAgentLoop(adapter, userMessage, {
+        cwd: process.cwd(),
+
+        // Permission handler - shows prompt and waits for user decision
+        onPermissionRequest: async (request: PermissionRequest): Promise<PermissionResult> => {
+          return new Promise((resolve) => {
+            setPendingPermission({ request, resolve });
+          });
+        },
+
+        // Tool call started (before permission)
+        onToolCall: (call: ToolCall) => {
+          const args = Object.entries(call.arguments)
+            .map(([k, v]) => `${k}=${typeof v === 'string' ? (v as string).slice(0, 30) : v}`)
+            .join(', ');
+          setToolActivity(prev => [...prev, {
+            id: call.id,
+            name: call.name,
+            args,
+            status: 'pending'
+          }]);
+        },
+
+        // Tool started executing (after permission granted)
+        onToolStart: (call: ToolCall) => {
+          setToolActivity(prev => prev.map(t =>
+            t.id === call.id ? { ...t, status: 'running' as const } : t
+          ));
+          setLoadingText(`${agentName}: ${call.name}...`);
+        },
+
+        // Tool finished
+        onToolEnd: (call: ToolCall, result: ToolResult) => {
+          setToolActivity(prev => prev.map(t =>
+            t.id === call.id ? {
+              ...t,
+              status: result.isError ? 'error' as const : 'done' as const,
+              result: result.content.slice(0, 100)
+            } : t
+          ));
+        },
+
+        // Iteration callback
+        onIteration: (iteration: number) => {
+          setToolIteration(iteration);
+          setLoadingText(`${agentName} exploring (${iteration})...`);
         }
-      }
+      });
 
-      // System prompt that lets LLM decide how to respond
-      const systemPrompt = `You are a helpful coding assistant. Based on the user's message, decide the best way to respond:
+      const duration = result.duration;
+      let content = result.content || 'No response';
 
-1. **Questions/Explanations**: Just answer directly and helpfully.
-2. **Code Tasks**: If the user wants file changes, respond with a JSON block containing proposed edits:
-   \`\`\`json
-   {
-     "explanation": "Brief explanation of changes",
-     "files": [
-       { "path": "path/to/file", "operation": "create|edit|delete", "content": "full file content" }
-     ]
-   }
-   \`\`\`
-3. **Complex Tasks**: If you need more context or the task is unclear, ask clarifying questions.
-
-Current directory: ${process.cwd()}
-${files.length > 0 ? `\nRelevant files:\n${files.map(f => `--- ${f.path} ---\n${f.content}`).join('\n\n')}` : ''}`;
-
-      const startTime = Date.now();
-      const response = await adapter.run(`${systemPrompt}\n\nUser: ${userMessage}`);
-      const duration = Date.now() - startTime;
-
-      const content = response.content || 'No response';
-
-      // Check if response contains JSON file edits
+      // Check if response contains JSON file edits (from write/edit tools or JSON block)
       const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
         try {
@@ -1002,11 +1049,11 @@ ${files.length > 0 ? `\nRelevant files:\n${files.map(f => `--- ${f.path} ---\n${
         content,
         agent: agentName,
         duration,
-        tokens: response.tokens
+        tokens: result.tokens
       }]);
 
-      if (response.tokens) {
-        setTokens(prev => prev + (response.tokens?.input || 0) + (response.tokens?.output || 0));
+      if (result.tokens) {
+        setTokens(prev => prev + (result.tokens?.input || 0) + (result.tokens?.output || 0));
       }
 
       setMode('chat');
@@ -2528,8 +2575,21 @@ Compare View:
             </Box>
           )}
 
-          {/* Input - hidden when in collaboration or compare mode */}
-          {mode !== 'collaboration' && mode !== 'compare' && (
+          {/* Tool Activity (shows when agent is using tools) */}
+          {loading && toolActivity.length > 0 && (
+            <ToolActivity calls={toolActivity} iteration={toolIteration} />
+          )}
+
+          {/* Permission Prompt (shows when tool needs user approval) */}
+          {pendingPermission && (
+            <PermissionPrompt
+              request={pendingPermission.request}
+              onDecision={handlePermissionDecision}
+            />
+          )}
+
+          {/* Input - hidden when in collaboration, compare mode, or permission prompt */}
+          {mode !== 'collaboration' && mode !== 'compare' && !pendingPermission && (
             <Box borderStyle="round" borderColor="gray" paddingX={1}>
               <Text color="green" bold>{'> '}</Text>
               <TextInput
