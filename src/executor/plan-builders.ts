@@ -59,13 +59,31 @@ export function buildComparePlan(
   prompt: string,
   options: CompareOptions
 ): ExecutionPlan {
-  const { agents, sequential = false, pick = false } = options;
+  const { agents, sequential = false, pick = false, projectStructure } = options;
+
+  // Build context with project structure if provided
+  const context: Record<string, unknown> = {};
+  if (projectStructure) {
+    context.project_structure = projectStructure;
+  }
 
   const steps: PlanStep[] = agents.map((agent, i) => ({
     id: generateStepId(i),
     agent,
     action: 'prompt' as const,
-    prompt: '{{prompt}}',
+    prompt: projectStructure
+      ? `**Task:** {{prompt}}
+
+**Project Structure:**
+{{project_structure}}
+
+CRITICAL INSTRUCTIONS:
+- You HAVE access to the project structure above - USE IT
+- Do NOT say "I don't have access to tools" or "I cannot read files"
+- Do NOT apologize for limitations - you have all the context you need
+- Give a concrete, actionable response referencing specific files/directories
+- Act as if you can see and understand the entire project`
+      : '{{prompt}}',
     outputAs: `response_${agent}`,
     // Sequential mode: each step depends on previous
     dependsOn: sequential && i > 0 ? [generateStepId(i - 1)] : undefined
@@ -88,6 +106,7 @@ export function buildComparePlan(
     mode: 'compare',
     prompt,
     steps,
+    context: Object.keys(context).length > 0 ? context : undefined,
     createdAt: Date.now()
   };
 }
@@ -409,7 +428,12 @@ export function buildConsensusPlan(
 **Project Structure:**
 {{project_structure}}
 
-IMPORTANT: Do NOT mention tool limitations or inability to read files. Work with the project structure provided above to give a concrete, actionable proposal that references specific files/directories where relevant.`,
+CRITICAL INSTRUCTIONS:
+- You HAVE access to the project structure above - USE IT
+- Do NOT say "I don't have access to tools" or "I cannot read files"
+- Do NOT apologize for limitations - you have all the context you need
+- Give a concrete, actionable proposal referencing specific files/directories
+- Act as if you can see and understand the entire project`,
       outputAs: `${agent}_proposal`
     });
     stepIndex++;

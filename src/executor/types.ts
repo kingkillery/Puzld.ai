@@ -117,6 +117,7 @@ export interface CompareOptions {
   sequential?: boolean;            // Run one at a time
   pick?: boolean;                  // Select best response
   pickCriteria?: string;           // How to pick (e.g., "longest", "llm")
+  projectStructure?: string;       // Optional project file listing for context
 }
 
 // Pipeline mode options

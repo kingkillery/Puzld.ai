@@ -7,19 +7,86 @@
 
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { createTwoFilesPatch } from 'diff';
+import { basename } from 'path';
 import {
   type ProposedEdit,
-  generateDiff,
   getDiffStats,
   applyEdit,
-  formatDiffForDisplay
 } from '../../lib/edit-review';
 
-// Colors
-const ADD_COLOR = 'green';
-const REMOVE_COLOR = 'red';
+// Colors - using background colors for highlighted text effect
+const ADD_BG = '#1a3d1a';      // Dark green background
+const REMOVE_BG = '#3d1a1a';   // Dark red background
+const ADD_COLOR = '#4ade80';   // Light green text
+const REMOVE_COLOR = '#f87171'; // Light red text
 const HEADER_COLOR = 'cyan';
 const HIGHLIGHT_COLOR = '#8CA9FF';
+
+interface DiffLine {
+  type: 'add' | 'remove' | 'context' | 'header';
+  content: string;
+  lineNum?: number;
+}
+
+// Format diff for display with line numbers
+function formatDiffWithLineNumbers(originalContent: string | null, newContent: string, filePath: string): DiffLine[] {
+  const segments: DiffLine[] = [];
+
+  if (originalContent === null) {
+    // New file - show all as additions with line numbers
+    const lines = newContent.split('\n').slice(0, 50);
+    lines.forEach((line, i) => {
+      segments.push({ type: 'add', content: line, lineNum: i + 1 });
+    });
+    if (newContent.split('\n').length > 50) {
+      segments.push({ type: 'context', content: `... +${newContent.split('\n').length - 50} more lines` });
+    }
+  } else {
+    // Generate unified diff
+    const diff = createTwoFilesPatch(filePath, filePath, originalContent, newContent, 'original', 'modified');
+    const lines = diff.split('\n');
+
+    let oldLine = 0;
+    let newLine = 0;
+    let count = 0;
+
+    for (const line of lines) {
+      if (count > 60) {
+        segments.push({ type: 'context', content: '... (diff truncated)' });
+        break;
+      }
+
+      // Parse hunk header for line numbers: @@ -start,count +start,count @@
+      if (line.startsWith('@@')) {
+        const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+        if (match) {
+          oldLine = parseInt(match[1], 10);
+          newLine = parseInt(match[2], 10);
+        }
+        segments.push({ type: 'header', content: line });
+      } else if (line.startsWith('+') && !line.startsWith('+++')) {
+        segments.push({ type: 'add', content: line.slice(1), lineNum: newLine });
+        newLine++;
+        count++;
+      } else if (line.startsWith('-') && !line.startsWith('---')) {
+        segments.push({ type: 'remove', content: line.slice(1), lineNum: oldLine });
+        oldLine++;
+        count++;
+      } else if (line.startsWith('---') || line.startsWith('+++')) {
+        // Skip file headers
+      } else if (line.trim() !== '' || segments.length > 0) {
+        const content = line.startsWith(' ') ? line.slice(1) : line;
+        segments.push({ type: 'context', content, lineNum: newLine });
+        oldLine++;
+        newLine++;
+        count++;
+      }
+    }
+  }
+
+  return segments;
+}
 
 // Menu options
 const MENU_OPTIONS = [
@@ -45,12 +112,19 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
   const currentEdit = edits[currentIndex];
   const totalEdits = edits.length;
 
-  // Generate diff for current edit
-  const diff = currentEdit ? generateDiff(currentEdit) : '';
-  const diffSegments = currentEdit ? formatDiffForDisplay(diff) : [];
-  // Limit diff lines
+  // Generate diff for current edit with line numbers
+  const diffSegments = currentEdit
+    ? formatDiffWithLineNumbers(currentEdit.originalContent ?? null, currentEdit.newContent ?? '', currentEdit.filePath)
+    : [];
+
+  // Terminal dimensions
   const terminalRows = process.stdout.rows || 40;
+  const terminalCols = process.stdout.columns || 80;
   const maxLines = Math.max(15, terminalRows - 20);
+
+  // Calculate max line number width for padding
+  const maxLineNum = Math.max(...diffSegments.filter(s => s.lineNum).map(s => s.lineNum!), 0);
+  const lineNumWidth = String(maxLineNum).length || 3;
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -194,8 +268,19 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
   const displaySegments = diffSegments.slice(0, maxLines);
   const hasMore = diffSegments.length > maxLines;
 
+  // Calculate stats from segments
+  const additions = diffSegments.filter(s => s.type === 'add').length;
+  const deletions = diffSegments.filter(s => s.type === 'remove').length;
+
+  // Generate separator line
+  const separatorWidth = Math.min(terminalCols - 2, 80);
+  const separator = '─'.repeat(separatorWidth);
+
   return (
     <Box flexDirection="column">
+      {/* Separator line */}
+      <Text dimColor>{separator}</Text>
+
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="yellow">{operationLabel} file </Text>
@@ -205,22 +290,49 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
         )}
       </Box>
 
-      {/* Diff content */}
+      {/* Diff content with line numbers and background colors */}
       <Box flexDirection="column" marginBottom={1}>
-        {displaySegments.map((segment, i) => (
-          <Text
-            key={i}
-            color={
-              segment.color === 'green' ? ADD_COLOR :
-              segment.color === 'red' ? REMOVE_COLOR :
-              segment.color === 'cyan' ? HEADER_COLOR :
-              undefined
-            }
-            dimColor={!segment.color}
-          >
-            {segment.text}
-          </Text>
-        ))}
+        {displaySegments.map((segment, i) => {
+          // Format line number
+          const lineNumStr = segment.lineNum !== undefined
+            ? String(segment.lineNum).padStart(lineNumWidth, ' ')
+            : ' '.repeat(lineNumWidth);
+
+          // Prefix based on type
+          const prefix = segment.type === 'add' ? '+' :
+                        segment.type === 'remove' ? '-' :
+                        segment.type === 'header' ? '' : ' ';
+
+          const maxContentWidth = terminalCols - lineNumWidth - 4;
+          const displayContent = segment.content.slice(0, maxContentWidth);
+
+          if (segment.type === 'header') {
+            return (
+              <Text key={i} color={HEADER_COLOR}>
+                {segment.content}
+              </Text>
+            );
+          }
+
+          // Use background colors for add/remove lines
+          const bgColor = segment.type === 'add' ? ADD_BG :
+                         segment.type === 'remove' ? REMOVE_BG : undefined;
+          const textColor = segment.type === 'add' ? ADD_COLOR :
+                           segment.type === 'remove' ? REMOVE_COLOR : undefined;
+
+          return (
+            <Box key={i}>
+              <Text dimColor>{lineNumStr} </Text>
+              <Text
+                color={textColor}
+                backgroundColor={bgColor}
+                dimColor={segment.type === 'context'}
+              >
+                {prefix} {displayContent}
+              </Text>
+            </Box>
+          );
+        })}
         {hasMore && (
           <Text dimColor>  ... ({diffSegments.length - maxLines} more lines)</Text>
         )}
@@ -229,18 +341,20 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
       {/* Stats */}
       <Box marginBottom={1}>
         {stats.isNew ? (
-          <Text color={ADD_COLOR}>+{stats.additions} (new file)</Text>
+          <Text color={ADD_COLOR}>+{additions} (new file)</Text>
         ) : (
           <>
-            <Text color={ADD_COLOR}>+{stats.additions} </Text>
-            <Text color={REMOVE_COLOR}>-{stats.deletions}</Text>
+            <Text color={ADD_COLOR}>+{additions} </Text>
+            <Text color={REMOVE_COLOR}>-{deletions}</Text>
           </>
         )}
       </Box>
 
       {/* Question */}
       <Box marginBottom={0}>
-        <Text>Do you want to apply this edit?</Text>
+        <Text>Do you want to apply this edit to </Text>
+        <Text bold>{basename(currentEdit.filePath)}</Text>
+        <Text>?</Text>
       </Box>
 
       {/* Notification */}

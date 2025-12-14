@@ -10,9 +10,11 @@ import { Box, Text, useInput } from 'ink';
 import { createTwoFilesPatch } from 'diff';
 import { basename } from 'path';
 
-// Colors
-const ADD_COLOR = 'green';
-const REMOVE_COLOR = 'red';
+// Colors - using background colors for highlighted text effect
+const ADD_BG = '#1a3d1a';      // Dark green background
+const REMOVE_BG = '#3d1a1a';   // Dark red background
+const ADD_COLOR = '#4ade80';   // Light green text
+const REMOVE_COLOR = '#f87171'; // Light red text
 const HEADER_COLOR = 'cyan';
 const HIGHLIGHT_COLOR = '#8CA9FF';
 
@@ -176,10 +178,18 @@ export function SingleFileDiff({ filePath, operation, originalContent, newConten
             );
           }
 
+          // Use background colors for add/remove lines
+          const bgColor = segment.type === 'add' ? ADD_BG :
+                         segment.type === 'remove' ? REMOVE_BG : undefined;
+
           return (
             <Box key={i}>
               <Text dimColor>{lineNumStr} </Text>
-              <Text color={color} dimColor={segment.type === 'context'}>
+              <Text
+                color={color}
+                backgroundColor={bgColor}
+                dimColor={segment.type === 'context'}
+              >
                 {prefix} {displayContent}
               </Text>
             </Box>

@@ -6,6 +6,47 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.88] - 2025-12-14
+
+### Added
+- **Compare Mode Project Context** - Agents now see codebase structure in compare mode
+  - `projectStructure` option added to `CompareOptions` type
+  - Same context injection as consensus mode for consistency
+
+- **Background Loading Support** - Hide compare/collaboration while still running
+  - Press **Escape** to hide and return to chat (loading continues in background)
+  - Press **Ctrl+E** to return to the loading view
+  - Press **Ctrl+C** to actually cancel/abort
+  - Persistent indicator in chat shows running status with progress
+
+- **Background Loading Indicator** - Visual status when hidden
+  - Side-by-side boxes showing each agent's status
+  - ⏳ loading, ✓ completed, ✗ error indicators
+  - Yellow border for loading, gray for completed
+  - "Press Ctrl+E to expand | Ctrl+C to cancel" hint
+
+- **Compact Compare History** - Compare results now show compact view like collaboration
+  - Side-by-side boxes with 3-line truncated content
+  - `[+N lines]` indicator for truncated content
+  - Ctrl+E to expand from history
+
+- **Aborted Messages** - Clear feedback when cancelling
+  - "*Compare aborted*" when compare cancelled with nothing completed
+  - "*Consensus/Debate/Correction/Pipeline aborted*" for collaboration modes
+
+### Fixed
+- **Tool Limitation Messages** - Strengthened prompts to prevent disclaimers
+  - "CRITICAL INSTRUCTIONS" block for compare and consensus modes
+  - Explicit "Do NOT say I don't have access to tools" instruction
+  - "Act as if you can see and understand the entire project"
+
+- **DiffReview Styling** - Now matches SingleFileDiff appearance
+  - Added line numbers to diff display
+  - Added separator line at top
+  - Added background colors for add/remove lines (green/red tint)
+
+---
+
 ## [0.2.87] - 2025-12-14
 
 ### Added

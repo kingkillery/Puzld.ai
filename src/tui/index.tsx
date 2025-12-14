@@ -165,6 +165,7 @@ function App() {
   const [lastMode, setLastMode] = useState<'compare' | 'debate' | 'pipeline' | null>(null);
   const [consensusContext, setConsensusContext] = useState<string | null>(null); // For follow-up context
   const [isReEnteringCollaboration, setIsReEnteringCollaboration] = useState(false); // Track re-enter to avoid duplicate saves
+  const [isReEnteringCompare, setIsReEnteringCompare] = useState(false); // Track re-enter to avoid duplicate saves
   const [agenticSubMode, setAgenticSubMode] = useState<AgenticSubMode>('plan'); // Plan vs Build mode
   const [currentPlan, setCurrentPlan] = useState<string | null>(null); // Current plan content for Tab toggle
   const [currentPlanTask, setCurrentPlanTask] = useState<string | null>(null); // Task that generated the plan
@@ -208,8 +209,12 @@ function App() {
   // AbortController for cancelling running operations
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Check if collaboration is currently loading
+  // Check if collaboration/compare is currently loading
   const isCollaborationLoading = mode === 'collaboration' && collaborationSteps.some(s => s.loading);
+  const isCompareLoading = mode === 'compare' && compareResults.some(r => r.loading);
+  // Check if hidden but still has loading results (for Ctrl+E re-enter)
+  const hasHiddenCompareLoading = mode === 'chat' && compareResults.length > 0 && compareResults.some(r => r.loading);
+  const hasHiddenCollaborationLoading = mode === 'chat' && collaborationSteps.length > 0 && collaborationSteps.some(s => s.loading);
 
   // Ctrl+C to cancel/exit, Escape to go back
   useInput((input, key) => {
@@ -218,20 +223,68 @@ function App() {
       return;
     }
 
-    // Escape while loading = go back to chat (keep results so far)
-    if (isCollaborationLoading && key.escape) {
-      saveCollaborationToHistory();
+    // Escape while compare loading = just hide (keep loading in background)
+    if (isCompareLoading && key.escape) {
+      setMode('chat');
+      setNotification('Compare running in background. Press Ctrl+E to return.');
+      setTimeout(() => setNotification(null), 3000);
       return;
     }
 
-    // Ctrl+C while loading = cancel the operation
+    // Escape while collaboration loading = just hide (keep loading in background)
+    if (isCollaborationLoading && key.escape) {
+      setMode('chat');
+      setNotification('Running in background. Press Ctrl+E to return.');
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    // Ctrl+C while compare loading = actually abort
+    if (isCompareLoading && key.ctrl && input === 'c') {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      saveCompareToHistory(); // This will show "Compare aborted" if nothing completed
+      setNotification('Compare cancelled');
+      setTimeout(() => setNotification(null), 2000);
+      return;
+    }
+
+    // Ctrl+C while collaboration loading = actually abort
     if (isCollaborationLoading && key.ctrl && input === 'c') {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
-        setNotification('Cancelling...');
-        return;
       }
+      saveCollaborationToHistory(); // This will show "X aborted" if nothing completed
+      setNotification('Cancelled');
+      setTimeout(() => setNotification(null), 2000);
+      return;
+    }
+
+    // Ctrl+C from chat with hidden loading compare = cancel it
+    if (hasHiddenCompareLoading && key.ctrl && input === 'c') {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      saveCompareToHistory();
+      setNotification('Compare cancelled');
+      setTimeout(() => setNotification(null), 2000);
+      return;
+    }
+
+    // Ctrl+C from chat with hidden loading collaboration = cancel it
+    if (hasHiddenCollaborationLoading && key.ctrl && input === 'c') {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      saveCollaborationToHistory();
+      setNotification('Cancelled');
+      setTimeout(() => setNotification(null), 2000);
+      return;
     }
 
     // Double Ctrl+C to exit app
@@ -250,12 +303,55 @@ function App() {
     }
   });
 
-  // Ctrl+E to re-enter last collaboration result
+  // Ctrl+E to re-enter hidden loading or last completed result
   useInput((input, key) => {
     if (key.ctrl && input === 'e' && mode === 'chat') {
-      // Find the last collaboration message
+      // Priority 1: Re-enter hidden loading compare (still in progress)
+      if (hasHiddenCompareLoading || (compareResults.length > 0 && !compareResults.every(r => r.loading === false || r.loading === undefined))) {
+        setCompareKey(k => k + 1);
+        setMode('compare');
+        return;
+      }
+
+      // Priority 2: Re-enter hidden loading collaboration (still in progress)
+      if (hasHiddenCollaborationLoading || (collaborationSteps.length > 0 && collaborationSteps.some(s => s.loading))) {
+        setCollaborationKey(k => k + 1);
+        setMode('collaboration');
+        return;
+      }
+
+      // Priority 3: Re-enter completed compare results still in state
+      if (compareResults.length > 0) {
+        setCompareKey(k => k + 1);
+        setIsReEnteringCompare(true);
+        setMode('compare');
+        return;
+      }
+
+      // Priority 4: Re-enter completed collaboration results still in state
+      if (collaborationSteps.length > 0) {
+        setCollaborationKey(k => k + 1);
+        setIsReEnteringCollaboration(true);
+        setMode('collaboration');
+        return;
+      }
+
+      // Priority 5: Find from message history
       const lastCollabMsg = [...messages].reverse().find(m => m.role === 'collaboration' && m.collaborationSteps);
-      if (lastCollabMsg && lastCollabMsg.collaborationSteps) {
+      const lastCompareMsg = [...messages].reverse().find(m => m.role === 'compare' && m.compareResults);
+
+      // Expand whichever is more recent
+      const collabIndex = lastCollabMsg ? messages.indexOf(lastCollabMsg) : -1;
+      const compareIndex = lastCompareMsg ? messages.indexOf(lastCompareMsg) : -1;
+
+      if (compareIndex > collabIndex && lastCompareMsg && lastCompareMsg.compareResults) {
+        // Expand compare result from history
+        setCompareResults(lastCompareMsg.compareResults);
+        setCompareKey(k => k + 1);
+        setIsReEnteringCompare(true); // Don't save again on exit
+        setMode('compare');
+      } else if (lastCollabMsg && lastCollabMsg.collaborationSteps) {
+        // Expand collaboration result from history
         setCollaborationSteps(lastCollabMsg.collaborationSteps);
         setCollaborationType(lastCollabMsg.collaborationType || 'correct');
         setPipelineName(lastCollabMsg.pipelineName || '');
@@ -598,15 +694,33 @@ function App() {
 
   // Save current compare results to history and exit compare mode
   const saveCompareToHistory = () => {
-    if (mode === 'compare' && compareResults.length > 0 && !compareResults.some(r => r.loading)) {
-      setMessages(prev => [...prev, {
-        id: nextId(),
-        role: 'compare',
-        content: '',
-        compareResults: compareResults
-      }]);
+    if (mode === 'compare') {
+      // Save results to history if we have any completed results (skip if re-entering)
+      const completedResults = compareResults.filter(r => !r.loading);
+      const allLoading = compareResults.length > 0 && completedResults.length === 0;
+
+      if (!isReEnteringCompare) {
+        if (completedResults.length > 0) {
+          setMessages(prev => [...prev, {
+            id: nextId(),
+            role: 'compare',
+            content: '',
+            compareResults: completedResults
+          }]);
+        } else if (allLoading) {
+          // Show aborted message if cancelled while all were still loading
+          setMessages(prev => [...prev, {
+            id: nextId(),
+            role: 'assistant',
+            content: '*Compare aborted*',
+            agent: 'system'
+          }]);
+        }
+      }
+      // Always exit to chat mode (even if loading - allows abort)
       setMode('chat');
       setCompareResults([]);
+      setIsReEnteringCompare(false); // Reset flag
       // Reset input to fix cursor issues when returning to chat
       setInput('');
       setInputKey(k => k + 1);
@@ -615,18 +729,38 @@ function App() {
 
   // Save current collaboration results to history and exit collaboration mode
   const saveCollaborationToHistory = () => {
-    if (mode === 'collaboration' && collaborationSteps.length > 0 && !collaborationSteps.some(s => s.loading)) {
-      // Don't save again if we're re-entering (already in history)
+    if (mode === 'collaboration') {
+      // Save completed steps to history if we have any
+      const completedSteps = collaborationSteps.filter(s => !s.loading);
+      const allLoading = collaborationSteps.length > 0 && completedSteps.length === 0;
+
+      // Get display name for the collaboration type
+      const typeLabel = collaborationType === 'consensus' ? 'Consensus' :
+                       collaborationType === 'debate' ? 'Debate' :
+                       collaborationType === 'correct' ? 'Correction' :
+                       collaborationType === 'pipeline' ? 'Pipeline' : 'Collaboration';
+
       if (!isReEnteringCollaboration) {
-        setMessages(prev => [...prev, {
-          id: nextId(),
-          role: 'collaboration',
-          content: '',
-          collaborationSteps: collaborationSteps,
-          collaborationType: collaborationType,
-          pipelineName: collaborationType === 'pipeline' ? pipelineName : undefined
-        }]);
+        if (completedSteps.length > 0) {
+          setMessages(prev => [...prev, {
+            id: nextId(),
+            role: 'collaboration',
+            content: '',
+            collaborationSteps: completedSteps,
+            collaborationType: collaborationType,
+            pipelineName: collaborationType === 'pipeline' ? pipelineName : undefined
+          }]);
+        } else if (allLoading) {
+          // Show aborted message if cancelled while all were still loading
+          setMessages(prev => [...prev, {
+            id: nextId(),
+            role: 'assistant',
+            content: `*${typeLabel} aborted*`,
+            agent: 'system'
+          }]);
+        }
       }
+      // Always exit to chat mode (even if loading - allows abort)
       setMode('chat');
       setCollaborationSteps([]);
       setIsReEnteringCollaboration(false); // Reset flag
@@ -1820,10 +1954,14 @@ Compare View:
         setMode('compare');
 
         try {
+          // Get project structure for context (like consensus mode)
+          const projectStructure = getProjectStructure(process.cwd());
+
           const plan = buildComparePlan(task, {
             agents: agents as AgentName[],
             sequential,
-            pick
+            pick,
+            projectStructure
           });
 
           const result = await execute(plan);
@@ -2782,31 +2920,56 @@ Compare View:
           <Box flexDirection="column" marginBottom={1} width="100%">
             {messages.map((msg) => (
               msg.role === 'compare' && msg.compareResults ? (
-                // Static render for historical compare results (no hooks, no re-renders)
-                <Box key={msg.id} flexDirection="column" marginBottom={1} width="100%">
-                  {msg.compareResults.map((result, i) => {
-                    const isError = !!result.error;
-                    const lineLength = Math.floor(((process.stdout.columns || 80) - 2) * 0.8);
-                    return (
-                      <Box key={i} flexDirection="column" marginBottom={i < msg.compareResults!.length - 1 ? 1 : 0}>
-                        <Text color={isError ? 'red' : '#fc8657'}>
-                          {'─'.repeat(2)} <Text bold color="#06ba9e">{result.agent}</Text>
-                          {isError && <Text color="red"> [FAILED]</Text>}
-                        </Text>
-                        <Text color={isError ? 'red' : '#fc8657'}>{'─'.repeat(lineLength)}</Text>
-                        <Box paddingY={1}>
-                          <Text color={isError ? 'red' : undefined} wrap="wrap">
-                            {result.content || result.error || 'No response'}
-                          </Text>
+                // Compact view for historical compare results (like collaboration)
+                <Box key={msg.id} flexDirection="column" width="100%">
+                  <Text color="#fc8657">─── <Text bold>Compare</Text> <Text color="gray">[completed]</Text> ───</Text>
+                  <Box height={1} />
+                  <Box flexDirection="row" width="100%">
+                    {msg.compareResults.map((result, i) => {
+                      const isError = !!result.error;
+                      const content = result.content || result.error || 'No response';
+                      // Truncate to 3 lines
+                      const lines = content.split('\n').slice(0, 3);
+                      const truncated = content.split('\n').length > 3;
+                      const remaining = content.split('\n').length - 3;
+                      const displayText = lines.join('\n');
+
+                      return (
+                        <Box
+                          key={i}
+                          flexDirection="column"
+                          borderStyle="round"
+                          borderColor={isError ? 'red' : 'gray'}
+                          flexGrow={1}
+                          flexBasis={0}
+                          minWidth={25}
+                          marginRight={i < msg.compareResults!.length - 1 ? 1 : 0}
+                        >
+                          {/* Header */}
+                          <Box paddingX={1}>
+                            <Text bold color="#06ba9e">{result.agent}</Text>
+                            {isError && <Text color="red"> ✗</Text>}
+                            {result.duration && <Text dimColor> {(result.duration / 1000).toFixed(1)}s</Text>}
+                          </Box>
+
+                          {/* Content */}
+                          <Box paddingX={1} paddingY={1}>
+                            <Text color={isError ? 'red' : 'gray'} wrap="wrap">
+                              {displayText}
+                            </Text>
+                            {truncated && (
+                              <Text dimColor> [+{remaining} lines]</Text>
+                            )}
+                          </Box>
                         </Box>
-                        <Text color={isError ? 'red' : '#fc8657'}>
-                          <Text color="green">●</Text>
-                          <Text dimColor> {result.duration ? (result.duration / 1000).toFixed(1) + 's' : '-'}</Text>
-                        </Text>
-                        <Text color={isError ? 'red' : '#fc8657'}>{'─'.repeat(lineLength)}</Text>
-                      </Box>
-                    );
-                  })}
+                      );
+                    })}
+                  </Box>
+                  <Box marginTop={1}>
+                    <Text dimColor>Press </Text>
+                    <Text color="#fc8657">Ctrl+E</Text>
+                    <Text dimColor> to expand this compare result</Text>
+                  </Box>
                 </Box>
               ) : msg.role === 'collaboration' && msg.collaborationSteps ? (
                 // Static render for historical collaboration results
@@ -2867,6 +3030,75 @@ Compare View:
               )
             ))}
           </Box>
+          )}
+
+          {/* Background Loading Indicator - shows when compare/collaboration hidden but still loading */}
+          {(mode === 'chat' || mode === 'plan') && (hasHiddenCompareLoading || hasHiddenCollaborationLoading) && (
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color="#fc8657">─── <Text bold>{hasHiddenCompareLoading ? 'Compare' : 'Collaboration'}</Text> <Text color="yellow">[running]</Text> ───</Text>
+              <Box height={1} />
+              <Box flexDirection="row" width="100%">
+                {hasHiddenCompareLoading && compareResults.map((result, i) => (
+                  <Box
+                    key={i}
+                    flexDirection="column"
+                    borderStyle="round"
+                    borderColor={result.loading ? 'yellow' : result.error ? 'red' : 'gray'}
+                    flexGrow={1}
+                    flexBasis={0}
+                    minWidth={25}
+                    marginRight={i < compareResults.length - 1 ? 1 : 0}
+                  >
+                    <Box paddingX={1}>
+                      <Text bold color="#06ba9e">{result.agent}</Text>
+                      {result.loading && <Text color="yellow"> ⏳</Text>}
+                      {!result.loading && !result.error && <Text color="green"> ✓</Text>}
+                      {result.error && <Text color="red"> ✗</Text>}
+                    </Box>
+                    <Box paddingX={1} paddingY={1}>
+                      <Text color="gray">
+                        {result.loading ? 'Loading...' : result.error ? 'Error' : (result.content || '').split('\n').slice(0, 2).join('\n').slice(0, 60) + '...'}
+                      </Text>
+                    </Box>
+                  </Box>
+                ))}
+                {hasHiddenCollaborationLoading && collaborationSteps.slice(0, 3).map((step, i) => (
+                  <Box
+                    key={i}
+                    flexDirection="column"
+                    borderStyle="round"
+                    borderColor={step.loading ? 'yellow' : step.error ? 'red' : 'gray'}
+                    flexGrow={1}
+                    flexBasis={0}
+                    minWidth={25}
+                    marginRight={i < Math.min(collaborationSteps.length, 3) - 1 ? 1 : 0}
+                  >
+                    <Box paddingX={1}>
+                      <Text bold color="#06ba9e">{step.agent}</Text>
+                      <Text dimColor> [{step.role}]</Text>
+                      {step.loading && <Text color="yellow"> ⏳</Text>}
+                      {!step.loading && !step.error && <Text color="green"> ✓</Text>}
+                      {step.error && <Text color="red"> ✗</Text>}
+                    </Box>
+                    <Box paddingX={1} paddingY={1}>
+                      <Text color="gray">
+                        {step.loading ? 'Loading...' : step.error ? 'Error' : (step.content || '').split('\n').slice(0, 2).join('\n').slice(0, 60) + '...'}
+                      </Text>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+              {hasHiddenCollaborationLoading && collaborationSteps.length > 3 && (
+                <Text dimColor>  +{collaborationSteps.length - 3} more steps</Text>
+              )}
+              <Box marginTop={1}>
+                <Text dimColor>Press </Text>
+                <Text color="#fc8657">Ctrl+E</Text>
+                <Text dimColor> to expand | </Text>
+                <Text color="red">Ctrl+C</Text>
+                <Text dimColor> to cancel</Text>
+              </Box>
+            </Box>
           )}
 
           {/* Compare View (inline) */}
