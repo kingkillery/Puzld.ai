@@ -33,6 +33,9 @@ const COMMANDS: Command[] = [
   // Sessions
   { label: '/session', value: '/session', description: 'Start new session' },
   { label: '/resume', value: '/resume', description: 'Resume a previous session' },
+  // Trust
+  { label: '/trusted', value: '/trusted', description: 'List/manage trusted directories' },
+  { label: '/add-dir', value: '/add-dir ', description: 'Trust a directory (Claude Code style)' },
   // Utility
   { label: '/observe', value: '/observe', description: 'Training observations panel' },
   { label: '/settings', value: '/settings', description: 'Open settings panel' },

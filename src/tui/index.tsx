@@ -10,6 +10,8 @@ import { compare as compareOrchestrator, recordComparePreference, hasPendingComp
 import { debate as debateOrchestrator, recordDebateWinner, hasPendingDebate } from '../chat/debate';
 import { pipeline as pipelineOrchestrator } from '../chat/pipeline';
 import { Banner, WelcomeMessage } from './components/Banner';
+import { TrustPrompt } from './components/TrustPrompt';
+import { isDirectoryTrusted, trustDirectory, getParentDirectory, getTrustedDirectories, untrustDirectory } from '../trust';
 import { useHistory } from './hooks/useHistory';
 import { getCommandSuggestions } from './components/Autocomplete';
 import { StatusBar } from './components/StatusBar';
@@ -119,7 +121,7 @@ interface Message {
 let messageId = 0;
 const nextId = () => String(++messageId);
 
-type AppMode = 'chat' | 'workflows' | 'sessions' | 'settings' | 'model' | 'compare' | 'collaboration' | 'agent' | 'review' | 'index' | 'observe' | 'plan';
+type AppMode = 'chat' | 'workflows' | 'sessions' | 'settings' | 'model' | 'compare' | 'collaboration' | 'agent' | 'review' | 'index' | 'observe' | 'plan' | 'trust';
 type AgenticSubMode = 'plan' | 'build';
 
 interface CompareResult {
@@ -170,6 +172,7 @@ function App() {
   const [currentPlan, setCurrentPlan] = useState<string | null>(null); // Current plan content for Tab toggle
   const [currentPlanTask, setCurrentPlanTask] = useState<string | null>(null); // Task that generated the plan
   const [modeChangeNotice, setModeChangeNotice] = useState<string | null>(null); // Brief notification when mode changes
+  const [isTrusted, setIsTrusted] = useState<boolean | null>(null); // null = checking, true/false = result
 
   // Tool activity state (for background display like Claude Code)
   const [toolActivity, setToolActivity] = useState<ToolCallInfo[]>([]);
@@ -450,6 +453,33 @@ function App() {
   };
 
   const { addToHistory, navigateHistory } = useHistory();
+
+  // Check directory trust on startup
+  useEffect(() => {
+    const cwd = process.cwd();
+    const trusted = isDirectoryTrusted(cwd);
+    setIsTrusted(trusted);
+    if (!trusted) {
+      setMode('trust');
+    }
+  }, []);
+
+  // Handle trust decision
+  const handleTrust = (includeSubdirs: boolean) => {
+    const cwd = process.cwd();
+    if (includeSubdirs) {
+      trustDirectory(getParentDirectory(cwd), true);
+    } else {
+      trustDirectory(cwd, false);
+    }
+    setIsTrusted(true);
+    setMode('chat');
+  };
+
+  // Handle exit from trust prompt
+  const handleTrustExit = () => {
+    exit();
+  };
 
   // Check router availability on startup
   useEffect(() => {
@@ -1522,6 +1552,12 @@ Options:
   /execute          - Toggle: auto-run autopilot plans
   /interactive      - Toggle: pause between steps
 
+Trust:
+  /trusted             - List trusted directories
+  /trusted add [path]  - Trust a directory (default: current)
+  /trusted remove [path] - Remove trust
+  /add-dir [path]      - Alias for /trusted add
+
 Utility:
   /settings  - Open settings panel
   /changelog - Show version history
@@ -1815,6 +1851,54 @@ Compare View:
       case 'exit':
         process.exit(0);
         break;
+
+      case 'trusted': {
+        const subCmd = rest.trim().split(/\s+/)[0] || '';
+        const pathArg = rest.slice(subCmd.length).trim() || process.cwd();
+
+        if (!subCmd) {
+          // Show trusted directories list
+          const trusted = getTrustedDirectories();
+          if (trusted.length === 0) {
+            addMessage('No trusted directories.\n\nUsage:\n  /trusted add [path]    - Trust a directory\n  /trusted remove [path] - Remove trust');
+          } else {
+            addMessage(`Trusted directories:\n${trusted.map(d => `  • ${d}`).join('\n')}\n\nCommands:\n  /trusted add [path]    - Trust a directory\n  /trusted remove [path] - Remove trust`);
+          }
+        } else if (subCmd === 'add') {
+          const targetPath = pathArg;
+          if (isDirectoryTrusted(targetPath)) {
+            addMessage(`Already trusted: ${targetPath}`);
+          } else {
+            trustDirectory(targetPath, false);
+            if (targetPath === process.cwd()) {
+              setIsTrusted(true);
+            }
+            addMessage(`Trusted: ${targetPath}`);
+          }
+        } else if (subCmd === 'remove') {
+          const targetPath = pathArg;
+          untrustDirectory(targetPath);
+          addMessage(`Removed trust: ${targetPath}\nRestart puzldai to see the trust prompt.`);
+        } else {
+          addMessage('Usage:\n  /trusted              - List trusted directories\n  /trusted add [path]   - Trust a directory (default: current)\n  /trusted remove [path] - Remove trust');
+        }
+        break;
+      }
+
+      case 'add-dir': {
+        // Alias for /trusted add - matches Claude Code's command
+        const targetPath = rest.trim() || process.cwd();
+        if (isDirectoryTrusted(targetPath)) {
+          addMessage(`Already trusted: ${targetPath}`);
+        } else {
+          trustDirectory(targetPath, false);
+          if (targetPath === process.cwd()) {
+            setIsTrusted(true);
+          }
+          addMessage(`Trusted: ${targetPath}`);
+        }
+        break;
+      }
 
       case 'changelog': {
         try {
@@ -2596,6 +2680,14 @@ Compare View:
         />
       )}
 
+      {/* Trust Prompt - shown before anything else when directory is not trusted */}
+      {mode === 'trust' && (
+        <TrustPrompt
+          directory={process.cwd()}
+          onTrust={handleTrust}
+          onExit={handleTrustExit}
+        />
+      )}
 
       {mode === 'chat' && (
         isFirstMessage && <WelcomeMessage />

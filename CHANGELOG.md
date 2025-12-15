@@ -6,6 +6,29 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.89] - 2025-12-15
+
+### Added
+- **Trusted Directory System** - Security gate like Claude Code
+  - First-time launch in untrusted directory shows trust prompt
+  - Options: "Yes, I trust this folder", "Yes, trust parent", "No, exit"
+  - Trusted directories stored in `~/.puzldai/trusted-dirs.json`
+  - Wildcard support for parent directories (e.g., `/home/user/*`)
+
+- **Trust Management Commands**
+  - `/trusted` - List trusted directories
+  - `/trusted add [path]` - Trust a directory (default: current)
+  - `/trusted remove [path]` - Remove trust for a directory
+  - `/add-dir [path]` - Alias for `/trusted add` (Claude Code style)
+
+- **TrustPrompt Component** - Clean UI for workspace trust
+  - Yellow separator line and header
+  - Bold white directory path
+  - Highlighted action words (read, edit, execute files)
+  - Arrow key navigation with visual selection indicator
+
+---
+
 ## [0.2.88] - 2025-12-14
 
 ### Added
