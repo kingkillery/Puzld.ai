@@ -35,8 +35,11 @@ PARAMETERS:
   },
 
   async execute(params: Record<string, unknown>, cwd: string): Promise<ToolResult> {
-    const path = params.path as string;
-    const content = params.content as string;
+    // Normalize path argument
+    const path = (params.path || params.file_path || params.file) as string;
+    // Normalize content argument (Gemini may use different names)
+    const content = (params.content || params.file_content ||
+                     params.text || params.body || params.data) as string;
 
     if (!path) {
       return { toolCallId: '', content: 'Error: path is required', isError: true };

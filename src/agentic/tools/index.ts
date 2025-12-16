@@ -50,15 +50,27 @@ const TOOL_ALIASES: Record<string, string> = {
   'find_files': 'glob',
   'list_files': 'glob',
   'search_files': 'glob',
+  'list_directory': 'glob',
+  'listdirectory': 'glob',
+  'ls': 'glob',
   // Grep aliases
   'search': 'grep',
   'search_content': 'grep',
   'find_in_files': 'grep',
+  'search_file_content': 'grep',
+  'searchfilecontent': 'grep',
+  'file_search': 'grep',
+  'grep_search': 'grep',
+  'search_code': 'grep',
   // Bash aliases
   'shell': 'bash',
   'run': 'bash',
   'execute': 'bash',
   'run_command': 'bash',
+  'run_shell_command': 'bash',
+  'runshellcommand': 'bash',
+  'terminal': 'bash',
+  'cmd': 'bash',
   // Write aliases
   'write_file': 'write',
   'create_file': 'write',
@@ -70,9 +82,23 @@ const TOOL_ALIASES: Record<string, string> = {
   'file_edit': 'edit',
 };
 
+// Normalize tool name - strip prefixes and apply aliases
+function normalizeToolName(name: string): string {
+  let normalized = name;
+  // Strip common prefixes (Gemini uses default_api:, others may use functions., etc.)
+  if (normalized.includes(':')) {
+    normalized = normalized.split(':').pop() || normalized;
+  }
+  if (normalized.includes('.')) {
+    normalized = normalized.split('.').pop() || normalized;
+  }
+  normalized = normalized.toLowerCase();
+  return TOOL_ALIASES[normalized] || normalized;
+}
+
 // Get tool by name (with alias support)
 export function getTool(name: string): Tool | undefined {
-  const normalizedName = TOOL_ALIASES[name] || name;
+  const normalizedName = normalizeToolName(name);
   return allTools.find(t => t.name === normalizedName);
 }
 
@@ -80,12 +106,18 @@ export function getTool(name: string): Tool | undefined {
 function normalizeArguments(toolName: string, args: Record<string, unknown>): Record<string, unknown> {
   const normalized: Record<string, unknown> = { ...args };
 
-  // Map file_path -> path
+  // Map various path argument names -> path
   if (args.file_path && !args.path) {
     normalized.path = args.file_path;
   }
   if (args.file && !args.path) {
     normalized.path = args.file;
+  }
+  if (args.dir_path && !args.path) {
+    normalized.path = args.dir_path;
+  }
+  if (args.directory && !args.path) {
+    normalized.path = args.directory;
   }
 
   // Map cmd -> command
@@ -101,7 +133,7 @@ export async function executeTool(
   call: ToolCall,
   cwd: string
 ): Promise<ToolResult> {
-  const normalizedName = TOOL_ALIASES[call.name] || call.name;
+  const normalizedName = normalizeToolName(call.name);
   const tool = getTool(normalizedName);
 
   if (!tool) {

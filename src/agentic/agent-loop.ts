@@ -34,10 +34,11 @@ const TOOL_ALIASES: Record<string, string> = {
   'list_directory': 'glob', 'ls': 'glob',
   // Grep aliases
   'search': 'grep', 'search_content': 'grep', 'find_in_files': 'grep',
-  'grep_search': 'grep', 'search_code': 'grep',
+  'grep_search': 'grep', 'search_code': 'grep', 'search_file_content': 'grep',
+  'searchfilecontent': 'grep', 'file_search': 'grep',
   // Bash aliases
   'shell': 'bash', 'run': 'bash', 'execute': 'bash', 'run_command': 'bash',
-  'terminal': 'bash', 'cmd': 'bash',
+  'terminal': 'bash', 'cmd': 'bash', 'run_shell_command': 'bash', 'runshellcommand': 'bash',
   // Write aliases
   'write_file': 'write', 'create_file': 'write', 'file_write': 'write',
   'create': 'write', 'save_file': 'write', 'overwrite': 'write',
@@ -49,7 +50,17 @@ const TOOL_ALIASES: Record<string, string> = {
 
 // Normalize tool name using aliases
 function normalizeToolName(name: string): string {
-  return TOOL_ALIASES[name] || name;
+  // Strip common prefixes (Gemini uses default_api:, others may use functions., etc.)
+  let normalized = name;
+  if (normalized.includes(':')) {
+    normalized = normalized.split(':').pop() || normalized;
+  }
+  if (normalized.includes('.')) {
+    normalized = normalized.split('.').pop() || normalized;
+  }
+  // Convert to lowercase for matching
+  normalized = normalized.toLowerCase();
+  return TOOL_ALIASES[normalized] || normalized;
 }
 
 export interface AgentLoopOptions extends RunOptions {
@@ -57,6 +68,8 @@ export interface AgentLoopOptions extends RunOptions {
   tools?: Tool[];
   /** Working directory for tool execution */
   cwd?: string;
+  /** Skip diff preview for all edits (user selected "allow all") */
+  allowAllEdits?: boolean;
   /** Callback when tool is called (before permission check) */
   onToolCall?: (call: ToolCall) => void;
   /** Callback when tool returns result */
@@ -88,6 +101,8 @@ export interface AgentLoopOptions extends RunOptions {
   conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string; agent?: string }>;
   /** Unified message history - preferred format, enables proper context management */
   unifiedHistory?: UnifiedMessage[];
+  /** Callback when user selects "allow all edits" */
+  onAllowAllEdits?: () => void;
 }
 
 export interface AgentLoopResult {
@@ -105,11 +120,13 @@ export interface AgentLoopResult {
  */
 function buildSystemPrompt(adapterName: string, projectFiles: string, toolDescriptions: string): string {
   // Base instructions shared by all adapters
-  const baseInstructions = `# Project Structure
+  const baseInstructions = `# Current Project Files
 
-Here are the files in the current project (file names only - use tools to read contents):
+You CAN see the project structure below. These are the files in the workspace:
 
 ${projectFiles}
+
+(Use the 'view' tool to read file contents when needed)
 
 # Available Tools
 
@@ -118,7 +135,10 @@ ${toolDescriptions}`;
   // Adapter-specific prompts
   if (adapterName === 'mistral') {
     // Mistral needs very explicit instructions about text-based tool invocation
-    return `You are a coding assistant. You invoke tools by OUTPUTTING special code blocks.
+    return `You are a helpful assistant. You can have normal conversations AND help with coding tasks.
+
+For casual messages (greetings, questions, chat), respond naturally without using tools.
+For coding tasks, you invoke tools by OUTPUTTING special code blocks.
 
 IMPORTANT: You do NOT have native/built-in tool access. Tools are invoked by writing \`\`\`tool code blocks in your response. The system parses your text output and executes tools for you.
 
@@ -148,7 +168,10 @@ Example - to read a file, OUTPUT this text:
 
   if (adapterName === 'gemini') {
     // Gemini may have native context - remind it to use our tools
-    return `You are a coding assistant with access to tools via code blocks.
+    return `You are a helpful assistant with access to coding tools. You can have normal conversations AND help with coding tasks.
+
+For casual messages (greetings, questions, chat), respond naturally without using tools.
+For coding tasks, use the tools below to explore and modify the codebase.
 
 ${baseInstructions}
 
@@ -167,13 +190,18 @@ IMPORTANT:
 - Use \`\`\`tool blocks to invoke tools (not native functions)
 - You must use 'view' tool to read file contents
 - Do not assume or hallucinate file contents
-- Multiple tools = multiple \`\`\`tool blocks`;
+- Multiple tools = multiple \`\`\`tool blocks
+- ALWAYS use 'write' or 'edit' tools for file modifications - NOT bash/sed/awk
+- The 'edit' tool shows a diff preview before applying changes`;
   }
 
   // Default prompt for Claude, Codex, Ollama
-  return `You are a helpful coding assistant with access to tools. You can explore the codebase and make changes.
+  return `You are a helpful assistant with access to coding tools. You can have normal conversations AND help with coding tasks.
 
-IMPORTANT: You MUST use tools to read files. You CANNOT see file contents without using the 'view' tool. Do NOT pretend or hallucinate file contents.
+For casual messages (greetings, questions, chat), respond naturally without using tools.
+For coding tasks, use the available tools to explore and modify the codebase.
+
+IMPORTANT: When working with code, you MUST use tools to read files. Do NOT pretend or hallucinate file contents.
 
 ${baseInstructions}
 
@@ -202,9 +230,15 @@ You can call multiple tools by including multiple \`\`\`tool blocks.
 - Use 'glob' to find files by pattern (e.g., "**/*.ts")
 - Use 'grep' to search file contents for patterns
 - Use 'view' to read file contents
-- Use 'edit' for targeted changes to existing files
+- Use 'edit' for targeted changes to existing files (shows diff preview)
 - Use 'write' for new files or complete rewrites
-- Use 'bash' for running commands`;
+- Use 'bash' for running commands (NOT for file edits - use 'edit' instead)
+- NEVER use sed/awk via bash to modify files - always use 'edit' tool
+
+IMPORTANT for editing:
+- ALWAYS use 'view' to read a file BEFORE using 'edit' on it
+- The 'edit' search text MUST exactly match the file contents
+- Only make ONE edit per file per response - wait for result before making more edits to same file`;
 }
 
 /**
@@ -252,7 +286,7 @@ export async function runAgentLoop(
   const messages: AgentMessage[] = [];
 
   // Track if user selected "allow all edits" to skip future diff previews
-  let allowAllEdits = false;
+  let allowAllEdits = options.allowAllEdits ?? false;
 
   // Get project structure overview (file listing - not contents)
   const projectFiles = getProjectStructure(cwd);
@@ -406,6 +440,26 @@ export async function runAgentLoop(
     const results: ToolResult[] = [];
     let cancelled = false;
 
+    // Deduplicate write/edit calls to the same file (LLMs sometimes duplicate)
+    const seenWriteFiles = new Set<string>();
+    const deduplicatedToolCalls = toolCalls.filter(call => {
+      const normalizedName = normalizeToolName(call.name);
+      if (normalizedName === 'write' || normalizedName === 'edit') {
+        const filePath = call.arguments.path || call.arguments.file_path || call.arguments.filePath;
+        if (filePath && seenWriteFiles.has(filePath)) {
+          // Skip duplicate write/edit to same file
+          results.push({
+            toolCallId: call.id,
+            content: 'Skipped: duplicate write to same file',
+            isError: false,
+          });
+          return false;
+        }
+        if (filePath) seenWriteFiles.add(filePath);
+      }
+      return true;
+    });
+
     // Collect write/edit operations for batch preview
     const writeEditCalls: Array<{
       call: ToolCall;
@@ -420,7 +474,7 @@ export async function runAgentLoop(
     }> = [];
 
     // First pass: check permissions and collect write/edit previews
-    for (const call of toolCalls) {
+    for (const call of deduplicatedToolCalls) {
       options.onToolCall?.(call);
       allToolCalls.push(call);
 
@@ -483,6 +537,9 @@ export async function runAgentLoop(
         const batchResult = await options.onBatchDiffPreview(validPreviews);
 
         if (batchResult.allowAll) {
+          // Only set local allowAllEdits for remaining tool calls in this response
+          // Do NOT call onAllowAllEdits - batch "Yes to all" applies only to current batch
+          // Session-wide "allow all" is only set via SingleFileDiff
           allowAllEdits = true;
         }
 
@@ -536,6 +593,7 @@ export async function runAgentLoop(
             } else {
               if (decision === 'yes-all') {
                 allowAllEdits = true;
+                options.onAllowAllEdits?.();
               }
               options.onToolStart?.(item.call);
               const result = await executeTool(item.call, cwd);
@@ -786,7 +844,10 @@ async function prepareDiffPreview(
 
   try {
     if (toolName === 'write') {
-      newContent = call.arguments.content as string || '';
+      // Normalize content argument (Gemini may use different names)
+      newContent = (call.arguments.content || call.arguments.file_content ||
+                    call.arguments.text || call.arguments.body ||
+                    call.arguments.data || '') as string;
       if (existsSync(fullPath)) {
         originalContent = readFileSync(fullPath, 'utf-8');
         operation = 'overwrite';
@@ -794,8 +855,11 @@ async function prepareDiffPreview(
         operation = 'create';
       }
     } else if (toolName === 'edit') {
-      const search = call.arguments.search as string;
-      const replace = call.arguments.replace as string;
+      // Normalize search/replace arguments
+      const search = (call.arguments.search || call.arguments.old_text ||
+                      call.arguments.find || call.arguments.pattern) as string;
+      const replace = (call.arguments.replace || call.arguments.new_text ||
+                       call.arguments.replacement || call.arguments.with) as string;
 
       if (!existsSync(fullPath)) {
         return null;
@@ -847,7 +911,10 @@ async function showDiffPreview(
   try {
     if (toolName === 'write') {
       // Write tool - check if file exists
-      newContent = call.arguments.content as string || '';
+      // Normalize content argument (Gemini may use different names)
+      newContent = (call.arguments.content || call.arguments.file_content ||
+                    call.arguments.text || call.arguments.body ||
+                    call.arguments.data || '') as string;
       if (existsSync(fullPath)) {
         originalContent = readFileSync(fullPath, 'utf-8');
         operation = 'overwrite';
@@ -856,8 +923,11 @@ async function showDiffPreview(
       }
     } else if (toolName === 'edit') {
       // Edit tool - apply search/replace to get preview
-      const search = call.arguments.search as string;
-      const replace = call.arguments.replace as string;
+      // Normalize search/replace arguments
+      const search = (call.arguments.search || call.arguments.old_text ||
+                      call.arguments.find || call.arguments.pattern) as string;
+      const replace = (call.arguments.replace || call.arguments.new_text ||
+                       call.arguments.replacement || call.arguments.with) as string;
 
       if (!existsSync(fullPath)) {
         return 'yes'; // File doesn't exist, let the tool handle the error

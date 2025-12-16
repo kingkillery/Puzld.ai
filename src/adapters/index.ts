@@ -1,7 +1,9 @@
 import type { Adapter } from '../lib/types';
 import { claudeAdapter } from './claude';
 import { geminiAdapter } from './gemini';
+import { geminiSafeAdapter } from './gemini-safe';
 import { codexAdapter } from './codex';
+import { codexSafeAdapter } from './codex-safe';
 import { ollamaAdapter } from './ollama';
 import { mistralAdapter } from './mistral';
 
@@ -23,4 +25,4 @@ export async function getAvailableAdapters(): Promise<Adapter[]> {
   return available;
 }
 
-export { claudeAdapter, geminiAdapter, codexAdapter, ollamaAdapter, mistralAdapter };
+export { claudeAdapter, geminiAdapter, geminiSafeAdapter, codexAdapter, codexSafeAdapter, ollamaAdapter, mistralAdapter };

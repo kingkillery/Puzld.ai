@@ -2,6 +2,12 @@ import { execa } from 'execa';
 import type { Adapter, ModelResponse, RunOptions } from '../lib/types';
 import { getConfig } from '../lib/config';
 
+// Extended options for Gemini with approval mode
+export interface GeminiRunOptions extends RunOptions {
+  /** Gemini CLI approval mode: 'default' (read-only), 'auto_edit', 'yolo' */
+  geminiApprovalMode?: 'default' | 'auto_edit' | 'yolo';
+}
+
 export const geminiAdapter: Adapter = {
   name: 'gemini',
 
@@ -17,16 +23,24 @@ export const geminiAdapter: Adapter = {
     }
   },
 
-  async run(prompt: string, options?: RunOptions): Promise<ModelResponse> {
+  async run(prompt: string, options?: GeminiRunOptions): Promise<ModelResponse> {
     const config = getConfig();
     const startTime = Date.now();
     const model = options?.model ?? config.adapters.gemini.model;
+    const geminiApprovalMode = options?.geminiApprovalMode;
 
     try {
       // Gemini CLI uses -m for model selection, --output-format json for token usage
       // Note: Gemini CLI auto-reads project context - no reliable way to disable this
-      // The --sandbox flag causes broken responses, so we accept Gemini's native behavior
       const args: string[] = ['--output-format', 'json'];
+
+      // Add approval mode flag based on option
+      if (geminiApprovalMode === 'yolo') {
+        args.push('--yolo');
+      } else if (geminiApprovalMode === 'auto_edit') {
+        args.push('--approval-mode', 'auto_edit');
+      }
+      // 'default' or undefined = no flag (read-only mode)
 
       if (model) {
         args.push('-m', model);

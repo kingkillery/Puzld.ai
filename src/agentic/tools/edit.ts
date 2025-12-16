@@ -43,9 +43,13 @@ TIPS:
   },
 
   async execute(params: Record<string, unknown>, cwd: string): Promise<ToolResult> {
-    const path = params.path as string;
-    const search = params.search as string;
-    const replace = params.replace as string;
+    // Normalize path argument
+    const path = (params.path || params.file_path || params.file) as string;
+    // Normalize search/replace arguments (Gemini may use different names)
+    const search = (params.search || params.old_text ||
+                    params.find || params.pattern) as string;
+    const replace = (params.replace || params.new_text ||
+                     params.replacement || params.with) as string;
 
     if (!path) {
       return { toolCallId: '', content: 'Error: path is required', isError: true };

@@ -113,8 +113,10 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
   const totalEdits = edits.length;
 
   // Generate diff for current edit with line numbers
+  // Use proposedContent (from ProposedEdit interface) - fallback to newContent for compatibility
+  const newContent = currentEdit?.proposedContent ?? (currentEdit as any)?.newContent ?? '';
   const diffSegments = currentEdit
-    ? formatDiffWithLineNumbers(currentEdit.originalContent ?? null, currentEdit.newContent ?? '', currentEdit.filePath)
+    ? formatDiffWithLineNumbers(currentEdit.originalContent ?? null, newContent, currentEdit.filePath)
     : [];
 
   // Terminal dimensions

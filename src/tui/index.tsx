@@ -40,7 +40,8 @@ import { CompareView } from './components/CompareView';
 import { CollaborationView, type CollaborationStep, type CollaborationType, type PostAction } from './components/CollaborationView';
 import { generatePlan } from '../executor/planner';
 import { isRouterAvailable } from '../router/router';
-import { adapters } from '../adapters';
+import { adapters, codexSafeAdapter, geminiSafeAdapter } from '../adapters';
+import { geminiAdapter, type GeminiRunOptions } from '../adapters/gemini';
 import {
   createSessionCompat,
   loadUnifiedSession,
@@ -175,6 +176,7 @@ function App() {
   const [modeChangeNotice, setModeChangeNotice] = useState<string | null>(null); // Brief notification when mode changes
   const [isTrusted, setIsTrusted] = useState<boolean | null>(null); // null = checking, true/false = result
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>('default');
+  const [allowAllEdits, setAllowAllEdits] = useState(false); // Persists "allow all edits" across messages
 
   // Tool activity state (for background display like Claude Code)
   const [toolActivity, setToolActivity] = useState<ToolCallInfo[]>([]);
@@ -1207,8 +1209,135 @@ Keep your response concise and focused on the plan, not the implementation.`;
     permissionTracker.reset();
 
     try {
+      // Special handling for Codex - use safe mode with backup/rollback
+      if (agentName === 'codex' && currentApprovalMode !== 'yolo') {
+        const result = await codexSafeAdapter.runWithApproval(userMessage, {
+          onChangesReview: async (changes) => {
+            // Plan mode: always reject changes
+            if (currentApprovalMode === 'plan') {
+              return false;
+            }
+            // Accept mode or allowAllEdits: auto-approve
+            if (currentApprovalMode === 'accept' || allowAllEdits) {
+              return true;
+            }
+            // Default mode: show diff review for approval
+            // Convert FileChange[] to format expected by DiffReview
+            const previews = changes.map((c, idx) => ({
+              toolCallId: `codex-${idx}`,
+              filePath: c.path,
+              operation: c.kind === 'add' ? 'create' as const :
+                         c.kind === 'delete' ? 'overwrite' as const : 'overwrite' as const,
+              originalContent: c.originalContent,
+              newContent: c.newContent || ''
+            }));
+
+            return new Promise((resolve) => {
+              setPendingBatchPreview({
+                previews,
+                resolve: (result) => {
+                  // For Codex, it's all-or-nothing since changes are already made
+                  // Accept if any files were accepted
+                  // Note: "Yes to all" in batch review only applies to THIS batch, not future edits
+                  if (result.accepted.length > 0 || result.allowAll) {
+                    resolve(true);
+                  } else {
+                    resolve(false);
+                  }
+                }
+              });
+            });
+          }
+        });
+
+        // Handle Codex result
+        setLoading(false);
+        setLoadingAgent('');
+        const assistantMsg = { id: nextId(), role: 'assistant' as const, content: result.content || 'Done.', agent: agentName };
+        setMessages(prev => [...prev, assistantMsg]);
+
+        if (sessionId) {
+          const currentSession = loadUnifiedSession(sessionId);
+          if (currentSession) {
+            const updated = await addMessageCompat(currentSession, 'assistant', result.content || 'Done.', agentName);
+            setSession(updated);
+          }
+        }
+        return;
+      }
+
+      // Special handling for Gemini - use native write capabilities with approval mode integration
+      if (agentName === 'gemini') {
+        let geminiResult;
+
+        if (currentApprovalMode === 'yolo') {
+          // YOLO mode: use Gemini's yolo mode directly
+          geminiResult = await geminiAdapter.run(userMessage, {
+            geminiApprovalMode: 'yolo'
+          } as GeminiRunOptions);
+        } else if (currentApprovalMode === 'accept' || allowAllEdits) {
+          // Accept mode: use auto_edit directly (no backup needed)
+          geminiResult = await geminiAdapter.run(userMessage, {
+            geminiApprovalMode: 'auto_edit'
+          } as GeminiRunOptions);
+        } else {
+          // Default or Plan mode: use safe mode with backup/rollback
+          geminiResult = await geminiSafeAdapter.runWithApproval(userMessage, {
+            onChangesReview: async (changes) => {
+              // Plan mode: always reject changes
+              if (currentApprovalMode === 'plan') {
+                return false;
+              }
+              // Default mode: show diff review for approval
+              // Convert FileChange[] to format expected by DiffReview
+              const previews = changes.map((c, idx) => ({
+                toolCallId: `gemini-${idx}`,
+                filePath: c.path,
+                operation: c.kind === 'add' ? 'create' as const :
+                           c.kind === 'delete' ? 'overwrite' as const : 'overwrite' as const,
+                originalContent: c.originalContent,
+                newContent: c.newContent || ''
+              }));
+
+              return new Promise((resolve) => {
+                setPendingBatchPreview({
+                  previews,
+                  resolve: (result) => {
+                    // For Gemini, it's all-or-nothing since changes are already made
+                    // Accept if any files were accepted
+                    // Note: "Yes to all" in batch review only applies to THIS batch, not future edits
+                    if (result.accepted.length > 0 || result.allowAll) {
+                      resolve(true);
+                    } else {
+                      resolve(false);
+                    }
+                  }
+                });
+              });
+            }
+          });
+        }
+
+        // Handle Gemini result
+        setLoading(false);
+        setLoadingAgent('');
+        const geminiMsg = { id: nextId(), role: 'assistant' as const, content: geminiResult.content || 'Done.', agent: agentName };
+        setMessages(prev => [...prev, geminiMsg]);
+
+        if (sessionId) {
+          const currentSession = loadUnifiedSession(sessionId);
+          if (currentSession) {
+            const updated = await addMessageCompat(currentSession, 'assistant', geminiResult.content || 'Done.', agentName);
+            setSession(updated);
+          }
+        }
+        return;
+      }
+
       const result = await runAgentLoop(adapter, userMessage, {
         cwd: process.cwd(),
+        allowAllEdits, // Persist "allow all edits" across messages
+        onAllowAllEdits: () => setAllowAllEdits(true), // Callback when user selects "allow all"
 
         // Permission handler - shows prompt and waits for user decision
         onPermissionRequest: async (request: PermissionRequest): Promise<PermissionResult> => {
@@ -3003,8 +3132,9 @@ Compare View:
               // Build final files record from accepted edits
               const finalFiles: Record<string, string> = {};
               for (const edit of proposedEdits) {
-                if (result.accepted.includes(edit.filePath) && edit.newContent) {
-                  finalFiles[edit.filePath] = edit.newContent;
+                const content = edit.proposedContent || (edit as any).newContent;
+                if (result.accepted.includes(edit.filePath) && content) {
+                  finalFiles[edit.filePath] = content;
                 }
               }
 
