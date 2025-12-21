@@ -277,7 +277,7 @@ function getMachineId(): string {
   fullConfig.cloud = {
     ...fullConfig.cloud,
     machineId,
-    endpoint: fullConfig.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev'
+    endpoint: fullConfig.cloud?.endpoint || 'https://api.puzld.cc'
   };
   saveConfig(fullConfig);
 
@@ -592,7 +592,7 @@ export async function connectToMCP(): Promise<void> {
     throw new Error('No MCP token. Run "puzld login" first.');
   }
 
-  const endpoint = config.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev';
+  const endpoint = config.cloud?.endpoint || 'https://api.puzld.cc';
   const machineId = getMachineId();
 
   // Convert https:// to wss:// for WebSocket

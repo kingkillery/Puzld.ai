@@ -21,7 +21,7 @@ export async function registerWithMCP(
   capabilities: CoreCapabilities
 ): Promise<RegisterResponse> {
   const config = getConfig();
-  const endpoint = config.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev';
+  const endpoint = config.cloud?.endpoint || 'https://api.puzld.cc';
   const token = config.cloud?.token;
 
   if (!token) {
@@ -55,7 +55,7 @@ export async function registerWithMCP(
  */
 export async function sendHeartbeat(machineId: string): Promise<boolean> {
   const config = getConfig();
-  const endpoint = config.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev';
+  const endpoint = config.cloud?.endpoint || 'https://api.puzld.cc';
   const token = config.cloud?.token;
 
   if (!token) {
@@ -109,7 +109,7 @@ export function stopHeartbeat(): void {
  */
 export async function unregisterFromMCP(machineId: string): Promise<boolean> {
   const config = getConfig();
-  const endpoint = config.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev';
+  const endpoint = config.cloud?.endpoint || 'https://api.puzld.cc';
   const token = config.cloud?.token;
 
   if (!token) {

@@ -6,6 +6,15 @@ All notable changes to PuzldAI will be documented in this file.
 
 ---
 
+## [0.2.93] - 2025-12-21
+
+### Changed
+- **Production API Domain** - Switch default endpoint from `puzld-mcp.med-ch-mu.workers.dev` to `api.puzld.cc`
+  - Updated: login.ts, config.ts, bridge.ts, registration.ts, ws-client.ts, tui/index.tsx
+  - Custom domain for cleaner URLs and production isolation
+
+---
+
 ## [0.2.92] - 2025-12-19
 
 ### Added

@@ -53,7 +53,7 @@ const DEFAULT_CONFIG: PulzdConfig = {
   api: { port: 3000, host: '0.0.0.0' },
   ttyd: { port: 3001, enabled: true },
   cloud: {
-    endpoint: 'https://puzld-mcp.med-ch-mu.workers.dev'
+    endpoint: 'https://api.puzld.cc'
   },
   mcp: {
     port: 9234,

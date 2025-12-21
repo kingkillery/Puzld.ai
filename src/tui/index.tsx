@@ -513,7 +513,7 @@ function App() {
     if (config.cloud?.token) {
       // Has token - check if connected
       setMcpStatus('checking');
-      const endpoint = config.cloud.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev';
+      const endpoint = config.cloud.endpoint || 'https://api.puzld.cc';
       fetch(`${endpoint}/auth/validate`, {
         method: 'POST',
         headers: {
@@ -2044,7 +2044,7 @@ Compare View:
           const fullConfig = { ...currentConfig };
           fullConfig.cloud = {
             ...fullConfig.cloud,
-            endpoint: fullConfig.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev',
+            endpoint: fullConfig.cloud?.endpoint || 'https://api.puzld.cc',
             token
           };
           saveConfig(fullConfig);
@@ -2052,7 +2052,7 @@ Compare View:
           addMessage('Token saved. Verifying...');
 
           // Verify token
-          const endpoint = fullConfig.cloud.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev';
+          const endpoint = fullConfig.cloud.endpoint || 'https://api.puzld.cc';
           fetch(`${endpoint}/auth/validate`, {
             method: 'POST',
             headers: {
@@ -2100,7 +2100,7 @@ Compare View:
 
         if (!subCmd || subCmd === 'status') {
           // Show MCP status
-          const endpoint = currentConfig.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev';
+          const endpoint = currentConfig.cloud?.endpoint || 'https://api.puzld.cc';
           const hasToken = !!currentConfig.cloud?.token;
           const machineId = currentConfig.cloud?.machineId || '(not registered)';
 

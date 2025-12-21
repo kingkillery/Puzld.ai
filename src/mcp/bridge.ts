@@ -61,7 +61,7 @@ function getMachineId(): string {
 
   // Save to config
   const fullConfig = loadConfig();
-  fullConfig.cloud = { ...fullConfig.cloud, machineId, endpoint: fullConfig.cloud?.endpoint || 'https://puzld-mcp.med-ch-mu.workers.dev' };
+  fullConfig.cloud = { ...fullConfig.cloud, machineId, endpoint: fullConfig.cloud?.endpoint || 'https://api.puzld.cc' };
 
   // Import saveConfig dynamically to avoid circular deps
   import('../lib/config').then(({ saveConfig }) => {

@@ -16,7 +16,7 @@ interface LoginOptions {
   endpoint?: string;      // Override MCP endpoint
 }
 
-const DEFAULT_ENDPOINT = 'https://puzld-mcp.med-ch-mu.workers.dev';
+const DEFAULT_ENDPOINT = 'https://api.puzld.cc';
 
 /**
  * Login to MCP server with email
