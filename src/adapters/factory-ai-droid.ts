@@ -154,8 +154,10 @@ Available commands:
   validateCommand(command: string, state: FactoryState): boolean {
     if (state.status !== 'playing') return false;
 
-    // Validate command format
-    return /^(build droid |produce|status|help)/i.test(command.trim());
+    // Validate command format (allow flexible whitespace)
+    const normalized = command.trim().toLowerCase();
+    return /^build\s+droid\s+\w+$/.test(normalized) ||
+           /^(produce|status|help)$/.test(normalized);
   },
 
   async run(prompt: string, options?: RunOptions): Promise<ModelResponse> {
@@ -185,9 +187,10 @@ Available commands:
         return GameAdapterUtils.createResponse(state, this, Date.now() - startTime);
       }
 
-      // Parse and execute command
-      if (command.startsWith('build droid ')) {
-        const parts = command.split(' ');
+      // Parse and execute command (normalize whitespace)
+      const parts = command.split(/\s+/).filter(p => p.length > 0);
+
+      if (parts.length >= 3 && parts[0] === 'build' && parts[1] === 'droid') {
         if (parts.length !== 3) {
           state.status = 'invalid';
           state.message = 'Usage: build droid <type>';
@@ -224,7 +227,7 @@ Available commands:
         state.message = `Built ${droidType} droid. Remaining credits: ${state.data.credits}`;
         state.moves = [...(state.moves || []), command];
 
-      } else if (command === 'produce') {
+      } else if (parts.length === 1 && parts[0] === 'produce') {
         if (state.data.droids.length === 0) {
           state.status = 'invalid';
           state.message = 'No droids to produce. Build droids first.';
@@ -244,11 +247,11 @@ Available commands:
 
         state.moves = [...(state.moves || []), command];
 
-      } else if (command === 'status') {
+      } else if (parts.length === 1 && parts[0] === 'status') {
         // Just show current state
         state.message = 'Current game status';
 
-      } else if (command === 'help') {
+      } else if (parts.length === 1 && parts[0] === 'help') {
         state.message = `
 FACTORY AI DROID - Game Rules
 
