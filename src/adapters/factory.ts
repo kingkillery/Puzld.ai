@@ -26,7 +26,8 @@ export const factoryAdapter: Adapter = {
   async run(prompt: string, options?: RunOptions): Promise<ModelResponse> {
     const config = getConfig();
     const startTime = Date.now();
-    const model = options?.model ?? config.adapters.factory?.model;
+    const factoryConfig = config.adapters.factory;
+    const model = options?.model ?? factoryConfig?.model;
 
     try {
       const args: string[] = ['exec'];
@@ -35,6 +36,32 @@ export const factoryAdapter: Adapter = {
       if (model) {
         args.push('--model', model);
       }
+
+      // Add autonomy level (default to low for safety)
+      const autonomy = factoryConfig?.autonomy || 'low';
+      if (autonomy && autonomy !== 'low') {
+        args.push('--auto', autonomy);
+      } else if (autonomy === 'low') {
+        args.push('--auto', 'low');
+      }
+
+      // Add reasoning effort if specified
+      if (factoryConfig?.reasoningEffort) {
+        args.push('--reasoning-effort', factoryConfig.reasoningEffort);
+      }
+
+      // Skip permissions if configured (dangerous!)
+      if (factoryConfig?.skipPermissions) {
+        args.push('--skip-permissions-unsafe');
+      }
+
+      // Set working directory if specified
+      if (factoryConfig?.cwd) {
+        args.push('--cwd', factoryConfig.cwd);
+      }
+
+      // Add output format for clean parsing
+      args.push('--output-format', 'text');
 
       // Add the prompt
       args.push(prompt);

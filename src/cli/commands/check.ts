@@ -40,6 +40,8 @@ async function checkDependencies(): Promise<CheckResult[]> {
     { name: 'gemini', cmd: config.adapters.gemini.path, args: ['--version'], enabled: config.adapters.gemini.enabled },
     { name: 'codex', cmd: config.adapters.codex.path, args: ['--version'], enabled: config.adapters.codex.enabled },
     { name: 'ollama', cmd: 'ollama', args: ['--version'], enabled: config.adapters.ollama.enabled },
+    { name: 'factory (droid)', cmd: config.adapters.factory?.path || 'droid', args: ['--version'], enabled: config.adapters.factory?.enabled ?? false },
+    { name: 'crush', cmd: config.adapters.crush?.path || 'crush', args: ['--version'], enabled: config.adapters.crush?.enabled ?? false },
     { name: 'ttyd', cmd: 'ttyd', args: ['--version'], enabled: true },
   ];
 

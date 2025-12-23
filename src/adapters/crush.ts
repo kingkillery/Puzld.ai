@@ -26,20 +26,34 @@ export const crushAdapter: Adapter = {
   async run(prompt: string, options?: RunOptions): Promise<ModelResponse> {
     const config = getConfig();
     const startTime = Date.now();
-    const model = options?.model ?? config.adapters.crush?.model;
+    const crushConfig = config.adapters.crush;
+    const model = options?.model ?? crushConfig?.model;
 
     try {
-      const args: string[] = [];
+      // Crush uses 'run' subcommand for non-interactive execution
+      const args: string[] = ['run'];
+
+      // Add working directory if specified
+      if (crushConfig?.cwd) {
+        args.push('--cwd', crushConfig.cwd);
+      }
+
+      // Enable auto-accept (yolo mode) if configured
+      if (crushConfig?.autoAccept) {
+        args.push('-y');
+      }
+
+      // Enable debug mode if configured
+      if (crushConfig?.debug) {
+        args.push('--debug');
+      }
 
       // Add model selection if specified
       if (model) {
         args.push('--model', model);
       }
 
-      // Crush supports non-interactive mode via stdin
-      args.push('--non-interactive');
-
-      // Add the prompt
+      // Add the prompt (must be last)
       args.push(prompt);
 
       const { stdout, stderr } = await execa(

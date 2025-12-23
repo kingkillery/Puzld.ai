@@ -4,8 +4,10 @@
  * ExecutionPlan for everything. One universal executor, multiple plan builders.
  */
 
-// Agent types
-export type AgentName = 'claude' | 'gemini' | 'codex' | 'ollama' | 'factory-ai-droid' | 'charm-crush';
+// Agent types - includes both LLM providers and external CLI coding tools
+// NOTE: 'factory-ai-droid' and 'charm-crush' are easter egg games, not production agents
+// Production agents: claude, gemini, codex, ollama, mistral, factory (droid CLI), crush
+export type AgentName = 'claude' | 'gemini' | 'codex' | 'ollama' | 'mistral' | 'factory' | 'crush' | 'factory-ai-droid' | 'charm-crush';
 
 // Step action types
 export type StepAction =

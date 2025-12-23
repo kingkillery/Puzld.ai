@@ -1,7 +1,15 @@
 # PuzldAI - Agents Guide
 
 ## Project Overview
-PuzldAI is a multi-LLM orchestration framework with agentic execution, memory/RAG, and training data generation. It provides a CLI/TUI interface to orchestrate multiple AI agents (Claude, Gemini, Codex, Ollama, Mistral) with features like auto-routing, task comparison, pipelines, workflows, and codebase indexing.
+PuzldAI is a multi-LLM orchestration framework with agentic execution, memory/RAG, and training data generation. It provides a CLI/TUI interface to orchestrate multiple AI coding tools including:
+
+**Production Agents:**
+- **LLM Providers:** Claude, Gemini, Codex, Ollama, Mistral
+- **External CLI Coding Tools:** Factory (droid), Charm Crush (crush)
+
+**Easter Eggs:** `factory-ai-droid` and `charm-crush` are fun puzzle games that demonstrate the adapter pattern, but **NOT** production coding agents. When we refer to "droid" or "crush" in production contexts, we mean the external CLI tool adapters (`factory` and `crush`).
+
+**Features:** Auto-routing, task comparison, pipelines, workflows, codebase indexing
 
 **Stack**: TypeScript (Node.js 20+), Bun (runtime/bundler), SQLite (persistence), Fastify/Hono (API)
 

@@ -5,12 +5,16 @@
 **PuzldAI** is a multi-LLM orchestration framework that coordinates AI agents for complex tasks. It provides agentic execution, memory/RAG capabilities, and training data generation. The codebase is TypeScript-based, runs on Node.js 20+, and uses Bun for building.
 
 **Core Capabilities:**
-- Multi-agent orchestration (Claude, Gemini, Codex, Ollama, Mistral)
+- Multi-agent orchestration of CLI coding tools:
+  - **LLM Providers:** Claude, Gemini, Codex, Ollama, Mistral
+  - **External CLI Tools:** Factory (droid), Charm Crush (crush)
 - Agentic execution with tool access (view, glob, grep, bash, write, edit)
 - Memory/RAG with SQLite FTS5 + optional LanceDB
 - Multiple execution modes (compare, pipeline, debate, consensus, correction)
 - Training data generation from user interactions
 - Universal ExecutionPlan system for all workflows
+
+**NOTE:** The `factory-ai-droid` and `charm-crush` game adapters are fun easter eggs for demonstrating the adapter pattern. When referring to "droid" or "crush" in production contexts, we mean the external CLI coding tools (`factory` and `crush` adapters).
 
 ---
 
@@ -64,9 +68,16 @@ interface Adapter {
 
 **Files:**
 - `index.ts` - Adapter registry
-- `claude.ts`, `gemini.ts`, `codex.ts` - CLI-based adapters
-- `ollama.ts` - Local Ollama integration
-- `mistral.ts` - Mistral AI integration
+- **LLM Adapters:**
+  - `claude.ts`, `gemini.ts`, `codex.ts` - CLI-based LLM adapters
+  - `ollama.ts` - Local Ollama integration
+  - `mistral.ts` - Mistral AI integration
+- **External CLI Tool Adapters:**
+  - `factory.ts` - Factory AI (droid) CLI integration
+  - `crush.ts` - Charm Crush CLI integration
+- **Easter Egg Game Adapters** (demonstrating adapter pattern):
+  - `factory-ai-droid.ts` - Resource management puzzle game
+  - `charm-crush.ts` - Match-3 puzzle game
 
 **Pattern for new adapters:**
 1. Implement `Adapter` interface

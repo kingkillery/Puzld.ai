@@ -33,3 +33,7 @@ bun.lockb
 docs/*.md
 *.tgz
 .mcp.json
+
+# Test artifacts
+fibonacci.py
+hello.js

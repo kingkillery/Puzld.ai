@@ -15,8 +15,23 @@ export interface PulzdConfig {
     codex: { enabled: boolean; path: string; model?: string };
     ollama: { enabled: boolean; model: string; host: string; maxTokens?: number };
     mistral?: { enabled: boolean; path: string; model?: string };
-    factory?: { enabled: boolean; path: string; model?: string };
-    crush?: { enabled: boolean; path: string; model?: string };
+    factory?: {
+      enabled: boolean;
+      path: string;
+      model?: string;
+      autonomy?: 'low' | 'medium' | 'high';
+      reasoningEffort?: 'off' | 'low' | 'medium' | 'high' | 'xhigh';
+      skipPermissions?: boolean;
+      cwd?: string;
+    };
+    crush?: {
+      enabled: boolean;
+      path: string;
+      model?: string;
+      autoAccept?: boolean;  // -y flag for yolo mode
+      debug?: boolean;
+      cwd?: string;
+    };
   };
   api: { port: number; host: string };
   ttyd: { port: number; enabled: boolean };
@@ -51,8 +66,18 @@ const DEFAULT_CONFIG: PulzdConfig = {
     codex: { enabled: false, path: 'codex' },
     ollama: { enabled: true, model: 'llama3.2', host: 'http://localhost:11434' },
     mistral: { enabled: true, path: 'vibe' },
-    factory: { enabled: false, path: 'droid' },
-    crush: { enabled: false, path: 'crush' }
+    factory: {
+      enabled: false,
+      path: 'droid',
+      autonomy: 'low',
+      reasoningEffort: 'medium'
+    },
+    crush: {
+      enabled: false,
+      path: 'crush',
+      autoAccept: false,
+      debug: false
+    }
   },
   api: { port: 3000, host: '0.0.0.0' },
   ttyd: { port: 3001, enabled: true },
