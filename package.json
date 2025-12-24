@@ -4,8 +4,7 @@
   "description": "Multi-LLM orchestration framework with agentic execution, memory/RAG, and training data generation",
   "type": "module",
   "bin": {
-    "puzld": "dist/cli/index.js",
-    "puzldai": "dist/cli/index.js"
+    "pk-puzldai": "dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -15,7 +14,7 @@
   ],
   "scripts": {
     "dev": "bun run src/cli/index.ts",
-    "build": "bun build src/cli/index.ts --outdir dist/cli --target node --packages external && chmod +x dist/cli/index.js",
+    "build": "bun build src/cli/index.ts --outdir dist/cli --target node --packages external && node -e \"try{require('fs').chmodSync('dist/cli/index.js',0o755)}catch(e){}\"",
     "start": "node dist/cli/index.js",
     "test": "bun test",
     "typecheck": "tsc"

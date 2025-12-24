@@ -54,7 +54,7 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-
 const program = new Command();
 
 program
-  .name('puzld')
+  .name('pk-puzldai')
   .description('PuzldAI - Multi-LLM Orchestrator')
   .version(pkg.version);
 
@@ -163,7 +163,7 @@ modelCmd
 
 modelCmd
   .command('set <agent> <model>')
-  .description('Set model for an agent (e.g., puzld model set claude sonnet)')
+  .description('Set model for an agent (e.g., pk-puzldai model set claude sonnet)')
   .action(modelSetCommand);
 
 modelCmd
