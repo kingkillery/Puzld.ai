@@ -1,6 +1,6 @@
 {
   "name": "pk-puzldai",
-  "version": "0.2.94",
+  "version": "0.2.95",
   "description": "Multi-LLM orchestration framework with agentic execution, memory/RAG, and training data generation",
   "type": "module",
   "bin": {
@@ -9,6 +9,7 @@
   "files": [
     "dist",
     "web",
+    "assets/logo.jpg",
     "README.md",
     "LICENSE"
   ],
@@ -50,7 +51,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MedChaouch/Puzld.ai.git"
+    "url": "git+https://github.com/kingkillery/Puzld.ai.git"
   },
   "keywords": [
     "ai",

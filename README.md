@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/logo.jpg" width="300" alt="PuzldAI">
+  <img src="https://unpkg.com/pk-puzldai@latest/assets/logo.jpg" width="300" alt="PuzldAI">
 </p>
 
 <p align="center">
@@ -128,7 +128,7 @@ pk-puzldai check
 ## Interface
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/interface/TUI.png" width="700" alt="PuzldAI TUI">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/interface/TUI.png" width="700" alt="PuzldAI TUI">
 </p>
 
 ---
@@ -199,11 +199,11 @@ pk-puzldai agent -a claude -m haiku  # Interactive mode with specific model
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/Models/Model-change.gif" width="700" alt="Model Selection">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/Models/Model-change.gif" width="700" alt="Model Selection">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/Models/model-change.png" width="700" alt="Model Change">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/Models/model-change.png" width="700" alt="Model Change">
 </p>
 
 ---
@@ -228,11 +228,11 @@ pk-puzldai compare "task" -p                       # Pick best response
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/compare-mode/compare-mode-1.gif" width="700" alt="Compare Mode 1">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/compare-mode/compare-mode-1.gif" width="700" alt="Compare Mode 1">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/compare-mode/compare-mode-2.gif" width="700" alt="Compare Mode 2">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/compare-mode/compare-mode-2.gif" width="700" alt="Compare Mode 2">
 </p>
 
 ---
@@ -247,7 +247,7 @@ pk-puzldai run "task" -P "claude:plan,codex:code" -i   # Interactive: pause betw
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/pipeline-mode/1.png" width="700" alt="Pipeline Mode">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/pipeline-mode/1.png" width="700" alt="Pipeline Mode">
 </p>
 
 ---
@@ -274,15 +274,15 @@ pk-puzldai template delete my-flow  # Delete template
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/1.png" width="700" alt="Workflow Mode 1">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/workflow-mode/1.png" width="700" alt="Workflow Mode 1">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/2.png" width="700" alt="Workflow Mode 2">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/workflow-mode/2.png" width="700" alt="Workflow Mode 2">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/workflow-mode/3.png" width="700" alt="Workflow Mode 3">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/workflow-mode/3.png" width="700" alt="Workflow Mode 3">
 </p>
 
 ---
@@ -306,7 +306,7 @@ pk-puzldai autopilot "task" -p claude    # Use specific agent as planner
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/autopilot-mode/autopilot-mode.gif" width="700" alt="Autopilot Mode">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/autopilot-mode/autopilot-mode.gif" width="700" alt="Autopilot Mode">
 </p>
 
 ---
@@ -329,7 +329,7 @@ pk-puzldai correct "task" --producer claude --reviewer gemini --fix
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/correct-mode/correct-mode.gif" width="700" alt="Correct Mode">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/correct-mode/correct-mode.gif" width="700" alt="Correct Mode">
 </p>
 
 ### Debate Mode
@@ -346,7 +346,7 @@ pk-puzldai debate "topic" -a claude,gemini -r 3 -m ollama   # 3 rounds + moderat
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/Debate%20mode/Debate%20mode.png" width="700" alt="Debate Mode">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/Debate%20mode/Debate%20mode.png" width="700" alt="Debate Mode">
 </p>
 
 ### Consensus Mode
@@ -363,7 +363,7 @@ pk-puzldai consensus "task" -a claude,gemini -r 3 -s claude   # 3 rounds + synth
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MedChaouch/Puzld.ai/main/assets/consensus-mode/consensus-mode.png" width="700" alt="Consensus Mode">
+  <img src="https://raw.githubusercontent.com/kingkillery/Puzld.ai/main/assets/consensus-mode/consensus-mode.png" width="700" alt="Consensus Mode">
 </p>
 
 All collaboration modes support **3 view modes**: side-by-side, expanded, and stacked.
