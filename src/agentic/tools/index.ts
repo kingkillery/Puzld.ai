@@ -8,6 +8,7 @@ import { grepTool } from './grep';
 import { bashTool } from './bash';
 import { writeTool } from './write';
 import { editTool } from './edit';
+import { gitTool } from './git';
 import type { Tool, ToolCall, ToolResult } from './types';
 
 // All available tools
@@ -18,6 +19,7 @@ export const allTools: Tool[] = [
   bashTool,
   writeTool,
   editTool,
+  gitTool,
 ];
 
 // Read-only tools (safe to run without review)
@@ -36,6 +38,11 @@ export const writeTools: Tool[] = [
 // Shell tools (can be destructive)
 export const shellTools: Tool[] = [
   bashTool,
+];
+
+// Git tool (has mixed permission levels based on action)
+export const gitTools: Tool[] = [
+  gitTool,
 ];
 
 // Tool name aliases - maps common LLM naming patterns to our tools
@@ -80,6 +87,18 @@ const TOOL_ALIASES: Record<string, string> = {
   'modify': 'edit',
   'replace': 'edit',
   'file_edit': 'edit',
+  // Git aliases
+  'git_status': 'git',
+  'git_diff': 'git',
+  'git_stage': 'git',
+  'git_unstage': 'git',
+  'git_commit': 'git',
+  'git_restore': 'git',
+  'git_show': 'git',
+  'git_log': 'git',
+  'version_control': 'git',
+  'vcs': 'git',
+  'source_control': 'git',
 };
 
 // Normalize tool name - strip prefixes and apply aliases
@@ -177,7 +196,7 @@ export async function executeTools(
 }
 
 // Re-export individual tools
-export { viewTool, globTool, grepTool, bashTool, writeTool, editTool };
+export { viewTool, globTool, grepTool, bashTool, writeTool, editTool, gitTool };
 
 // Re-export permission system
 export {
@@ -189,3 +208,12 @@ export {
   PermissionTracker,
   permissionTracker,
 } from './permissions';
+
+// Re-export git permission helpers
+export {
+  getGitActionPermission,
+  isDestructiveAction,
+  WRITE_ACTIONS as GIT_WRITE_ACTIONS,
+  DESTRUCTIVE_ACTIONS as GIT_DESTRUCTIVE_ACTIONS,
+  READ_ACTIONS as GIT_READ_ACTIONS,
+} from './git';

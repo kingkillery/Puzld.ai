@@ -1,0 +1,131 @@
+{
+  "name": "File Edit Tasks",
+  "description": "Tasks that require modifying single or multiple files",
+  "tasks": [
+    {
+      "id": "edit-single-01-add-comment",
+      "category": "edit-single",
+      "description": "Add a comment to a function",
+      "prompt": "Add a JSDoc comment to the normalizeToolName function in src/agentic/agent-loop.ts explaining what it does.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "edit", "glob"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 10
+      },
+      "verification": {
+        "filesModified": ["src/agentic/agent-loop.ts"],
+        "outputContains": ["comment", "added"]
+      },
+      "tags": ["edit", "single-file", "comment"]
+    },
+    {
+      "id": "edit-single-02-rename-variable",
+      "category": "edit-single",
+      "description": "Rename a local variable in a function",
+      "prompt": "In the parseToolCalls function in src/agentic/agent-loop.ts, rename the 'calls' variable to 'toolCalls'.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "edit"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 15
+      },
+      "verification": {
+        "filesModified": ["src/agentic/agent-loop.ts"],
+        "outputContains": ["renamed", "toolCalls"]
+      },
+      "tags": ["edit", "single-file", "rename"]
+    },
+    {
+      "id": "edit-single-03-add-export",
+      "category": "edit-single",
+      "description": "Export an existing function",
+      "prompt": "Export the buildPrompt function in src/agentic/agent-loop.ts (currently it's not exported).",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "edit", "grep"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 10
+      },
+      "verification": {
+        "filesModified": ["src/agentic/agent-loop.ts"],
+        "outputContains": ["export"]
+      },
+      "tags": ["edit", "single-file", "export"]
+    },
+    {
+      "id": "edit-single-04-fix-typo",
+      "category": "edit-single",
+      "description": "Fix a typo in a comment or string",
+      "prompt": "Look for any typos in comments in src/agentic/tools/types.ts and fix them if found. If no typos, report that the file is clean.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "edit", "grep"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 10
+      },
+      "verification": {
+        "outputNotContains": ["error", "failed"]
+      },
+      "tags": ["edit", "single-file", "typo"]
+    },
+    {
+      "id": "edit-single-05-add-type",
+      "category": "edit-single",
+      "description": "Add a type annotation to a variable",
+      "prompt": "In src/agentic/agent-loop.ts, ensure all function parameters have explicit type annotations. Focus on the main exported functions.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "edit"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 15
+      },
+      "verification": {
+        "filesModified": ["src/agentic/agent-loop.ts"]
+      },
+      "tags": ["edit", "single-file", "types"]
+    },
+    {
+      "id": "edit-multi-01-add-alias",
+      "category": "edit-multi",
+      "description": "Add a tool alias across multiple files",
+      "prompt": "Add a new alias 'file_view' that maps to 'view' in both src/agentic/agent-loop.ts and src/agentic/tools/index.ts where TOOL_ALIASES is defined.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "edit", "grep", "glob"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 15
+      },
+      "verification": {
+        "filesModified": ["src/agentic/agent-loop.ts", "src/agentic/tools/index.ts"],
+        "outputContains": ["file_view", "view"]
+      },
+      "tags": ["edit", "multi-file", "alias"]
+    },
+    {
+      "id": "edit-multi-02-update-exports",
+      "category": "edit-multi",
+      "description": "Update exports in multiple files",
+      "prompt": "Add a new type 'ToolExecutionError' to src/agentic/tools/types.ts and export it from src/agentic/tools/index.ts. The type should have 'message: string' and 'toolName: string' properties.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "edit", "glob"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 15
+      },
+      "verification": {
+        "filesModified": ["src/agentic/tools/types.ts", "src/agentic/tools/index.ts"],
+        "outputContains": ["ToolExecutionError"]
+      },
+      "tags": ["edit", "multi-file", "types"]
+    },
+    {
+      "id": "edit-multi-03-consistent-naming",
+      "category": "edit-multi",
+      "description": "Ensure consistent naming across files",
+      "prompt": "Check that the TOOL_ALIASES constant has the same entries in src/agentic/agent-loop.ts and src/agentic/tools/index.ts. Report any differences.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "grep", "edit"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 15
+      },
+      "verification": {
+        "outputContains": ["TOOL_ALIASES"]
+      },
+      "tags": ["edit", "multi-file", "consistency"]
+    }
+  ]
+}

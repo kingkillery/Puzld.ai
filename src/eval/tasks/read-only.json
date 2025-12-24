@@ -1,0 +1,124 @@
+{
+  "name": "Read-Only Code Questions",
+  "description": "Tasks that only require reading and analyzing code - no modifications allowed",
+  "tasks": [
+    {
+      "id": "read-01-find-functions",
+      "category": "read",
+      "description": "Find all exported functions in a TypeScript file",
+      "prompt": "List all exported functions in src/agentic/tools/index.ts. Just list their names.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "glob", "grep"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 10,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["executeTool", "executeTools", "getTool"],
+        "filesNotModified": ["src/agentic/tools/index.ts"]
+      },
+      "tags": ["read", "typescript", "functions"]
+    },
+    {
+      "id": "read-02-find-imports",
+      "category": "read",
+      "description": "Find all imports in the agent loop file",
+      "prompt": "What modules are imported in src/agentic/agent-loop.ts? List the import sources.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "glob", "grep"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 10,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["types", "tools", "glob", "fs"],
+        "filesNotModified": ["src/agentic/agent-loop.ts"]
+      },
+      "tags": ["read", "typescript", "imports"]
+    },
+    {
+      "id": "read-03-count-files",
+      "category": "read",
+      "description": "Count TypeScript files in a directory",
+      "prompt": "How many TypeScript files (.ts) are in the src/agentic/ directory?",
+      "expectedBehavior": {
+        "toolsAllowed": ["glob", "view"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 5,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputNotContains": ["error", "failed", "not found"]
+      },
+      "tags": ["read", "glob", "count"]
+    },
+    {
+      "id": "read-04-find-interface",
+      "category": "read",
+      "description": "Find interface definitions in a file",
+      "prompt": "What interfaces are defined in src/agentic/tools/types.ts? List their names.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "grep"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 10,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["Tool", "ToolCall", "ToolResult"],
+        "filesNotModified": ["src/agentic/tools/types.ts"]
+      },
+      "tags": ["read", "typescript", "interfaces"]
+    },
+    {
+      "id": "read-05-search-pattern",
+      "category": "read",
+      "description": "Search for a pattern across files",
+      "prompt": "Find all files that contain the string 'MAX_ITERATIONS'. List the file paths.",
+      "expectedBehavior": {
+        "toolsAllowed": ["grep", "glob", "view"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 10,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["agent-loop"],
+        "outputNotContains": ["modified", "wrote", "created"]
+      },
+      "tags": ["read", "grep", "search"]
+    },
+    {
+      "id": "read-06-analyze-exports",
+      "category": "read",
+      "description": "Analyze what a module exports",
+      "prompt": "What does the src/adapters/index.ts file export? List the exported items.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "grep"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 10,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["adapters"],
+        "filesNotModified": ["src/adapters/index.ts"]
+      },
+      "tags": ["read", "exports", "module"]
+    },
+    {
+      "id": "read-07-find-constants",
+      "category": "read",
+      "description": "Find constant definitions",
+      "prompt": "What constants are defined at the top of src/agentic/agent-loop.ts?",
+      "expectedBehavior": {
+        "toolsAllowed": ["view"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 5,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["MAX_ITERATIONS", "READ_TOOLS", "WRITE_TOOLS", "EXEC_TOOLS"],
+        "filesNotModified": ["src/agentic/agent-loop.ts"]
+      },
+      "tags": ["read", "constants"]
+    }
+  ]
+}

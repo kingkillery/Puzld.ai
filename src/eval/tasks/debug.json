@@ -1,0 +1,88 @@
+{
+  "name": "Debugging Tasks",
+  "description": "Tasks that require identifying and fixing bugs or issues",
+  "tasks": [
+    {
+      "id": "debug-01-find-error-handling",
+      "category": "debug",
+      "description": "Identify missing error handling",
+      "prompt": "Review the executeTool function in src/agentic/tools/index.ts. Identify any potential error handling issues or edge cases that aren't covered.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "grep", "glob"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 15
+      },
+      "verification": {
+        "outputContains": ["error", "catch", "try"],
+        "filesNotModified": ["src/agentic/tools/index.ts"]
+      },
+      "tags": ["debug", "error-handling", "review"]
+    },
+    {
+      "id": "debug-02-type-safety",
+      "category": "debug",
+      "description": "Find type safety issues",
+      "prompt": "Look for any type safety issues in src/agentic/agent-loop.ts where 'as unknown' or 'as any' casts are used. Report each instance and suggest better typing.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "grep"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 10
+      },
+      "verification": {
+        "outputContains": ["unknown", "type"],
+        "filesNotModified": ["src/agentic/agent-loop.ts"]
+      },
+      "tags": ["debug", "types", "safety"]
+    },
+    {
+      "id": "debug-03-edge-cases",
+      "category": "debug",
+      "description": "Identify edge cases in parsing",
+      "prompt": "Review the parseToolCalls function in src/agentic/agent-loop.ts. What edge cases might cause it to fail or behave unexpectedly? List potential issues.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view"],
+        "toolsDenied": ["write", "edit", "bash"],
+        "maxIterations": 10,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["JSON", "parse"],
+        "filesNotModified": ["src/agentic/agent-loop.ts"]
+      },
+      "tags": ["debug", "parsing", "edge-cases"]
+    },
+    {
+      "id": "debug-04-security-review",
+      "category": "debug",
+      "description": "Security review of tool execution",
+      "prompt": "Review the bash tool for any security concerns. Look at how commands are executed and whether there are any injection risks. Report findings.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "grep", "glob"],
+        "toolsDenied": ["bash", "write", "edit"],
+        "maxIterations": 15,
+        "mustNotWrite": true
+      },
+      "verification": {
+        "outputContains": ["command", "security"],
+        "outputNotContains": ["rm -rf", "sudo"]
+      },
+      "tags": ["debug", "security", "bash"]
+    },
+    {
+      "id": "debug-05-race-condition",
+      "category": "debug",
+      "description": "Find potential race conditions",
+      "prompt": "Review the agent loop in src/agentic/agent-loop.ts for any potential race conditions or async issues. Look for places where await might be missing or promises not properly handled.",
+      "expectedBehavior": {
+        "toolsAllowed": ["view", "grep"],
+        "toolsDenied": ["bash"],
+        "maxIterations": 15
+      },
+      "verification": {
+        "outputContains": ["async", "await"],
+        "filesNotModified": ["src/agentic/agent-loop.ts"]
+      },
+      "tags": ["debug", "async", "race-condition"]
+    }
+  ]
+}

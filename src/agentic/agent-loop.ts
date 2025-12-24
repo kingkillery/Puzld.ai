@@ -12,6 +12,7 @@ import {
   type PermissionHandler,
   permissionTracker
 } from './tools/permissions';
+import { isAbsolutePath, joinPaths, normalizePath } from '../lib/paths';
 import { getContextLimit, type UnifiedMessage, getTextContent } from '../context/unified-message';
 import { prepareContextForAgent } from '../context/context-manager';
 
@@ -752,11 +753,15 @@ async function checkAndRequestPermission(
   // For glob/grep tools, prefer pattern for display (even if path is also provided)
   if (pattern && (toolName === 'glob' || toolName === 'grep')) {
     // For glob/grep, use the search directory as base path for auto-approval
-    const searchDir = filePath ? (filePath.startsWith('/') ? filePath : `${cwd}/${filePath}`) : cwd;
+    // Use cross-platform path utilities for consistent handling
+    const searchDir = filePath
+      ? (isAbsolutePath(filePath) ? normalizePath(filePath) : joinPaths(cwd, filePath))
+      : cwd;
     fullPath = searchDir;
     displayTarget = pattern;
   } else if (filePath) {
-    fullPath = filePath.startsWith('/') ? filePath : `${cwd}/${filePath}`;
+    // Use cross-platform path handling instead of direct string concatenation
+    fullPath = isAbsolutePath(filePath) ? normalizePath(filePath) : joinPaths(cwd, filePath);
     displayTarget = fullPath;
   } else if (pattern) {
     // Fallback for other tools with pattern

@@ -10,6 +10,7 @@
 import { resolve, dirname, join } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import type { FileStructure, ImportInfo } from './ast-parser';
+import { isAbsolutePath, toForwardSlash } from '../lib/paths';
 
 export interface DependencyNode {
   /** Absolute path to the file */
@@ -132,8 +133,8 @@ function resolveImportPath(
 
   let basePath: string;
 
-  // Check if it's a relative import
-  if (moduleSpecifier.startsWith('.') || moduleSpecifier.startsWith('/')) {
+  // Check if it's a relative import (handles Windows paths too)
+  if (moduleSpecifier.startsWith('.') || isAbsolutePath(moduleSpecifier)) {
     basePath = resolve(fromDir, moduleSpecifier);
   } else {
     // Check path aliases

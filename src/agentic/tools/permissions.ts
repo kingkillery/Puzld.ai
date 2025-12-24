@@ -1,5 +1,7 @@
 // Permission system for tool execution
 
+import { isSubPath, getDirectory, normalizePath } from '../../lib/paths';
+
 export type PermissionAction = 'read' | 'write' | 'execute';
 
 export type PermissionDecision =
@@ -37,13 +39,16 @@ export class PermissionTracker {
 
   /**
    * Check if an action is already auto-approved
+   * Uses cross-platform path comparison to handle Windows/Unix differences
    */
   isAutoApproved(action: PermissionAction, path?: string): boolean {
     if (action === 'read') {
       if (this.allowAllReads) return true;
       if (path) {
         for (const dir of this.allowedReadDirs) {
-          if (path.startsWith(dir)) return true;
+          // Use isSubPath for proper cross-platform comparison
+          // Handles: C:\foo vs c:/foo, trailing slashes, case sensitivity
+          if (isSubPath(path, dir)) return true;
         }
       }
     }
@@ -51,7 +56,8 @@ export class PermissionTracker {
       if (this.allowAllWrites) return true;
       if (path) {
         for (const dir of this.allowedWriteDirs) {
-          if (path.startsWith(dir)) return true;
+          // Use isSubPath for proper cross-platform comparison
+          if (isSubPath(path, dir)) return true;
         }
       }
     }
@@ -63,6 +69,7 @@ export class PermissionTracker {
 
   /**
    * Record an approval decision for future auto-approval
+   * Normalizes paths for consistent cross-platform storage
    */
   recordApproval(action: PermissionAction, decision: PermissionDecision, path?: string): void {
     if (decision === 'allow_all') {
@@ -71,7 +78,9 @@ export class PermissionTracker {
       if (action === 'execute') this.allowAllExecute = true;
     }
     if (decision === 'allow_dir' && path) {
-      const dir = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '.';
+      // Use getDirectory for cross-platform directory extraction
+      // Handles both forward and backslash separators
+      const dir = normalizePath(getDirectory(path));
       if (action === 'read') this.allowedReadDirs.add(dir);
       if (action === 'write') this.allowedWriteDirs.add(dir);
     }

@@ -20,6 +20,7 @@ import {
 } from 'ts-morph';
 import { existsSync } from 'fs';
 import { relative, extname } from 'path';
+import { toForwardSlash, isAbsolutePath } from '../lib/paths';
 
 export interface ParameterInfo {
   name: string;
@@ -231,7 +232,8 @@ function extractStructure(sourceFile: SourceFile, filePath: string, rootDir: str
       namedImports,
       defaultImport,
       namespaceImport,
-      isRelative: moduleSpecifier.startsWith('.') || moduleSpecifier.startsWith('/'),
+      // Use cross-platform path check for relative imports
+      isRelative: moduleSpecifier.startsWith('.') || isAbsolutePath(moduleSpecifier),
     });
   }
 

@@ -8,6 +8,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { homedir } from 'os';
+import { normalizePath, isSubPath, pathsEqual } from '../lib/paths';
 
 export interface TrustConfig {
   trusted: string[];
@@ -48,19 +49,23 @@ export function saveTrustConfig(config: TrustConfig): void {
 
 /**
  * Check if a path matches a pattern (supports * wildcard for subdirs)
+ * Uses cross-platform path utilities for consistent Windows/Unix handling
  */
 function matchesPattern(path: string, pattern: string): boolean {
-  const normalizedPath = resolve(path);
-  const normalizedPattern = resolve(pattern.replace(/\/\*$/, ''));
+  // Remove trailing wildcard for comparison
+  const cleanPattern = pattern.replace(/\/\*$/, '').replace(/\\\*$/, '');
+  const normalizedPath = normalizePath(path);
+  const normalizedPattern = normalizePath(cleanPattern);
 
-  // Exact match
-  if (normalizedPath === normalizedPattern) {
+  // Exact match (handles case sensitivity on Windows)
+  if (pathsEqual(normalizedPath, normalizedPattern)) {
     return true;
   }
 
-  // Wildcard match (pattern ends with /*)
-  if (pattern.endsWith('/*')) {
-    return normalizedPath.startsWith(normalizedPattern + '/');
+  // Wildcard match (pattern ends with /* or \*)
+  if (pattern.endsWith('/*') || pattern.endsWith('\\*')) {
+    // Use isSubPath for proper cross-platform subpath detection
+    return isSubPath(normalizedPath, normalizedPattern);
   }
 
   return false;
@@ -71,7 +76,7 @@ function matchesPattern(path: string, pattern: string): boolean {
  */
 export function isDirectoryTrusted(directory: string): boolean {
   const config = loadTrustConfig();
-  const normalizedDir = resolve(directory);
+  const normalizedDir = normalizePath(directory);
 
   // Check denied list first
   for (const pattern of config.denied) {
@@ -95,7 +100,7 @@ export function isDirectoryTrusted(directory: string): boolean {
  */
 export function trustDirectory(directory: string, includeSubdirs = false): void {
   const config = loadTrustConfig();
-  const normalizedDir = resolve(directory);
+  const normalizedDir = normalizePath(directory);
   const entry = includeSubdirs ? `${normalizedDir}/*` : normalizedDir;
 
   // Remove from denied if present
@@ -114,12 +119,12 @@ export function trustDirectory(directory: string, includeSubdirs = false): void 
  */
 export function untrustDirectory(directory: string): void {
   const config = loadTrustConfig();
-  const normalizedDir = resolve(directory);
+  const normalizedDir = normalizePath(directory);
 
-  // Remove from trusted
+  // Remove from trusted using cross-platform path comparison
   config.trusted = config.trusted.filter(t => {
-    const pattern = t.replace(/\/\*$/, '');
-    return resolve(pattern) !== normalizedDir;
+    const pattern = t.replace(/\/\*$/, '').replace(/\\\*$/, '');
+    return !pathsEqual(normalizePath(pattern), normalizedDir);
   });
 
   saveTrustConfig(config);
@@ -130,7 +135,7 @@ export function untrustDirectory(directory: string): void {
  */
 export function denyDirectory(directory: string): void {
   const config = loadTrustConfig();
-  const normalizedDir = resolve(directory);
+  const normalizedDir = normalizePath(directory);
 
   // Remove from trusted
   config.trusted = config.trusted.filter(t => !matchesPattern(normalizedDir, t));
