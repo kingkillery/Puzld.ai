@@ -44,7 +44,8 @@ export const codexSafeAdapter: Adapter & {
     if (!config.adapters.codex.enabled) return false;
 
     try {
-      await execa('which', [config.adapters.codex.path]);
+      const command = process.platform === 'win32' ? 'where' : 'which';
+      await execa(command, [config.adapters.codex.path]);
       return true;
     } catch {
       return false;

@@ -10,7 +10,8 @@ export const mistralAdapter: Adapter = {
     if (!config.adapters.mistral?.enabled) return false;
 
     try {
-      await execa('which', [config.adapters.mistral.path || 'vibe']);
+      const command = process.platform === 'win32' ? 'where' : 'which';
+      await execa(command, [config.adapters.mistral.path || 'vibe']);
       return true;
     } catch {
       return false;

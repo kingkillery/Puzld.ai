@@ -16,7 +16,8 @@ export const factoryAdapter: Adapter = {
 
     try {
       // Check if droid CLI is available
-      await execa('which', [config.adapters.factory.path || 'droid']);
+      const command = process.platform === 'win32' ? 'where' : 'which';
+      await execa(command, [config.adapters.factory.path || 'droid']);
       return true;
     } catch {
       return false;

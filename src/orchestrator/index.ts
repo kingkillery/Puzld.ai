@@ -37,11 +37,13 @@ export async function orchestrate(
 
   // Auto-routing mode
   let selectedAgent = config.fallbackAgent;
+  let routerFallbackReason: string | undefined;
 
   // Try to use router if available
   if (await isRouterAvailable()) {
     const route = await routeTask(task);
     selectedAgent = route.agent;
+    routerFallbackReason = route.fallbackReason;
 
     if (config.logLevel === 'debug') {
       console.log(`[router] Selected: ${route.agent} (confidence: ${route.confidence})`);
@@ -61,12 +63,16 @@ export async function orchestrate(
     // Try fallback
     const fallbackAdapter = adapters[config.fallbackAgent];
     if (fallbackAdapter && (await fallbackAdapter.isAvailable())) {
+      if (routerFallbackReason) {
+        console.log(`[orchestrator] Router fallback to ${config.fallbackAgent}: ${routerFallbackReason}`);
+      }
       return fallbackAdapter.run(task, options);
     }
 
     // Try any available adapter
-    for (const [, adp] of Object.entries(adapters)) {
+    for (const [name, adp] of Object.entries(adapters)) {
       if (await adp.isAvailable()) {
+        console.log(`[orchestrator] Using available agent: ${name} (preferred ${selectedAgent} unavailable)`);
         return adp.run(task, options);
       }
     }

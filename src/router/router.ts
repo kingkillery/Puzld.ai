@@ -44,20 +44,26 @@ export async function routeTask(task: string): Promise<RouteResult> {
     }
 
     if (parsed.confidence < config.confidenceThreshold) {
+      console.log(`[router] Low confidence (${parsed.confidence.toFixed(2)} < ${config.confidenceThreshold}) - using fallback agent: ${config.fallbackAgent}`);
+      console.log(`[router] Fix: Start Ollama service, adjust confidenceThreshold in config, or specify agent directly`);
       return {
         agent: config.fallbackAgent as RouteResult['agent'],
         confidence: 1.0,
-        taskType: 'fallback'
+        taskType: 'fallback',
+        fallbackReason: `Router confidence (${parsed.confidence.toFixed(2)}) below threshold (${config.confidenceThreshold})`
       };
     }
 
     return parsed as RouteResult;
-  } catch {
-    // Silent fallback - TUI shows router status separately
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'Unknown error';
+    console.log(`[router] Unavailable - ${reason}. Using fallback agent: ${config.fallbackAgent}`);
+    console.log(`[router] Fix: Start Ollama service (ollama serve) or change routerModel in config`);
     return {
       agent: config.fallbackAgent as RouteResult['agent'],
       confidence: 1.0,
-      taskType: 'fallback'
+      taskType: 'fallback',
+      fallbackReason: `Router unavailable: ${reason}`
     };
   }
 }

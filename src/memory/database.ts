@@ -236,6 +236,34 @@ function runMigrations(database: Database.Database): void {
 
     database.prepare("UPDATE metadata SET value = '3' WHERE key = 'schema_version'").run();
   }
+
+  // Migration 4: Add diff_tracking table for individual diff decisions
+  if (currentVersion < 4) {
+    database.exec(`
+      -- Track individual diff decisions for detailed analysis
+      CREATE TABLE IF NOT EXISTS diff_tracking (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        observation_id INTEGER NOT NULL,
+        file_path TEXT NOT NULL,
+        operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete')),
+        decision TEXT NOT NULL CHECK(decision IN ('accepted', 'rejected', 'user_edited')),
+        diff_content TEXT,
+        hash_before TEXT,
+        hash_after TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (observation_id) REFERENCES observations(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_diff_tracking_observation
+        ON diff_tracking(observation_id);
+      CREATE INDEX IF NOT EXISTS idx_diff_tracking_decision
+        ON diff_tracking(decision);
+      CREATE INDEX IF NOT EXISTS idx_diff_tracking_timestamp
+        ON diff_tracking(created_at DESC);
+    `);
+
+    database.prepare("UPDATE metadata SET value = '4' WHERE key = 'schema_version'").run();
+  }
 }
 
 /**

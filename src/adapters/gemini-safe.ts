@@ -44,7 +44,8 @@ export const geminiSafeAdapter: Adapter & {
     if (!config.adapters.gemini.enabled) return false;
 
     try {
-      await execa('which', [config.adapters.gemini.path]);
+      const command = process.platform === 'win32' ? 'where' : 'which';
+      await execa(command, [config.adapters.gemini.path]);
       return true;
     } catch {
       return false;

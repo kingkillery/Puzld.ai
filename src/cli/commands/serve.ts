@@ -113,7 +113,8 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     if (options.web && config.ttyd.enabled) {
       const ttydPort = options.terminalPort || config.ttyd.port;
       try {
-        await execa('which', ['ttyd']);
+        const command = process.platform === 'win32' ? 'where' : 'which';
+        await execa(command, ['ttyd']);
 
         // Use the current runtime and script to launch agent mode
         const runtime = process.argv[0]; // bun or node

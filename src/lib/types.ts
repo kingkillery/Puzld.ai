@@ -33,6 +33,8 @@ export interface RouteResult {
   confidence: number;
   reasoning?: string;
   taskType?: string;
+  /** Human-readable reason why fallback occurred (if taskType === 'fallback') */
+  fallbackReason?: string;
 }
 
 export interface CheckResult {

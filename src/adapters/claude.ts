@@ -23,7 +23,8 @@ export const claudeAdapter: Adapter & {
     if (!config.adapters.claude.enabled) return false;
 
     try {
-      await execa('which', [config.adapters.claude.path]);
+      const command = process.platform === 'win32' ? 'where' : 'which';
+      await execa(command, [config.adapters.claude.path]);
       return true;
     } catch {
       return false;

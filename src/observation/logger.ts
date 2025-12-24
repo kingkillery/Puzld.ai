@@ -5,6 +5,7 @@
  * Captures: prompts, responses, review decisions, user edits.
  */
 
+import { createHash } from 'crypto';
 import { getDatabase } from '../memory/database';
 import { addMemory } from '../memory/vector-store';
 
@@ -280,4 +281,133 @@ export function getObservationStats(): {
     withAccepted,
     withRejected
   };
+}
+
+/**
+ * Diff Tracking - Track individual file decisions for detailed analysis
+ */
+
+export interface DiffTrackingEntry {
+  observationId: number;
+  filePath: string;
+  operation: 'create' | 'update' | 'delete';
+  decision: 'accepted' | 'rejected' | 'user_edited';
+  diffContent?: string;
+  hashBefore?: string;
+  hashAfter?: string;
+  createdAt?: number;
+}
+
+/**
+ * Compute SHA-256 hash of content
+ */
+function computeHash(content: string): string {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+/**
+ * Track a single diff decision
+ */
+export function trackDiffDecision(entry: DiffTrackingEntry): number {
+  const db = getDatabase();
+
+  const result = db.prepare(`
+    INSERT INTO diff_tracking (
+      observation_id, file_path, operation, decision,
+      diff_content, hash_before, hash_after, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    entry.observationId,
+    entry.filePath,
+    entry.operation,
+    entry.decision,
+    entry.diffContent || null,
+    entry.hashBefore || null,
+    entry.hashAfter || null,
+    entry.createdAt || Date.now()
+  );
+
+  return result.lastInsertRowid as number;
+}
+
+/**
+ * Track multiple diff decisions (batch insert)
+ */
+export function trackDiffDecisions(entries: DiffTrackingEntry[]): number[] {
+  const db = getDatabase();
+
+  const stmt = db.prepare(`
+    INSERT INTO diff_tracking (
+      observation_id, file_path, operation, decision,
+      diff_content, hash_before, hash_after, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const ids: number[] = [];
+  for (const entry of entries) {
+    const result = stmt.run(
+      entry.observationId,
+      entry.filePath,
+      entry.operation,
+      entry.decision,
+      entry.diffContent || null,
+      entry.hashBefore || null,
+      entry.hashAfter || null,
+      entry.createdAt || Date.now()
+    );
+    ids.push(result.lastInsertRowid as number);
+  }
+
+  return ids;
+}
+
+/**
+ * Get diff tracking entries for an observation
+ */
+export function getDiffTracking(observationId: number): DiffTrackingEntry[] {
+  const db = getDatabase();
+
+  const rows = db.prepare(`
+    SELECT
+      observation_id as observationId,
+      file_path as filePath,
+      operation,
+      decision,
+      diff_content as diffContent,
+      hash_before as hashBefore,
+      hash_after as hashAfter,
+      created_at as createdAt
+    FROM diff_tracking
+    WHERE observation_id = ?
+    ORDER BY created_at
+  `).all(observationId) as DiffTrackingEntry[];
+
+  return rows;
+}
+
+/**
+ * Get diff tracking stats
+ */
+export function getDiffTrackingStats(): {
+  total: number;
+  accepted: number;
+  rejected: number;
+  userEdited: number;
+  byOperation: Record<string, number>;
+} {
+  const db = getDatabase();
+
+  const total = (db.prepare('SELECT COUNT(*) as count FROM diff_tracking').get() as { count: number }).count;
+
+  const accepted = (db.prepare("SELECT COUNT(*) as count FROM diff_tracking WHERE decision = 'accepted'").get() as { count: number }).count;
+  const rejected = (db.prepare("SELECT COUNT(*) as count FROM diff_tracking WHERE decision = 'rejected'").get() as { count: number }).count;
+  const userEdited = (db.prepare("SELECT COUNT(*) as count FROM diff_tracking WHERE decision = 'user_edited'").get() as { count: number }).count;
+
+  const byOpRows = db.prepare('SELECT operation, COUNT(*) as count FROM diff_tracking GROUP BY operation').all() as Array<{ operation: string; count: number }>;
+  const byOperation: Record<string, number> = {};
+  for (const row of byOpRows) {
+    byOperation[row.operation] = row.count;
+  }
+
+  return { total, accepted, rejected, userEdited, byOperation };
 }

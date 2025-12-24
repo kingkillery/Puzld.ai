@@ -74,6 +74,8 @@ PuzldAI is a terminal-native framework for orchestrating multiple AI agents. Rou
 | Codex | OpenAI | [Codex CLI](https://openai.com) | ⚠️ Auto-reads files | Use `codex-safe` |
 
 > **Safety Note:** Claude, Ollama, and Mistral respect our permission system fully. Gemini and Codex auto-read files - use their `-safe` wrapper adapters for production. See [PROVIDER_SUPPORT_MATRIX.md](PROVIDER_SUPPORT_MATRIX.md) for details.
+>
+> **Orchestration Modes:** See [MODES.md](MODES.md) for comprehensive documentation of all orchestration modes, workflows, and CLI examples.
 
 ---
 

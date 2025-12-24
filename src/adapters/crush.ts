@@ -16,7 +16,8 @@ export const crushAdapter: Adapter = {
 
     try {
       // Check if crush CLI is available
-      await execa('which', [config.adapters.crush.path || 'crush']);
+      const command = process.platform === 'win32' ? 'where' : 'which';
+      await execa(command, [config.adapters.crush.path || 'crush']);
       return true;
     } catch {
       return false;
