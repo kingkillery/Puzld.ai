@@ -474,10 +474,7 @@ async function handleCompareMode(
   });
 
   // Execute via executor with timeout
-  const executionPromise = execute(comparePlan, {
-    adapters,
-    cwd: process.cwd()
-  });
+  const executionPromise = execute(comparePlan);
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
@@ -500,19 +497,9 @@ async function handleCompareMode(
     output = responses || 'No responses received';
   }
 
-  // Sum tokens from all steps
-  const totalTokens = (result.results || []).reduce(
-    (acc, r) => ({
-      input: acc.input + (r.tokens?.input || 0),
-      output: acc.output + (r.tokens?.output || 0)
-    }),
-    { input: 0, output: 0 }
-  );
-
   sendResult(executionId, {
     status: 'completed',
     output,
-    tokens: totalTokens,
     duration: Date.now() - startTime
   });
 }

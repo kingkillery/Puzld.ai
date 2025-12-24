@@ -46,6 +46,7 @@
     "@types/bun": "^1.1.14",
     "@types/diff": "^7.0.2",
     "@types/node": "^22.10.1",
+    "@types/react": "^19.2.7",
     "typescript": "^5.7.2"
   },
   "engines": {

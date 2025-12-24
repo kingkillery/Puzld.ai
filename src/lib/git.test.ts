@@ -8,10 +8,7 @@
  * 4. Error handling for non-repo directories
  */
 
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
-
-// Mock the exec function
-const mockExec = mock(() => Promise.resolve({ stdout: '', stderr: '' }));
+import { describe, it, expect } from 'bun:test';
 
 // We'll test the parsing logic by mocking execAsync responses
 // For actual git operations, we rely on integration tests

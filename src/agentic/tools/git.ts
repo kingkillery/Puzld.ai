@@ -149,7 +149,7 @@ EXAMPLES:
   },
 
   async execute(params: Record<string, unknown>, cwd: string): Promise<ToolResult> {
-    const { action, file, message, commit: commitRef, count } = params as GitToolParams;
+    const { action, file, message, commit: commitRef, count } = params as unknown as GitToolParams;
 
     // Validate action
     const validActions: GitAction[] = [

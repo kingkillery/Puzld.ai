@@ -17,7 +17,7 @@ const SECRET_PATTERNS = [
   { pattern: /(?:sk-[a-zA-Z0-9]{20,})/gi, name: 'stripe_key' }, // Stripe
   { pattern: /(?:AIza[a-zA-Z0-9_-]{35})/gi, name: 'google_key' }, // Google
   { pattern: /(?:AKIA[a-zA-Z0-9]{16})/gi, name: 'aws_key' }, // AWS Access Key
-  { pattern: /(?:Bearer\s+)([a-zA-Z0-9_-\.=]+)/gi, name: 'bearer_token' },
+  { pattern: /(?:Bearer\s+)([a-zA-Z0-9_.=-]+)/gi, name: 'bearer_token' },
   { pattern: /(?:token["']?\s*[:=]\s*["']?)([a-zA-Z0-9_-]{20,})["']?/gi, name: 'token' },
   
   // JWT tokens

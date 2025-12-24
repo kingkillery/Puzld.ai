@@ -11,6 +11,7 @@ import { getConfig, loadConfig } from '../lib/config';
 import { adapters } from '../adapters';
 import { runAgentLoop } from '../agentic/agent-loop';
 import { registerWithMCP, startHeartbeat, stopHeartbeat } from './registration';
+import { getAgentModelOptions } from '../lib/models';
 import type {
   ExecuteIntent,
   ExecuteResult,
@@ -31,11 +32,18 @@ let bridgeState: BridgeState = {
 // Get current capabilities
 async function getCapabilities(): Promise<CoreCapabilities> {
   const available: string[] = [];
+  const models: Record<string, string> = {};
+  const availableModels: Record<string, string[]> = {};
 
   for (const [name, adapter] of Object.entries(adapters)) {
     try {
       if (await adapter.isAvailable()) {
         available.push(name);
+        // Get available models from adapter
+        const agentModels = getAgentModelOptions(name);
+        if (agentModels.length > 0) {
+          availableModels[name] = agentModels;
+        }
       }
     } catch {
       // Skip unavailable adapters
@@ -45,6 +53,8 @@ async function getCapabilities(): Promise<CoreCapabilities> {
   return {
     agents: available,
     modes: ['run', 'compare', 'pipeline', 'debate', 'consensus', 'correct'],
+    models: {},  // Configured models - can be populated from config if needed
+    availableModels,
     version: process.env.npm_package_version || '0.2.91'
   };
 }
@@ -147,7 +157,6 @@ export function createBridgeApp(): Hono {
         // Single agent execution via agent loop
         const result = await runAgentLoop(adapter, plan.prompt, {
           model: plan.options?.model,
-          timeout: plan.options?.timeout,
           cwd: process.cwd(),
           // No permission handler - MCP executions are trusted
           // No diff preview - MCP executions auto-apply

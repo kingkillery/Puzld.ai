@@ -9,7 +9,7 @@
  * - Subpath detection edge cases
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
+import { describe, test, expect } from 'bun:test';
 import {
   normalizePath,
   toForwardSlash,

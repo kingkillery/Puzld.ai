@@ -13,6 +13,7 @@ import { createInterface } from 'readline';
 
 interface LoginOptions {
   email?: string;         // Email for login
+  token?: string;         // API token for direct login
   endpoint?: string;      // Override MCP endpoint
 }
 

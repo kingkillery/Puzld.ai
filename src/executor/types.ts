@@ -5,9 +5,7 @@
  */
 
 // Agent types - includes both LLM providers and external CLI coding tools
-// NOTE: 'factory-ai-droid' and 'charm-crush' are easter egg games, not production agents
-// Production agents: claude, gemini, codex, ollama, mistral, factory (droid CLI), crush
-export type AgentName = 'claude' | 'gemini' | 'codex' | 'ollama' | 'mistral' | 'factory' | 'crush' | 'factory-ai-droid' | 'charm-crush';
+export type AgentName = 'claude' | 'gemini' | 'codex' | 'ollama' | 'mistral' | 'factory' | 'crush';
 
 // Step action types
 export type StepAction =

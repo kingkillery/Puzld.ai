@@ -446,7 +446,7 @@ export async function runAgentLoop(
     const deduplicatedToolCalls = toolCalls.filter(call => {
       const normalizedName = normalizeToolName(call.name);
       if (normalizedName === 'write' || normalizedName === 'edit') {
-        const filePath = call.arguments.path || call.arguments.file_path || call.arguments.filePath;
+        const filePath = (call.arguments.path || call.arguments.file_path || call.arguments.filePath) as string | undefined;
         if (filePath && seenWriteFiles.has(filePath)) {
           // Skip duplicate write/edit to same file
           results.push({
@@ -705,7 +705,7 @@ function parseToolCalls(content: string): ToolCall[] {
         calls.push({
           id: uniqueId,
           name: parsed.name,
-          arguments: parsed.arguments || {},
+          arguments: (parsed.arguments || {}) as Record<string, unknown>,
         });
       }
     } catch {

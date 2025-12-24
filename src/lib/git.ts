@@ -148,7 +148,8 @@ export async function getGitDiff(cwd: string, file?: string): Promise<GitDiff[]>
   try {
     const fileArg = file ? ` -- "${file}"` : '';
     const diffOutput = await gitExec(cwd, `diff --numstat${fileArg}`);
-    const diffContent = await gitExec(cwd, `diff${fileArg}`);
+    // diffContent available for future hunk extraction
+    void await gitExec(cwd, `diff${fileArg}`);
 
     const diffs: GitDiff[] = [];
 

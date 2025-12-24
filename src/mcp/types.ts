@@ -38,6 +38,10 @@ export interface ExecutionPlan {
   options?: {
     model?: string;
     timeout?: number;
+    // Compare mode options
+    pick?: boolean;
+    models?: string[];
+    includeProjectContext?: boolean;
   };
 }
 

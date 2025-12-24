@@ -147,7 +147,7 @@ interface MockAgentResult {
  */
 async function runMockAgentLoop(
   task: EvalTask,
-  config: EvalRunnerConfig
+  _config: EvalRunnerConfig
 ): Promise<MockAgentResult> {
   const startTime = Date.now();
   const adapter = createMockAdapter();

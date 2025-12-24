@@ -69,7 +69,6 @@ export async function searchCode(
     const memoryResults = await searchMemory(query, {
       type: 'code',
       limit: opts.limit * 2,
-      method: 'fts5',
     });
 
     for (const result of memoryResults) {

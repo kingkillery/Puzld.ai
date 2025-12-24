@@ -9,7 +9,7 @@
  * - Drive letter normalization
  */
 
-import { resolve, normalize, sep } from 'path';
+import { resolve, normalize } from 'path';
 
 /** Check if running on Windows */
 const IS_WINDOWS = process.platform === 'win32';
