@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { runCommand } from './commands/run';
 import { checkCommand } from './commands/check';
 import { serveCommand } from './commands/serve';
+import { mcpStatusCommand } from './commands/mcp-status';
 import { agentCommand } from './commands/agent';
 import { compareCommand } from './commands/compare';
 import { planCommand } from './commands/plan';
@@ -112,6 +113,11 @@ program
     mcpPort: opts.mcpPort ? parseInt(opts.mcpPort, 10) : undefined,
     local: opts.local
   }));
+
+program
+  .command('mcp-status')
+  .description('Show MCP bridge status')
+  .action(() => mcpStatusCommand());
 
 program
   .command('agent')

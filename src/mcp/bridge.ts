@@ -289,3 +289,9 @@ export async function startBridge(options: {
 export function getBridgeState(): BridgeState {
   return { ...bridgeState };
 }
+
+// Export capabilities for status command
+export { getCapabilities };
+
+// Get machine ID (exported for status command)
+export { getMachineId };

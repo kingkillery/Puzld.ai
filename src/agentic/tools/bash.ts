@@ -3,6 +3,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import type { Tool, ToolResult } from './types';
+import { assessBashSafety, formatSafetyMessage } from '../safety/bash-safety';
 
 const execAsync = promisify(exec);
 const TIMEOUT_MS = 30000; // 30 seconds
@@ -45,6 +46,15 @@ EXAMPLES:
 
     if (!command) {
       return { toolCallId: '', content: 'Error: command is required', isError: true };
+    }
+
+    // Safety assessment before execution
+    const safety = assessBashSafety(command);
+    console.error(formatSafetyMessage(safety));
+
+    // Log warning for high-risk commands (they still execute, but with visibility)
+    if (safety.riskLevel === 'high') {
+      console.error(`[WARN] High-risk command detected: ${command}`);
     }
 
     try {

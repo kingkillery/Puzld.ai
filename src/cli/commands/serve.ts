@@ -26,14 +26,18 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
 
     // Use WebSocket client if token available and not forcing local
     if (hasToken && !options.local) {
-      console.log(pc.bold('\nStarting PuzldAI MCP Bridge (WebSocket)\n'));
+      console.log(pc.bold('\nPuzldAI MCP Bridge (WebSocket Mode)\n'));
+
+      // Show connection attempt status
+      console.log(`${pc.cyan('→')} Connecting to ${config.cloud?.endpoint || 'https://api.puzld.cc'}...`);
 
       try {
         await connectToMCP();
 
-        console.log(pc.green('✓ Connected to MCP cloud via WebSocket'));
-        console.log(pc.dim('  Waiting for execution requests from MCP...'));
-        console.log(pc.dim('\nPress Ctrl+C to stop'));
+        console.log(`\n${pc.green('✓ Connected to MCP cloud')}`);
+        console.log(`${pc.dim('Machine ID:')} ${config.cloud?.machineId || 'unknown'}`);
+        console.log(`\n${pc.dim('Waiting for execution requests from MCP...')}`);
+        console.log(`${pc.dim('Press Ctrl+C to stop\n')}`);
 
         // Handle shutdown
         const shutdown = () => {
@@ -49,7 +53,9 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
         setInterval(() => {
           const state = getConnectionState();
           if (!state.connected) {
-            console.log(pc.yellow(`[status] Reconnecting (attempt ${state.reconnectAttempts})...`));
+            console.log(`${pc.yellow('[status]')} Reconnecting (attempt ${state.reconnectAttempts + 1})...`);
+          } else if (state.busy) {
+            console.log(`${pc.dim('[status]')} Executing: ${state.currentExecutionId || 'unknown'}`);
           }
         }, 30000);
 
@@ -57,8 +63,8 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
         await new Promise(() => {});
       } catch (err: unknown) {
         const error = err as Error;
-        console.error(pc.red(`Failed to connect to MCP: ${error.message}`));
-        console.log(pc.yellow('\nFalling back to local HTTP bridge...'));
+        console.error(`\n${pc.red('✗ Connection failed:')} ${error.message}`);
+        console.log(pc.yellow('\nFalling back to local HTTP bridge...\n'));
 
         // Fall through to local bridge
       }
@@ -67,13 +73,16 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     // Local HTTP bridge (fallback or explicit --local)
     if (!isConnected()) {
       const mcpPort = options.mcpPort || config.mcp?.port || 9234;
-      const mcpHost = config.mcp?.host || '127.0.0.1';
+      const mcpHost = options.host || config.mcp?.host || '127.0.0.1';
 
-      console.log(pc.bold('\nStarting PuzldAI MCP Bridge (Local HTTP)\n'));
+      console.log(pc.bold('\nPuzldAI MCP Bridge (Local HTTP Mode)\n'));
 
       if (!hasToken) {
-        console.log(pc.yellow('No MCP token found. Run "puzld login" to connect to cloud.'));
-        console.log(pc.dim('Running in local-only mode.\n'));
+        console.log(`${pc.yellow('⚠ No MCP token found')}`);
+        console.log(`${pc.dim('Run ')}${pc.cyan('"puzld login"')}${pc.dim(' to enable cloud mode')}`);
+        console.log(`${pc.dim('Running in local-only mode.\n')}`);
+      } else {
+        console.log(`${pc.dim('Mode:')} Local HTTP (cloud token available, use --cloud to connect)`);
       }
 
       try {
@@ -83,11 +92,15 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
           register: false  // Don't try to register without WS
         });
 
+        console.log(`${pc.green('✓ Bridge running')}`);
+        console.log(`${pc.dim('Endpoints:')} http://${mcpHost}:${mcpPort}/mcp/*`);
+        console.log(`${pc.dim('\nPress Ctrl+C to stop\n')}`);
+
         // Keep process alive (startBridge handles SIGINT/SIGTERM)
         await new Promise(() => {}); // Never resolves, waits for signal
       } catch (err: unknown) {
         const error = err as Error;
-        console.error(pc.red(`Failed to start MCP bridge: ${error.message}`));
+        console.error(`\n${pc.red('✗ Failed to start bridge:')} ${error.message}`);
         process.exit(1);
       }
     }
