@@ -1,4 +1,4 @@
-// Tool registry - exports all available tools
+// Tool registry - exports all available tools (with semantic caching)
 
 export * from './types';
 
@@ -10,6 +10,7 @@ import { writeTool } from './write';
 import { editTool } from './edit';
 import { gitTool } from './git';
 import type { Tool, ToolCall, ToolResult } from './types';
+import { getSemanticCache } from '../../memory/semantic-cache';
 
 // All available tools
 export const allTools: Tool[] = [
@@ -147,7 +148,10 @@ function normalizeArguments(toolName: string, args: Record<string, unknown>): Re
   return normalized;
 }
 
-// Execute a tool call
+// Tools that benefit from caching (read-only operations)
+const CACHEABLE_TOOLS = new Set(['view', 'glob', 'grep']);
+
+// Execute a tool call (with semantic caching)
 export async function executeTool(
   call: ToolCall,
   cwd: string
@@ -166,7 +170,30 @@ export async function executeTool(
   try {
     // Normalize arguments to match tool parameter names
     const normalizedArgs = normalizeArguments(normalizedName, call.arguments);
+
+    // Check cache for read-only tools
+    if (CACHEABLE_TOOLS.has(normalizedName)) {
+      const cache = getSemanticCache();
+      const cached = cache.get(normalizedName, normalizedArgs);
+
+      if (cached) {
+        // Return cached result with tool call ID
+        return {
+          ...cached,
+          toolCallId: call.id,
+        };
+      }
+    }
+
+    // Execute tool
     const result = await tool.execute(normalizedArgs, cwd);
+
+    // Store in cache if cacheable and successful
+    if (CACHEABLE_TOOLS.has(normalizedName) && !result.isError) {
+      const cache = getSemanticCache();
+      cache.set(normalizedName, normalizedArgs, result);
+    }
+
     return {
       ...result,
       toolCallId: call.id,
@@ -217,3 +244,10 @@ export {
   DESTRUCTIVE_ACTIONS as GIT_DESTRUCTIVE_ACTIONS,
   READ_ACTIONS as GIT_READ_ACTIONS,
 } from './git';
+
+// Re-export semantic cache stats
+export {
+  getSemanticCache,
+  clearSemanticCache,
+  getSemanticCacheStats,
+} from '../../memory/semantic-cache';

@@ -1,8 +1,9 @@
-// Grep tool - Search file contents
+// Grep tool - Search file contents (with semantic enrichment)
 
 import { resolve, relative } from 'path';
 import { readdir, readFile, stat } from 'fs/promises';
-import type { Tool, ToolResult } from './types';
+import type { Tool, ToolResult, SemanticMetadata, SemanticStatistics } from './types';
+import { OutputFormatter } from './format-optimizer';
 
 const MAX_RESULTS = 50;
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
@@ -60,22 +61,74 @@ TIPS:
       const matches = await searchFiles(searchPath, regex, include, cwd);
 
       if (matches.length === 0) {
-        return { toolCallId: '', content: `No matches found for: ${pattern}` };
+        return {
+          toolCallId: '',
+          content: `No matches found for: ${pattern}`,
+          semantic: {
+            summary: `No matches found for "${pattern}"`,
+            statistics: { totalMatches: 0, fileCount: 0 }
+          }
+        };
       }
 
       const truncated = matches.length > MAX_RESULTS;
       const results = matches.slice(0, MAX_RESULTS);
 
+      // Build semantic metadata
+      const fileGroups = groupMatchesByFile(results);
+      const uniqueFiles = Object.keys(fileGroups);
+
+      const statistics: SemanticStatistics = {
+        totalMatches: matches.length,
+        fileCount: uniqueFiles.length,
+        lineCount: results.length
+      };
+
+      // Build concise summary
+      const summary = buildSearchSummary(pattern, statistics, uniqueFiles, truncated);
+
+      // Build context string
+      const context = buildSearchContext(fileGroups, pattern);
+
+      // Generate traditional grep output
       const output = results.map(m =>
         `${m.file}:${m.line}: ${m.content}`
       ).join('\n');
 
-      let result = output;
-      if (truncated) {
-        result += `\n\n(Showing ${MAX_RESULTS} of ${matches.length} matches. Use 'include' to narrow search.)`;
+      // Build semantic metadata
+      const semantic: SemanticMetadata = {
+        summary,
+        statistics,
+        context,
+        entities: uniqueFiles.slice(0, 10).map(file => ({
+          path: file,
+          type: 'file',
+          name: file.split('/').pop() || file
+        }))
+      };
+
+      // Truncate output intelligently if needed
+      const { content: finalContent, truncated: wasTruncated } =
+        OutputFormatter.truncateWithContext(output, 100, semantic);
+
+      if (wasTruncated || truncated) {
+        semantic.context = (semantic.context || '') +
+          `\n\n💡 Showing ${results.length} of ${matches.length} matches. Use 'include' parameter to narrow search.`;
       }
 
-      return { toolCallId: '', content: result };
+      // Format for LLM consumption
+      const formattedContent = OutputFormatter.optimizeForLLM(
+        finalContent,
+        'json',
+        semantic
+      );
+
+      return {
+        toolCallId: '',
+        content: formattedContent,
+        semantic,
+        truncated: wasTruncated || truncated
+      };
     } catch (err) {
       return { toolCallId: '', content: `Error: ${(err as Error).message}`, isError: true };
     }
@@ -164,4 +217,73 @@ function globToRegex(pattern: string): RegExp {
     .replace(/\*/g, '.*')
     .replace(/\?/g, '.');
   return new RegExp(`^${regex}$`, 'i');
+}
+
+/**
+ * Group matches by file for better organization
+ */
+function groupMatchesByFile(matches: Match[]): Record<string, Match[]> {
+  const groups: Record<string, Match[]> = {};
+
+  for (const match of matches) {
+    if (!groups[match.file]) {
+      groups[match.file] = [];
+    }
+    groups[match.file].push(match);
+  }
+
+  return groups;
+}
+
+/**
+ * Build LLM-optimized summary of search results
+ */
+function buildSearchSummary(
+  pattern: string,
+  stats: SemanticStatistics,
+  files: string[],
+  truncated: boolean
+): string {
+  const matchStr = stats.totalMatches === 1 ? 'match' : 'matches';
+  const fileStr = stats.fileCount === 1 ? 'file' : 'files';
+
+  let summary = `Found ${stats.totalMatches} ${matchStr} for "${pattern}" across ${stats.fileCount} ${fileStr}`;
+
+  // Add dominant file type if clear pattern
+  const extensions = files.map(f => f.split('.').pop()).filter(Boolean);
+  const extCounts = extensions.reduce((acc, ext) => {
+    acc[ext!] = (acc[ext!] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const dominantExt = Object.entries(extCounts)
+    .sort(([, a], [, b]) => b - a)[0];
+
+  if (dominantExt && dominantExt[1] > files.length * 0.6) {
+    summary += ` (mostly .${dominantExt[0]} files)`;
+  }
+
+  if (truncated) {
+    summary += ' - results truncated';
+  }
+
+  return summary;
+}
+
+/**
+ * Build contextual information about search results
+ */
+function buildSearchContext(
+  fileGroups: Record<string, Match[]>,
+  pattern: string
+): string {
+  const fileEntries = Object.entries(fileGroups)
+    .sort(([, a], [, b]) => b.length - a.length)
+    .slice(0, 5);
+
+  const topFiles = fileEntries.map(([file, matches]) =>
+    `${file} (${matches.length} ${matches.length === 1 ? 'match' : 'matches'})`
+  );
+
+  return `Most matches in: ${topFiles.join(', ')}`;
 }

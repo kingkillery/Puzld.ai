@@ -23,10 +23,48 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
 }
 
+// Semantic metadata for enriched tool results
+export interface SemanticEntity {
+  path?: string;
+  type: string;
+  name?: string;
+  exports?: string[];
+  lastModified?: string;
+  size?: number;
+  lineCount?: number;
+}
+
+export interface SemanticRelationship {
+  from: string;
+  to: string;
+  type: 'import' | 'reference' | 'extends' | 'implements' | 'calls';
+}
+
+export interface SemanticStatistics {
+  totalMatches?: number;
+  fileCount?: number;
+  lineCount?: number;
+  recentActivity?: string;
+  averageSize?: number;
+}
+
+export interface SemanticMetadata {
+  summary: string;                    // LLM-optimized concise summary
+  entities?: SemanticEntity[];        // Structured entities found
+  relationships?: SemanticRelationship[]; // Dependency/import graph
+  statistics?: SemanticStatistics;    // Usage/context stats
+  context?: string;                   // Additional context for LLM
+  cached?: boolean;                   // Whether result came from cache
+  cacheKey?: string;                  // For semantic cache invalidation
+}
+
 export interface ToolResult {
   toolCallId: string;
   content: string;
   isError?: boolean;
+  semantic?: SemanticMetadata;        // Optional semantic enrichment
+  truncated?: boolean;                // Whether output was truncated
+  fullResultCacheKey?: string;        // Key to retrieve full result
 }
 
 export interface ToolDefinition {
