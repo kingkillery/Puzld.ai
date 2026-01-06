@@ -19,7 +19,7 @@ const DESTRUCTIVE_PATTERNS: { pattern: RegExp; reason: string }[] = [
   { pattern: /rd\s+\/s\b/i, reason: 'Windows remove directory recursive' },
   
   // Disk/formats
-  { pattern: /\bformat\b.*\/[cyp]/i, reason: 'Disk format command' },
+  { pattern: /\bformat\b.*\//i, reason: 'Disk format command' },
   { pattern: /\bmkfs\b/i, reason: 'Filesystem creation' },
   { pattern: /\bdiskpart\b/i, reason: 'Disk partitioning utility' },
   { pattern: /\bfdisk\b/i, reason: 'Disk partitioning utility' },
@@ -145,19 +145,8 @@ const CONFIRMATION_DENYLIST: RegExp[] = [
 
 export function assessBashSafety(command: string): SafetyAssessment {
   const trimmed = command.trim();
-  
-  // Check allowlist first - if matches, return low risk
-  for (const allowPattern of SAFE_ALLOWLIST) {
-    if (allowPattern.test(trimmed)) {
-      return {
-        riskLevel: 'low',
-        reason: 'Allowlisted safe command',
-        requiresConfirmation: false,
-      };
-    }
-  }
-  
-  // Check destructive patterns
+
+  // Check destructive patterns FIRST - these override any allowlist
   for (const { pattern, reason } of DESTRUCTIVE_PATTERNS) {
     if (pattern.test(trimmed)) {
       return {
@@ -168,7 +157,7 @@ export function assessBashSafety(command: string): SafetyAssessment {
       };
     }
   }
-  
+
   // Check confirmation-required denylist
   for (const pattern of CONFIRMATION_DENYLIST) {
     if (pattern.test(trimmed)) {
@@ -179,7 +168,18 @@ export function assessBashSafety(command: string): SafetyAssessment {
       };
     }
   }
-  
+
+  // Check allowlist - if matches, return low risk
+  for (const allowPattern of SAFE_ALLOWLIST) {
+    if (allowPattern.test(trimmed)) {
+      return {
+        riskLevel: 'low',
+        reason: 'Allowlisted safe command',
+        requiresConfirmation: false,
+      };
+    }
+  }
+
   // Default: medium risk for unknown commands
   return {
     riskLevel: 'medium',
@@ -198,8 +198,8 @@ export function getRiskLevelColor(level: RiskLevel): string {
 
 export function formatSafetyMessage(assessment: SafetyAssessment): string {
   const color = getRiskLevelColor(assessment.riskLevel);
-  const confirmationHint = assessment.requiresConfirmation 
-    ? ' (requires explicit confirmation)' 
+  const confirmationHint = assessment.requiresConfirmation
+    ? ' (requires explicit confirmation)'
     : '';
-  return `[${color.toUpperCase()}] ${assessment.riskLevel.toUpperCase()}${confirmationHint}: ${assessment.reason}`;
+  return `[${color.toUpperCase()}] ${assessment.riskLevel}${confirmationHint}: ${assessment.reason}`;
 }

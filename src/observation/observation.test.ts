@@ -25,11 +25,21 @@ import {
   getPreferenceStats
 } from './preference-extractor';
 
-import { initDatabase, closeDatabase, getDatabase } from '../memory/database';
+import { initDatabase, closeDatabase, getDatabase, getDatabasePath } from '../memory/database';
+import { unlinkSync, existsSync } from 'fs';
 
 describe('Observation Logger Reliability', () => {
   beforeEach(() => {
-    // Use in-memory database for testing
+    // Close any existing database connection
+    closeDatabase();
+
+    // Delete the database file to ensure clean state
+    const dbPath = getDatabasePath();
+    if (existsSync(dbPath)) {
+      unlinkSync(dbPath);
+    }
+
+    // Reinitialize with fresh database
     initDatabase();
   });
 

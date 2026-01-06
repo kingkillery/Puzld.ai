@@ -3,17 +3,34 @@
  *
  * Persistent storage for sessions, messages, and tasks.
  * Uses better-sqlite3 for synchronous, fast SQLite operations.
+ * In Bun environment, uses bun:sqlite for compatibility.
  *
  * Timestamps are Unix epoch milliseconds (Date.now()).
  */
 
-import Database from 'better-sqlite3';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { getConfigDir } from '../lib/config';
 
+// Conditionally use bun:sqlite or better-sqlite3 based on environment
+// @ts-ignore - Bun-specific check
+const isBun = typeof Bun !== 'undefined';
+
 // Database instance (singleton)
-let db: Database.Database | null = null;
+let db: any = null;
+
+// Lazy-loaded database constructor
+function getDatabaseConstructor(): any {
+  if (isBun) {
+    // Use bun:sqlite in Bun environment (test mode)
+    // @ts-ignore - Bun-specific module
+    const { Database: BunDatabase } = require('bun:sqlite');
+    return BunDatabase;
+  } else {
+    // Use better-sqlite3 in Node.js environment (production)
+    return require('better-sqlite3');
+  }
+}
 
 /**
  * Get database file path
@@ -25,7 +42,7 @@ export function getDatabasePath(): string {
 /**
  * Initialize database connection and schema
  */
-export function initDatabase(): Database.Database {
+export function initDatabase(): any {
   if (db) return db;
 
   // Ensure config directory exists
@@ -35,10 +52,17 @@ export function initDatabase(): Database.Database {
   }
 
   const dbPath = getDatabasePath();
-  db = new Database(dbPath);
+  const DatabaseClass = getDatabaseConstructor();
+  db = new DatabaseClass(dbPath);
 
   // Enable WAL mode for better concurrency
-  db.pragma('journal_mode = WAL');
+  if (isBun) {
+    // bun:sqlite uses exec() for PRAGMA statements
+    db.exec('PRAGMA journal_mode = WAL');
+  } else {
+    // better-sqlite3 has a dedicated pragma() method
+    db.pragma('journal_mode = WAL');
+  }
 
   // Create schema
   createSchema(db);
@@ -49,7 +73,7 @@ export function initDatabase(): Database.Database {
 /**
  * Get database instance (initializes if needed)
  */
-export function getDatabase(): Database.Database {
+export function getDatabase(): any {
   if (!db) {
     return initDatabase();
   }
@@ -69,7 +93,7 @@ export function closeDatabase(): void {
 /**
  * Create database schema
  */
-function createSchema(database: Database.Database): void {
+function createSchema(database: any): void {
   // Metadata table (for schema versioning)
   database.exec(`
     CREATE TABLE IF NOT EXISTS metadata (
@@ -148,7 +172,7 @@ function createSchema(database: Database.Database): void {
 /**
  * Run all migrations
  */
-function runMigrations(database: Database.Database): void {
+function runMigrations(database: any): void {
   const currentVersion = parseInt(
     (database.prepare("SELECT value FROM metadata WHERE key = 'schema_version'").get() as { value: string })?.value || '1',
     10
