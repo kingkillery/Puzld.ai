@@ -105,6 +105,24 @@ Two approaches:
 ### Router
 Uses Ollama (`routerModel` from config, default `llama3.2`) to classify tasks and select best agent. Returns `{agent, confidence, taskType}`.
 
+### Ralph Wiggum Loop
+Plan-first iterative execution with explicit budgets and guardrails:
+- **Budgets**: MAX_ITERS=5, MAX_FILES_CHANGED=8, MAX_TOOL_CALLS=50
+- **Per-Iteration Contract**: Plan → Identify → Execute → Verify → Reflect
+- **Exit Criteria**: DONE (all steps complete), BUDGET_EXCEEDED (limits hit), BLOCKED (missing deps)
+- **Final Summary**: Reports changed files, commands run, status, next steps, remaining risks
+
+**Usage**:
+```bash
+pk-puzldai ralph "Fix bug X" --iters 3 --tests "npm test" --scope "src/"
+```
+
+**Features**:
+- Generates structured plan with clarifying questions
+- Tracks files changed, tool calls, and commands run
+- Enforces budgets to prevent runaway execution
+- Provides detailed iteration summaries and final report
+
 ### Memory
 - **SQLite Sessions**: Persist conversations in `~/.puzldai/sessions.db`
 - **Vector Store**: Embeddings for semantic search (Ollama or SQLite FTS5)
@@ -180,6 +198,7 @@ npm link              # Link CLI globally
 | **Compare** | Multiple agents in parallel | `pk-puzldai compare "task"` |
 | **Pipeline** | Chain agents: `gemini:analyze,claude:code` | `pk-puzldai run "task" -P "..."` |
 | **Workflow** | Saved reusable pipeline | `pk-puzldai run "task" -T name` |
+| **Orchestrate** | Intelligent multi-agent orchestration | `pk-puzldai orchestrate "task"` |
 | **Autopilot** | LLM generates and executes plan | `pk-puzldai autopilot "task"` |
 | **Correct** | Producer → Reviewer → Fix | `pk-puzldai correct "task"` |
 | **Debate** | Agents argue in rounds | `pk-puzldai debate "topic"` |
@@ -187,6 +206,26 @@ npm link              # Link CLI globally
 | **PickBuild** | Propose plans → Pick best → Implement | `pk-puzldai pickbuild "task"` |
 | **Plan** | Analyze without execution | `pk-puzldai autopilot "task"` (no -x) |
 | **Build** | Full tool access for implementation | `pk-puzldai agent -a claude` |
+| **Ralph** | Plan-first iterative loop (Ralph Wiggum style) | `pk-puzldai ralph "task" --iters 5 --tests "npm test"` |
+| **PK-Poet** | REASON+DISCOVER+ATTACK+FORTIFY+EXECUTE | `pk-puzldai pkpoet "task"` |
+| **Poetiq** | Verification-first problem solving | `pk-puzldai poetiq "task"` |
+
+---
+
+## Additional CLI Commands
+
+| Command | Purpose |
+|---------|---------|
+| `pk-puzldai interact "task"` | Interactive task runner (CLI approvals) |
+| `pk-puzldai eval --full` | Evaluate approach selection and routing |
+| `pk-puzldai observe summary` | Observation summary/export |
+| `pk-puzldai tasks list` | Background task management |
+| `pk-puzldai remember "note"` | Save or list memories |
+| `pk-puzldai mcp-status` | MCP bridge status |
+| `pk-puzldai login` | MCP login |
+| `pk-puzldai whoami` | MCP login status |
+| `pk-puzldai logout` | MCP logout |
+| `pk-puzldai game <name>` | Play built-in games |
 
 ---
 
@@ -250,6 +289,47 @@ Triggered by GitHub release event (`.github/workflows/npm-publish.yml`):
 | Token limits | Use context compaction, reduce history, or simplify prompts |
 | Tool not found | Check `normalizeToolName()` aliases in `agent-loop.ts` |
 | Permission loops | Check `permissionTracker` auto-approval state |
+
+---
+
+## Internal Utilities
+
+### Adapter Runner
+
+**File:** `src/lib/adapter-runner.ts`
+
+The adapter runner is a utility for executing adapter calls with enhanced features:
+
+**Features:**
+- Timeout support (default: 120000ms)
+- AbortSignal for cancellation
+- Chunk streaming via `onChunk` callback
+- Observation/telemetry integration
+- Token tracking (tokensIn/tokensOut)
+- Duration tracking
+- Error logging with metrics
+
+**Usage:**
+```typescript
+import { runAdapter } from './lib/adapter-runner';
+
+const result = await runAdapter('claude', 'Your prompt', {
+  model: 'sonnet',
+  timeout: 60000,
+  signal: abortController.signal,
+  stepId: 'my-step',
+  onChunk: (chunk) => console.log(chunk)
+});
+
+// Result includes:
+// { content, model, error, duration, tokensIn, tokensOut }
+```
+
+**Telemetry Integration:**
+- Automatically starts observation tracking
+- Logs response with duration and token counts
+- Tracks errors with metrics
+- Integrates with observation layer for training data generation
 
 ---
 

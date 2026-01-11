@@ -1,0 +1,29 @@
+Handoff Summary:
+1. Task: Expand pk-puzldai’s Poetiq-style orchestrator so Claude remains the orchestrator, Gemini handles research/documentation, and GLM/MINIMAX act as worker executors while keeping Claude-tokens focused on high-level reasoning.
+2. Changes completed:
+   - Resynced docs/plan with the actual command surface and safe adapters.
+   - Ensured agentic-smoke harnesses (Claude/Gemini/pk-puzldai) finish with enforced fixture output.
+   - Reintroduced the `ralph` command and shared utilities (`agent-selection`, `adapter-runner`).
+   - Updated Gemini adapters to accept stdin prompts and let Claude orchestrator honor explicit agent overrides.
+3. Outstanding plan updates:
+   - Gemini research artifact pipeline (see `scripts/research/prompts/`) needs ingestion into Claude/Poetiq before planning.
+   - Per-agent telemetry for tokens/confidence remains to be wired into observations.
+4. Note: Claude CLI is the primary harness; longer runs may still fall back to Gemini CLI when permission interactions or timeouts occur.
+5. Next steps: ingest the Gemini research artifact into Claude/Poetiq, wire telemetry, and then continue with the Phase 9 roadmap.
+
+Next Agent Prompt:
+- Continue Phase 9 (Ralph/Poet CLI Orchestration Mastery) by building the plan-first loop, wiring Poetiq/pk-poet/self-discover/adversary command aliases, and running agentic smoke tests for Gemini CLI, Claude Code, and pk-puzldai.
+- Keep Claude as orchestrator but use Gemini for research/resupply before taking action; surface clarifying questions when context is missing and obey the Ralph budgets (MAX_ITERS, MAX_FILES_CHANGED, MAX_TOOL_CALLS).
+- Document the new commands, zipped functiongemma reasoning assets, and telemetry/verification expectations across AGENTS.md, README.md, MODES.md, CLI-ADAPTERS.md, and PUZLDAI_RECOMMENDATIONS.md.
+- Once harness outputs are captured in `scripts/agentic-smoke/fixture`, rerun any relevant suites and record the results in `test-agentic-output.txt`.
+
+Gemini CLI Reference:
+- Derived from `.gemini/commands/ralph.toml`, so this summary honors the budgets (MAX_ITERS=5, MAX_FILES_CHANGED=8, MAX_TOOL_CALLS=50) and the per-iteration contract (Plan, Identify, Execute, Verify, Reflect) documented there.
+- This loop insists on standard verification discovery (package.json scripts, Makefile/pytest conventions) and always ends with a summary listing changed files, commands run, final status, next steps, and residual risks.
+
+Claude Code Reference:
+- Pulled from `.claude/commands/ralph.md`, including the same budgets plus the additional Bash hooks (pre-tool `git status && git diff --stat`, post-tool `git diff --stat`) so the loop captures the repo state before/after every shell command.
+- The Claude variant emphasizes explicit exit criteria (DONE/BLOCKED/BUDGET_EXCEEDED/RISK_TOO_HIGH) and the verification summary expectations while remaining within the provided iteration safeguards.
+
+Creation Notes:
+- Gemini CLI and Claude Code instructions were both consulted to ensure `temp-prompt.txt` reflects their shared Ralph Wiggum contract (iteration budgets, verification-focus, guardrails), and their guidance now underpins the Next Agent Prompt above.

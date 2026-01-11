@@ -1,0 +1,17 @@
+You are researching the latest Poetiq-style agentic harnesses (code-as-reasoning loops) that include:
+1. A reasoning phase where the AI writes/exhibits a Python script, pseudo-code, or assertions before modifying production code.
+2. Verification steps that generate tests, invariants, or adversarial checks prior to execution.
+3. Delegated worker agents (GLM, MINIMAX, Gemini, etc.) where specialized models handle research, implementation, or verification.
+4. References to PapersWithCode or recent public work describing these stages.
+
+Output JSON with this structure:
+{
+  "summary": "Concise narrative of state-of-the-art practices.",
+  "references": ["cite 1", "cite 2"],
+  "lessons": [
+    "Short lesson: ...",
+    "Short lesson: ..."
+  ]
+}
+
+Keep summaries actionable for pk-puzldai and mention how reasoning phases map to Claude (orchestrator), Gemini (researcher), GLM/MINIMAX (workers).

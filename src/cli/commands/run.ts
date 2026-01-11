@@ -18,6 +18,7 @@ import {
   type StepResult
 } from '../../executor';
 import { loadTemplate, listTemplates } from '../../executor/templates';
+import type { AgentName } from '../../executor/types';
 
 interface RunCommandOptions {
   agent?: string;
@@ -105,7 +106,16 @@ async function runProfiledTask(task: string, options: RunCommandOptions): Promis
     process.exit(1);
   }
 
-  const selection = await selectPlanForProfile(task, profile);
+  let selection = await selectPlanForProfile(task, profile);
+  if (options.agent && options.agent !== 'auto') {
+    const explicitAgent = options.agent as AgentName;
+    selection = {
+      mode: 'single',
+      agents: [explicitAgent],
+      primaryAgent: explicitAgent,
+      rationale: `Selected single mode (explicit agent override: ${explicitAgent}).`
+    };
+  }
   const orchestrationContext = {
     useContextCompression: profile.useContextCompression,
     noCompress: options.noCompress

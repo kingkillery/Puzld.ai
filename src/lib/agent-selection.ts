@@ -1,49 +1,40 @@
 import type { AgentName } from '../executor/types';
+import { adapters } from '../adapters';
 
-export interface AgentSelectionResult {
-  agent: AgentName | 'auto';
-  notice?: string;
+const SAFETY_REDIRECTS: Record<string, AgentName> = {
+  gemini: 'gemini-safe',
+  codex: 'codex-safe'
+};
+
+const UNSAFE_ALIASES: Record<string, AgentName> = {
+  'gemini-unsafe': 'gemini',
+  'codex-unsafe': 'codex'
+};
+
+export function resolveAgentSelection(agent: string): { agent: AgentName; notice?: string } {
+  let target = agent as AgentName;
+  let notice: string | undefined;
+
+  if (UNSAFE_ALIASES[target]) {
+    target = UNSAFE_ALIASES[target];
+    notice = `Using unsafe adapter override: ${agent}`;
+  } else if (SAFETY_REDIRECTS[target]) {
+    target = SAFETY_REDIRECTS[target];
+    notice = `Redirected ${agent} → ${target} for safety`;
+  }
+
+  if (!adapters[target]) {
+    notice = `Fallback to claude (unknown agent: ${agent})`;
+    target = 'claude';
+  }
+
+  return { agent: target, notice };
 }
 
-export function resolveAgentSelection(agent: AgentName | 'auto'): AgentSelectionResult {
-  switch (agent) {
-    case 'gemini':
-      return {
-        agent: 'gemini-safe',
-        notice: 'Auto-redirecting gemini to gemini-safe (use gemini-unsafe to override).'
-      };
-    case 'codex':
-      return {
-        agent: 'codex-safe',
-        notice: 'Auto-redirecting codex to codex-safe (use codex-unsafe to override).'
-      };
-    case 'gemini-unsafe':
-      return {
-        agent: 'gemini',
-        notice: 'Using gemini-unsafe (no approval interception).'
-      };
-    case 'codex-unsafe':
-      return {
-        agent: 'codex',
-        notice: 'Using codex-unsafe (no approval interception).'
-      };
-    default:
-      return { agent };
-  }
-}
-
-export function resolveInteractiveAgent(agent: AgentName | 'auto'): AgentSelectionResult {
-  if (agent === 'gemini-safe') {
-    return {
-      agent: 'gemini',
-      notice: 'gemini-safe is not supported in interactive mode; using gemini (unsafe).'
-    };
-  }
-  if (agent === 'codex-safe') {
-    return {
-      agent: 'codex',
-      notice: 'codex-safe is not supported in interactive mode; using codex (unsafe).'
-    };
+export function resolveInteractiveAgent(agent: string): { agent: AgentName; notice?: string } {
+  // Interactive mode should behave like resolveAgentSelection, but allow more subdued defaults
+  if (agent === 'auto') {
+    return resolveAgentSelection('claude');
   }
   return resolveAgentSelection(agent);
 }

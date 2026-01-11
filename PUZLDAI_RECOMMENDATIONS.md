@@ -472,6 +472,91 @@ pk-puzldai config check  # Proposed (not implemented)
 
 ---
 
+## Priority 6: Telemetry & Performance Monitoring (MEDIUM)
+
+### Problem
+
+Currently, there's limited visibility into:
+- Per-agent performance characteristics
+- Token usage patterns and costs
+- Error rates and failure modes
+- Routing decision accuracy
+
+### Solution: Enhanced Telemetry
+
+**What's Already Implemented**:
+- ✅ Observation logging in `src/observation/logger.ts`
+- ✅ Routing decision tracking
+- ✅ Adapter telemetry in `src/lib/adapter-runner.ts`
+- ✅ Token usage tracking (input/output)
+- ✅ Duration monitoring
+
+**Recommended Enhancements**:
+
+1. **Performance Dashboard**
+   ```bash
+   # View per-agent statistics
+   pk-puzldai observe summary --agent claude
+   
+   # Compare agent performance
+   pk-puzldai observe stats --compare claude,gemini,codex
+   ```
+
+2. **Cost Tracking**
+   ```bash
+   # Estimate token costs by agent
+   pk-puzldai observe costs --daily
+   
+   # Set budget alerts
+   pk-puzldai observe budget --set 100 --agent claude
+   ```
+
+3. **Error Analysis**
+   ```bash
+   # View recent failures
+   pk-puzldai observe errors --last 24h
+   
+   # Error rate by agent
+   pk-puzldai observe errors --by-agent
+   ```
+
+4. **Routing Accuracy**
+   ```bash
+   # How often router selects optimal agent
+   pk-puzldai observe routing --accuracy
+   
+   # Confidence distribution
+   pk-puzldai observe routing --confidence-histogram
+   ```
+
+### Implementation Tasks
+
+- [ ] Add performance aggregation queries to observation layer
+- [ ] Create `observe stats` command for agent comparison
+- [ ] Implement cost estimation by model/provider
+- [ ] Add budget alerting system
+- [ ] Create routing accuracy metrics
+- [ ] Build performance visualization (optional)
+
+### Expected Benefits
+
+**Cost Optimization**:
+- Identify most cost-effective agents for specific task types
+- Detect token usage anomalies
+- Budget forecasting and alerts
+
+**Performance**:
+- Identify slow adapters or models
+- Optimize timeout settings
+- Route based on historical performance
+
+**Quality**:
+- Track routing decision accuracy
+- Measure user acceptance rates
+- Identify failure patterns
+
+---
+
 ## Success Metrics
 
 ### Safety

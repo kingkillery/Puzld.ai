@@ -1,0 +1,6 @@
+﻿Handoff Summary:
+1. Context: The user wants CLI orchestration improvements via pk-puzldai, emphasizing Ralph/Poetiq/PK-Poet loops, verification-first flows, and shared agentic harnesses (Gemini CLI, Claude Code, pk-puzldai).
+2. Completed so far: plan.md now records Phase 9 (Ralph/Poet CLI Orchestration Mastery) with detailed Task 9.1-9.4, Outstanding Tasks checklist updated, progress table extended, and change log entry dated 2026-01-12 noting the new roadmap.
+3. Pending tasks: (a) Task 9.1 – implement the Ralph planning loop inside pk-puzldai (plan/question/iteration budgets and CLI hooks), (b) Task 9.2 – expose Poetiq/pk-poet/self-discover/adversary commands plus zipped functiongemma assets, (c) Task 9.3 – build Gemini/Claude/pk-puzldai agentic smoke tests, (d) Task 9.4 – update AGENTS/README/MODES/CLI-ADAPTERS/PUZLDAI_RECOMMENDATIONS to document new commands/telemetry.
+4. Reminders: keep budgets under MAX_ITERS/MAX_FILES, surface clarifying questions before taking actions, and mention zipped `functiongemma` reasoning data when referencing Poetiq executions.
+5. Next agent should continue executing those tasks, ensuring each harness emits verification-first output and the CLI docs stay in sync with the new command set.

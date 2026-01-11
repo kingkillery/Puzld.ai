@@ -30,9 +30,7 @@ export async function profileListCommand(): Promise<void> {
   }
 
   const source = loadProfilesFile() ? getProfilesPath() : 'config.json';
-  console.log(pc.bold('
-Available Profiles
-'));
+  console.log(pc.bold('\nAvailable Profiles\n'));
   console.log(pc.dim('Source: ' + source));
 
   for (const name of names) {

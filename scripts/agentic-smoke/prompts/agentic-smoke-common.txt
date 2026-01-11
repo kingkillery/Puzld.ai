@@ -1,0 +1,24 @@
+You are in an agentic tooling environment. Use tools to inspect and modify files.
+
+Tasks (do all):
+1) List files in scripts/agentic-smoke/fixture and read notes.txt and data.json.
+2) Append a new line to notes.txt: "agentic-smoke: updated".
+3) Create scripts/agentic-smoke/fixture/summary.txt with exact contents (no extra whitespace):
+   {"sum":6}
+   IMPORTANT: The quotes around "sum" must be present. Write exactly 9 characters: {"sum":6}
+4) Update scripts/agentic-smoke/fixture/calc.js to include and export a function:
+   - function sumNumbers(numbers) { return numbers.reduce((a, b) => a + b, 0); }
+5) Run a command using the bash tool: node -e "console.log('agentic smoke ok')", and include its output.
+6) Re-open notes.txt and summary.txt to confirm:
+   - notes.txt contains exactly one new line: "agentic-smoke: updated" (no extra lines added).
+   - summary.txt contains exactly: {"sum":6} (double quotes around sum)
+   If not, fix by overwriting with the exact content.
+
+Do not add any line that is just "agentic-smoke:" by itself.
+Do not stop early. All tasks must be completed before your final response.
+
+Constraints:
+- Only modify files under scripts/agentic-smoke/fixture.
+- Show the tool calls and results.
+- If you complete a step, include the token DONE.
+- When everything is complete, include <promise>COMPLETE</promise>.

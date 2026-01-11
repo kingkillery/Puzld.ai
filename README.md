@@ -154,6 +154,7 @@ pk-puzldai check
 | **Pipeline** | Agent A → Agent B → Agent C | Multi-step processing | Sequencing |
 | **Workflow** | Saved pipeline, reusable | Repeatable workflows | Sequencing |
 | **Autopilot** | LLM generates plan → executes | Complex tasks, unknown steps | AI Planning |
+| **Orchestrate** | Router + profiles + multi-agent execution | Auto-select best mode/agents | Orchestration |
 | **Correct** | Producer → Reviewer → Fix | Quality assurance, code review | Collaboration |
 | **Debate** | Agents argue in rounds, optional moderator | Find flaws in reasoning | Collaboration |
 | **Consensus** | Propose → Vote → Synthesize | High-confidence answers | Collaboration |
@@ -177,6 +178,12 @@ pk-puzldai check
 | | `interactive` | boolean | `false` | Confirm between steps |
 | Autopilot | `planner` | AgentName | `ollama` | Agent that generates plan |
 | | `execute` | boolean | `false` | Auto-run generated plan |
+| Orchestrate | `mode` | string | `delegate` | Orchestration mode (delegate, coordinate, supervise) |
+| | `agents` | AgentName[] | `claude,gemini` | Agents to include in orchestration |
+| | `agent` | AgentName | `auto` | Primary agent (overrides agents) |
+| | `profile` | string | `speed` | Orchestration profile |
+| | `dry-run` | boolean | `false` | Show plan only |
+| | `no-compress` | boolean | `false` | Disable context compression |
 | Correct | `producer` | AgentName | `auto` | Agent that creates output |
 | | `reviewer` | AgentName | `auto` | Agent that critiques |
 | | `fix` | boolean | `false` | Producer fixes based on review |
@@ -416,6 +423,7 @@ LLMs explore your codebase using tools, then propose file edits with permission 
 | `bash` | Execute shell commands |
 | `write` | Create or overwrite files |
 | `edit` | Search and replace in files |
+| `git` | Git operations (status, diff, commit, etc.) |
 
 **Permission prompts (like Claude Code):**
 - `Allow` — Execute this tool call
@@ -478,6 +486,7 @@ All `/agentic` interactions are logged for training data generation:
 - **Outputs:** LLM responses, proposed files, explanations
 - **Decisions:** Which files were accepted/rejected
 - **Edits:** User modifications to proposed content
+- **Telemetry:** Duration, token usage (input/output), error tracking
 
 **Export for fine-tuning:**
 
@@ -580,6 +589,7 @@ pk-puzldai run "task" -m opus        # Override model
 pk-puzldai run "task" -P "..."       # Pipeline
 pk-puzldai run "task" -T template    # Use template
 pk-puzldai run "task" -i             # Interactive: pause between steps
+pk-puzldai orchestrate "task"        # Intelligent multi-agent orchestration
 pk-puzldai compare "task"            # Compare (default: claude,gemini)
 pk-puzldai compare "task" -a a,b,c   # Specify agents
 pk-puzldai compare "task" -s         # Sequential mode
@@ -591,6 +601,41 @@ pk-puzldai correct "task" --producer claude --reviewer gemini
 pk-puzldai correct "task" --producer claude --reviewer gemini --fix
 pk-puzldai debate "topic" -a claude,gemini -r 3 -m ollama
 pk-puzldai consensus "task" -a claude,gemini -r 3 -s claude
+pk-puzldai ralph "task" -i 5 --tests "npm test" --scope "src/"  # Ralph Wiggum iterative loop
+
+**Ralph Guardrails:**
+- Max iterations: 5 (configurable with `-i`)
+- Max files changed: 8
+- Max tool calls: 50
+- Automatic stopping when limits reached
+
+**Ralph Plan Schema:**
+Ralph accepts JSON plans with the following structure:
+```json
+{
+  "questions": ["Clarifying question 1", "Question 2"],
+  "completion": "<promise>COMPLETE</promise>",
+  "steps": [
+    {
+      "id": "step_1",
+      "title": "Step title",
+      "objective": "What this step does",
+      "acceptance": ["Criteria 1", "Criteria 2"],
+      "agent": "claude|gemini|codex|ollama|auto",
+      "action": "analyze|code|review|fix|test|summarize"
+    }
+  ]
+}
+```
+
+pk-puzldai pkpoet "task"              # REASON+DISCOVER+ATTACK+FORTIFY+EXECUTE
+pk-puzldai poetiq "task"              # Verification-first problem solving
+pk-puzldai poetic "task"              # Alias for poetiq
+pk-puzldai adversary "task"           # Security red-team analysis
+pk-puzldai discover "task"            # Atomic problem analysis
+pk-puzldai self-discover "task"       # Alias for discover
+pk-puzldai codereason "task"          # Code-as-reasoning solver
+pk-puzldai feature "task"             # Multi-phase feature implementation
 pk-puzldai profile list              # List orchestration profiles
 pk-puzldai profile show quality      # Show a profile
 pk-puzldai profile set-default speed # Set default profile
@@ -602,6 +647,8 @@ pk-puzldai check                     # Agent status
 pk-puzldai agent                     # Interactive agent mode
 pk-puzldai agent -a claude           # Force specific agent
 pk-puzldai agent -m sonnet           # With specific model
+pk-puzldai interact "task"           # Interactive task runner (CLI approvals)
+pk-puzldai eval --full               # Evaluate approach selection
 pk-puzldai model show                # Show current models
 pk-puzldai model list                # List available models
 pk-puzldai model set claude opus     # Set model for agent
@@ -609,6 +656,10 @@ pk-puzldai model clear claude        # Reset to CLI default
 pk-puzldai serve                     # API server
 pk-puzldai serve -p 8080             # Custom port
 pk-puzldai serve -w                  # With web terminal
+pk-puzldai mcp-status                # MCP bridge status
+pk-puzldai login                     # Login to MCP server
+pk-puzldai whoami                    # Show MCP login status
+pk-puzldai logout                    # Logout from MCP server
 pk-puzldai template list             # List templates
 pk-puzldai template show <name>      # Show template details
 pk-puzldai template create <name> -P "..." -d "desc"
@@ -619,6 +670,14 @@ pk-puzldai index --quick             # Skip embeddings
 pk-puzldai index --search "query"    # Search indexed code
 pk-puzldai index --context "task"    # Get relevant context
 pk-puzldai index --config            # Show project config
+pk-puzldai observe summary           # Observation summary
+pk-puzldai observe list              # List recent observations
+pk-puzldai observe export out.jsonl  # Export observation data
+pk-puzldai tasks list                # List background tasks
+pk-puzldai tasks output <id> --wait  # Stream task output
+pk-puzldai remember "note"           # Save memory entry
+pk-puzldai remember --list           # List memories
+pk-puzldai game factory-ai-droid --new # Start a game session
 ```
 
 ---

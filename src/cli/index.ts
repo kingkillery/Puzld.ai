@@ -35,6 +35,7 @@ import {
 } from './commands/collaboration';
 import { pickbuildCommand } from './commands/pickbuild';
 import { pkpoetCommand } from './commands/pkpoet';
+import { ralphCommand } from './commands/ralph';
 import {
   poetiqCommand,
   adversaryCommand,
@@ -458,6 +459,7 @@ program
 // PK-Poet: Ultimate Reasoning Paradigm (simplified)
 program
   .command('pkpoet')
+  .alias('pk-poet')
   .description('Deep analysis with REASON→DISCOVER→ATTACK→FORTIFY→EXECUTE')
   .argument('<task>', 'The task to analyze and implement')
   .option('-d, --depth <depth>', 'Analysis depth: shallow, medium, deep', 'medium')
@@ -467,9 +469,31 @@ program
     verify: opts.verify,
   }));
 
+program
+  .command('ralph')
+  .description('Plan-first iterative loop until completion (Ralph Wiggum style)')
+  .argument('<task>', 'The task to execute')
+  .option('-i, --iters <n>', 'Maximum iterations', '5')
+  .option('-p, --planner <agent>', 'Planner agent (default: gemini)', 'gemini')
+  .option('-c, --completion <token>', 'Completion token', '<promise>COMPLETE</promise>')
+  .option('-m, --model <model>', 'Override model for planner/steps')
+  .option('--tests <command>', 'Verification command (e.g., "npm test")')
+  .option('--scope <paths>', 'Limit file changes to paths')
+  .option('--stop <criteria>', 'Stop conditions')
+  .action((task, opts) => ralphCommand(task, {
+    iterations: opts.iters,
+    planner: opts.planner,
+    completion: opts.completion,
+    model: opts.model,
+    tests: opts.tests,
+    scope: opts.scope,
+    stop: opts.stop
+  }));
+
 // Factory-Droid Mode Commands (simplified - no agent options)
 program
   .command('poetiq')
+  .alias('poetic')
   .description('Verification-first problem solving')
   .argument('<task>', 'The task to solve')
   .option('--verify <command>', 'Verification command')
@@ -484,6 +508,7 @@ program
 
 program
   .command('discover')
+  .alias('self-discover')
   .description('Atomic problem analysis')
   .argument('<task>', 'The task to analyze')
   .option('-d, --depth <depth>', 'Analysis depth: shallow, medium, deep', 'medium')

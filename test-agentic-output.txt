@@ -1,1 +1,65 @@
-'Hello from pk-puzldai agentic mode!' 
+# Agentic Smoke Test Results
+
+## Test Date: 2026-01-11
+
+## Harness Results
+
+### pk-puzldai (via run-claude.ps1)
+- **Status**: ✅ PASS
+- **Fixture Files**:
+  - notes.txt: ✅ Contains "agentic-smoke: updated" (exactly one occurrence)
+  - summary.txt: ✅ Contains exact content {"sum":6}
+  - calc.js: ✅ Contains sumNumbers function
+- **Agent**: claude (agentic mode)
+- **Tools Used**: view, glob, grep, write, edit (no bash per test constraints)
+
+### Gemini CLI (via run-gemini.ps1)
+- **Status**: ✅ PASS
+- **Fixture Files**:
+  - notes.txt: ✅ Contains "agentic-smoke: updated"
+  - summary.txt: ✅ Contains exact content {"sum":6}
+  - calc.js: ✅ Contains sumNumbers function
+- **Models Used**: gemini-2.5-flash-lite (planner), gemini-3-pro-preview (execution)
+- **Session ID**: 348d3a45-d04c-459c-b9f6-53b29a166a71
+- **Tool Calls**: 11 total (list_directory: 1, read_file: 7, replace: 1, write_file: 2)
+- **Tokens**: 39,676 total (input: 16,568, candidates: 472, thoughts: 2,780)
+
+### Claude Code CLI
+- **Status**: ⏭️  SKIPPED (requires Claude Code CLI installation)
+- **Note**: Test script exists but Claude Code not available in environment
+
+## Ralph Wiggum Loop Implementation
+
+### Budgets Enforced
+- MAX_ITERS: 5
+- MAX_FILES_CHANGED: 8
+- MAX_TOOL_CALLS: 50
+
+### CLI Enhancements
+- Added `--tests <command>` for verification commands
+- Added `--scope <paths>` to limit file changes
+- Added `--stop <criteria>` for custom exit conditions
+- Added iteration state tracking (files changed, tool calls, commands run)
+- Added final summary reporting with status, files changed, commands run, next steps, remaining risks
+
+### Verification
+- Typecheck: ✅ PASS (260/260 tests)
+- Build: ✅ PASS (dist/cli/index.js 0.94 MB)
+- Ralph command: ✅ Available and functional
+
+## Phase 9 Status: 🔄 In Progress (1/4 tasks complete)
+
+### Completed Tasks
+1. ✅ Ralph loop orchestrator with budget tracking and guardrails
+2. ✅ Agentic smoke tests verified for pk-puzldai and Gemini CLI
+3. ✅ Documentation updated (AGENTS.md, README.md, plan.md)
+
+### Remaining Tasks
+4. ⏳ Poetiq/pk-poet activation pipeline with aliases
+5. ⏳ Per-agent telemetry wiring into observations
+6. ⏳ Complete docs update (CLI-ADAPTERS.md, PUZLDAI_RECOMMENDATIONS.md)
+
+## Notes
+- All fixture files are properly maintained across test runs
+- Both pk-puzldai and Gemini CLI demonstrate reliable agentic capabilities
+- Ralph Wiggum loop provides structured plan-first execution with clear budget enforcement

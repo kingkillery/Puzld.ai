@@ -12,6 +12,8 @@ PuzldAI now includes adapters for external CLI-based AI coding tools, allowing y
 | `factory-ai-droid` | Built-in | Resource management puzzle game | Built-in |
 | `charm-crush` | Built-in | Match-3 puzzle game | Built-in |
 
+**Safety wrappers:** Gemini and Codex have CLI-safe wrappers registered as `gemini-safe` and `codex-safe`. The CLI auto-redirects `gemini` and `codex` to safe wrappers; use `gemini-unsafe` or `codex-unsafe` only if you explicitly accept the risk.
+
 ## Installation
 
 ### Factory AI (droid)
@@ -259,6 +261,62 @@ Get consensus across multiple agents:
 ```bash
 pk-puzldai consensus "should we use Redis or Memcached for session storage?"
 ```
+
+## Ralph Wiggum Loop
+
+The Ralph Wiggum loop provides plan-first iterative execution with explicit budgets and guardrails:
+
+```bash
+# Basic usage
+pk-puzldai ralph "Fix the authentication bug in the login flow"
+
+# With custom budgets and verification
+pk-puzldai ralph "Implement OAuth2" --iters 10 --tests "npm test" --scope "src/auth/"
+
+# With custom completion criteria
+pk-puzldai ralph "Refactor API endpoints" --stop "all tests pass"
+```
+
+**Features:**
+- **Budget Enforcement**: MAX_ITERS=5, MAX_FILES_CHANGED=8, MAX_TOOL_CALLS=50
+- **Plan-First**: Generates structured plan before execution
+- **Clarifying Questions**: Surfaces missing context before starting
+- **Iteration Tracking**: Tracks files changed, tool calls, commands run
+- **Final Summary**: Reports status, changed files, next steps, remaining risks
+
+**Exit Criteria:**
+- `DONE`: All steps completed successfully
+- `BUDGET_EXCEEDED`: Hit iteration/file/tool limits
+- `BLOCKED`: Missing dependencies or context
+
+## Telemetry & Observations
+
+PuzldAI automatically logs telemetry for all adapter runs:
+
+**What's Tracked:**
+- Per-agent token usage (input/output)
+- Response duration and timing
+- Error rates and failure modes
+- Routing decisions and confidence scores
+- File operations and approvals
+
+**View Telemetry:**
+```bash
+# Summary of recent observations
+pk-puzldai observe summary
+
+# List recent observations
+pk-puzldai observe list -n 20
+
+# Export for training data
+pk-puzldai observe export observations.jsonl -f jsonl -n 10000
+```
+
+**Use Cases:**
+- Training data generation for fine-tuning
+- Performance analysis and optimization
+- Cost tracking by agent/model
+- Failure mode analysis
 
 ## API Reference
 

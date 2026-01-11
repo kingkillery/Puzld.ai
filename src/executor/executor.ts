@@ -28,6 +28,7 @@ import { routeTask, isRouterAvailable } from '../router/router';
 import { getConfig } from '../lib/config';
 import { assembleStepContext, inferStepRole } from '../context/injection';
 import { resolveAgentSelection, resolveInteractiveAgent } from '../lib/agent-selection';
+import { runAdapter as runAdapterUtil } from '../lib/adapter-runner';
 
 const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_CONCURRENCY = 3;
@@ -515,7 +516,7 @@ async function runInteractiveStep(
 }
 
 /**
- * Run an adapter with timeout and streaming
+ * Run an adapter with timeout and streaming (wrapper for shared utility)
  */
 async function runAdapter(
   agent: AgentName,
@@ -524,47 +525,22 @@ async function runAdapter(
   stepId: string,
   model?: string
 ): Promise<{ content: string; model: string; error?: string }> {
-  const adapter = adapters[agent];
-
-  if (!adapter) {
-    return { content: '', model: agent, error: `Unknown agent: ${agent}` };
-  }
-
-  if (!(await adapter.isAvailable())) {
-    return { content: '', model: agent, error: `Agent ${agent} not available` };
-  }
-
-  const timeout = config.defaultTimeout ?? DEFAULT_TIMEOUT;
-
-  // Create timeout promise
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Timeout')), timeout);
+  // Use shared adapter runner utility
+  const result = await runAdapterUtil(agent, prompt, {
+    model,
+    timeout: config.defaultTimeout,
+    signal: config.signal,
+    onChunk: config.onChunk
+      ? (chunk: string) => config.onChunk?.(stepId, chunk)
+      : undefined,
+    stepId
   });
 
-  try {
-    const result = await Promise.race([
-      adapter.run(prompt, {
-        model,  // Pass model to adapter
-        signal: config.signal,
-        onChunk: config.onChunk
-          ? (chunk: string) => config.onChunk?.(stepId, chunk)
-          : undefined
-      }),
-      timeoutPromise
-    ]);
-
-    return {
-      content: result.content,
-      model: result.model,
-      error: result.error
-    };
-  } catch (err) {
-    return {
-      content: '',
-      model: model || agent,
-      error: (err as Error).message
-    };
-  }
+  return {
+    content: result.content,
+    model: result.model,
+    error: result.error
+  };
 }
 
 /**

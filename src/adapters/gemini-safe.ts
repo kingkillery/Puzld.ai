@@ -84,13 +84,13 @@ export const geminiSafeAdapter: Adapter & {
       if (model) {
         args.push('-m', model);
       }
-      args.push(prompt);
 
       const { stdout, stderr } = await execa(config.adapters.gemini.path, args, {
         timeout: config.timeout,
         cancelSignal: options?.signal,
         reject: false,
-        stdin: 'ignore',
+        input: prompt,
+        stdin: 'pipe',
         cwd
       });
 

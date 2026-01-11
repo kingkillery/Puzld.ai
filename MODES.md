@@ -10,6 +10,7 @@ PuzldAI provides multiple orchestration modes for coordinating multi-agent workf
 |-------|-----------|--------------|-----------|
 | **Pipeline** | Structured, sequential multi-step workflows | Optional | Complex tasks with clear phases (analyze → build → review) |
 | **Autopilot** | Unknown path, let planner propose steps | Yes | Ambiguous tasks where steps aren't known upfront |
+| **Orchestrate** | Intelligent multi-agent routing and execution | Optional | Choosing the best mode/agent mix automatically |
 | **Compare→Pick→Build** | Get multiple proposals, select best approach | Optional | High-stakes changes where you want to compare approaches |
 | **Compare** | Parallel single-step comparisons | Optional | Quick comparison of agent responses |
 | **Correction** | Producer → reviewer → optional fix | Optional | Code review and improvement cycle |
@@ -259,6 +260,15 @@ if (malformedToolCalls) {
 
 ## Other Modes
 
+### Orchestrate Mode
+```bash
+# Intelligent orchestration with profiles
+pk-puzldai orchestrate "task" --profile balanced
+
+# Dry-run plan preview
+pk-puzldai orchestrate "task" --dry-run
+```
+
 ### Compare Mode
 ```bash
 # Parallel comparison
@@ -307,6 +317,28 @@ pk-puzldai consensus "feature design" \
   --synthesizer gemini
 ```
 
+### Ralph Loop
+```bash
+# Plan-first iterative loop until completion
+pk-puzldai ralph "fix failing tests" -i 5
+```
+
+### PK-Poet and Factory Modes
+```bash
+# Deep analysis workflow
+pk-puzldai pkpoet "design a caching layer"
+
+# Verification-first solving
+pk-puzldai poetiq "debug flaky tests"
+pk-puzldai poetic "debug flaky tests"
+
+# Security and analysis helpers
+pk-puzldai adversary "review auth flow" -f src/auth/*
+pk-puzldai discover "analyze edge cases" -d deep
+pk-puzldai codereason "prove the algorithm"
+pk-puzldai feature "implement password reset" --verify "npm test"
+```
+
 ---
 
 ## Safety Across All Modes
@@ -345,7 +377,7 @@ $ pk-puzldai pickbuild "add feature" -i
 
 ---
 
-*Last updated: 2025-12-24*
+*Last updated: 2026-01-11*
 *Version: 0.2.95*
 
 ## Orchestration Profiles

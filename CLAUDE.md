@@ -47,6 +47,13 @@
 ┌──────────────────▼──────────────────────┐
 │   Infrastructure                         │
 │   Memory | Indexing | Context | Router  │
+└──────────────────┬──────────────────────┘
+                   │
+┌──────────────────▼──────────────────────┐
+│   Additional Modules                     │
+│   Agentic | API | Chat | Display        │
+│   Eval | Interactive | MCP | Observation │
+│   Tasks | Trust                          │
 └─────────────────────────────────────────┘
 ```
 
@@ -423,6 +430,9 @@ pk-puzldai do <task>
 # Single task (legacy)
 pk-puzldai run <task>
 
+# Intelligent orchestration
+pk-puzldai orchestrate <task>
+
 # Compare agents
 pk-puzldai compare <prompt>
 
@@ -441,11 +451,29 @@ pk-puzldai debate <topic> -a X,Y -r N
 # Consensus building
 pk-puzldai consensus <task> -a X,Y,Z
 
+# Plan-first iterative loop
+pk-puzldai ralph <task>
+
+# PK-Poet and Factory modes
+pk-puzldai pkpoet <task>
+pk-puzldai poetiq <task>
+pk-puzldai poetic <task>
+pk-puzldai adversary <task>
+pk-puzldai discover <task>
+pk-puzldai codereason <task>
+pk-puzldai feature <task>
+
 # Template management
 pk-puzldai template {list,show,create,edit,delete}
 
 # Session management
 pk-puzldai session {list,new,info,delete,clear}
+
+# Interactive runner
+pk-puzldai interact <task>
+
+# Evaluation harness
+pk-puzldai eval --full
 
 # Codebase indexing
 pk-puzldai index [path]
@@ -453,11 +481,31 @@ pk-puzldai index [path]
 # Model configuration
 pk-puzldai model {show,list,set,clear}
 
+# Observation and memory
+pk-puzldai observe {summary,list,export}
+pk-puzldai remember [memory]
+
+# Background tasks
+pk-puzldai tasks [action]
+
+# MCP bridge and auth
+pk-puzldai mcp-status
+pk-puzldai login
+pk-puzldai whoami
+pk-puzldai logout
+
 # API server
 pk-puzldai serve [-p PORT] [-w]
 
+# Agent and availability checks
+pk-puzldai agent [-a AGENT] [-m MODEL]
+pk-puzldai check
+
 # Orchestration profiles
 pk-puzldai profile {list,show,set-default,create,delete}
+
+# Games
+pk-puzldai game <name>
 ```
 
 To add new commands, create file in `src/cli/commands/` and register in `src/cli/index.ts`

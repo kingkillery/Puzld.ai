@@ -1,0 +1,14 @@
+Fix only files under scripts/agentic-smoke/fixture.
+
+Requirements:
+1) notes.txt must contain exactly one line: "agentic-smoke: updated" and no line "agentic-smoke:" by itself.
+2) summary.txt must contain exactly: {"sum":6} (double quotes required).
+3) calc.js must include and export:
+   function sumNumbers(numbers) { return numbers.reduce((a, b) => a + b, 0); }
+4) Run using the bash tool: node -e "console.log('agentic smoke ok')" and include its output.
+5) Re-open notes.txt and summary.txt to confirm exact contents.
+
+If summary.txt exists, use edit to replace its full contents (do not use write on existing files).
+When modifying notes.txt, append or correct without deleting the existing fixture lines.
+
+Include DONE when fixed and <promise>COMPLETE</promise> when finished.

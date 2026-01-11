@@ -46,7 +46,6 @@ export const geminiAdapter: Adapter = {
       if (model) {
         args.push('-m', model);
       }
-      args.push(prompt);
 
       const { stdout, stderr, exitCode } = await execa(
         config.adapters.gemini.path,
@@ -55,7 +54,8 @@ export const geminiAdapter: Adapter = {
           timeout: config.timeout,
           cancelSignal: options?.signal,
           reject: false,
-          stdin: 'ignore'
+          input: prompt,
+          stdin: 'pipe'
         }
       );
 
