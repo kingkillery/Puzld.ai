@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-11
 **Status:** In Progress
-**Completion:** 10/13 tasks (Core game system complete; docs pending)
+**Completion:** 10/13 tasks (Game system); 0/6 tasks (CLI orchestration)
 
 ---
 
@@ -24,6 +24,15 @@ This document tracks the implementation of game mechanics, CLI improvements, and
 - [x] Add win/lose condition detection to both games
 - [x] Test complete game lifecycle (start → play → win/lose → end)
 - [ ] Update agents.md with game system documentation
+### CLI Orchestration Enhancements (New)
+
+- [ ] Add orchestration profile schema and defaults
+- [ ] Add profile registry + CLI management commands
+- [ ] Implement profile-driven auto plan selection
+- [ ] Add plan preview/dry-run for orchestrate/run
+- [ ] Add context compression + routing telemetry
+- [ ] Add tests and documentation for profiles
+
 
 ---
 
@@ -1448,6 +1457,12 @@ Create `test-results.md` with:
 | 6A | Test Integration | ⬜ Not Started | Single | Sequential |
 | 6B | Test Lifecycle | ⬜ Not Started | Single | Sequential |
 | 7 | Documentation | ⬜ Not Started | Single | Anytime |
+| 8A | Orchestration Profiles | Not Started | Single | Define schema + defaults |
+| 8B | Profile Registry | Not Started | Single | CLI management + loader |
+| 8C | Auto Plan Selection | Not Started | Single | Profile-driven mode selection |
+| 8D | Plan Preview | Not Started | Single | Dry-run + profile flag |
+| 8E | Compression + Telemetry | Not Started | Single | Context compression + routing logs |
+| 8F | Tests + Docs | Not Started | Single | Coverage + documentation |
 
 **Legend:**
 - ⬜ Not Started
@@ -1656,6 +1671,7 @@ To work on a task from this plan:
 **Implemented full game session persistence + CLI integration and made validators pass.**
 
 **Key changes:**
+- Added Phase 8: CLI orchestration profiles (auto selection, profiles, dry-run, compression, tests, docs).
 - Added Bun/Node SQLite compatibility in `src/memory/database.ts` (bun:sqlite shims)
 - Fixed API server tests by exporting `createServer()` for injection tests
 - Made API task persistence compatible with bun:sqlite parameter binding

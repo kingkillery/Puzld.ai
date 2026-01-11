@@ -14,3 +14,13 @@
 
 export * from './types';
 export { runEvaluation, loadTasks } from './runner';
+
+// Approach evaluation exports
+export {
+  runEval,
+  runEvalSuite,
+  classifyTask,
+  DEFAULT_EVAL_TASKS,
+  type EvalResult,
+  type EvalSummary,
+} from './evaluator';

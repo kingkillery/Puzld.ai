@@ -37,6 +37,8 @@ import {
 } from './commands/factory-modes';
 import { rememberCommand } from './commands/remember';
 import { interactiveCommand } from './commands/interactive';
+import { doCommand } from './commands/do';
+import { evalCommand } from './commands/eval';
 import {
   modelShowCommand,
   modelListCommand,
@@ -72,16 +74,44 @@ program
   .description('PuzldAI - Multi-LLM Orchestrator')
   .version(pkg.version);
 
+// Primary command - just works
+program
+  .command('do')
+  .description('Execute a task with automatic approach selection (recommended)')
+  .argument('<task>', 'The task to execute')
+  .option('-v, --verbose', 'Show detailed progress')
+  .option('--verify <command>', 'Verification command (e.g., "npm test")')
+  .action((task, opts) => doCommand(task, {
+    verbose: opts.verbose,
+    verify: opts.verify,
+  }));
+
+// Evaluation command
+program
+  .command('eval')
+  .description('Evaluate and verify approach selection accuracy')
+  .option('-t, --task <task>', 'Evaluate a single task')
+  .option('-f, --full', 'Run full evaluation suite')
+  .option('-c, --classify', 'Test classification only (no execution)')
+  .option('-v, --verbose', 'Show detailed output')
+  .action((opts) => evalCommand({
+    task: opts.task,
+    full: opts.full,
+    classify: opts.classify,
+    verbose: opts.verbose,
+  }));
+
+// Legacy run command (for power users)
 program
   .command('run')
-  .description('Run a task with the best available agent')
+  .description('Run a task with explicit control (legacy)')
   .argument('<task>', 'The task to execute')
-  .option('-a, --agent <agent>', 'Force specific agent (claude, gemini, codex, ollama)', 'auto')
-  .option('-m, --model <model>', 'Override model for the agent (e.g., sonnet, opus, gemini-2.5-flash)')
-  .option('-P, --pipeline <steps>', 'Run as pipeline (e.g., "gemini:analyze,claude:code")')
-  .option('-T, --template <name>', 'Use a saved pipeline template')
-  .option('-i, --interactive', 'Prompt before each step in pipeline/template mode')
-  .option('-x, --agentic', 'Enable agentic mode with tool access (read/write files)')
+  .option('-a, --agent <agent>', 'Force specific agent', 'auto')
+  .option('-m, --model <model>', 'Override model')
+  .option('-P, --pipeline <steps>', 'Run as pipeline')
+  .option('-T, --template <name>', 'Use a saved template')
+  .option('-i, --interactive', 'Prompt before each step')
+  .option('-x, --agentic', 'Enable agentic mode')
   .action(runCommand);
 
 program
@@ -378,99 +408,52 @@ program
     noReview: !opts.review
   }));
 
-// PK-Poet: Ultimate Reasoning Paradigm
+// PK-Poet: Ultimate Reasoning Paradigm (simplified)
 program
   .command('pkpoet')
-  .description('PK-Poet: REASON→DISCOVER→ATTACK→FORTIFY→EXECUTE unified reasoning paradigm')
+  .description('Deep analysis with REASON→DISCOVER→ATTACK→FORTIFY→EXECUTE')
   .argument('<task>', 'The task to analyze and implement')
   .option('-d, --depth <depth>', 'Analysis depth: shallow, medium, deep', 'medium')
-  .option('-a, --agent <agent>', 'Default agent for all phases', 'claude')
-  .option('--reason-agent <agent>', 'Agent for REASON phase')
-  .option('--discover-agent <agent>', 'Agent for DISCOVER phase')
-  .option('--attack-agent <agent>', 'Agent for ATTACK phase')
-  .option('--fortify-agent <agent>', 'Agent for FORTIFY phase')
-  .option('--execute-agent <agent>', 'Agent for EXECUTE phase')
   .option('--verify <command>', 'Verification command (e.g., "npm test")')
-  .option('--scope <pattern>', 'Scope pattern for verification (e.g., "src/auth/*")')
-  .option('--max-iterations <n>', 'Max EXECUTE iterations', '5')
-  .option('--max-files <n>', 'Max files to change', '8')
-  .option('-i, --interactive', 'Confirm between phases')
   .action((task, opts) => pkpoetCommand(task, {
     depth: opts.depth,
-    agent: opts.agent,
-    reasonAgent: opts.reasonAgent,
-    discoverAgent: opts.discoverAgent,
-    attackAgent: opts.attackAgent,
-    fortifyAgent: opts.fortifyAgent,
-    executeAgent: opts.executeAgent,
     verify: opts.verify,
-    scope: opts.scope,
-    maxIterations: opts.maxIterations,
-    maxFiles: opts.maxFiles,
-    interactive: opts.interactive
   }));
 
-// Factory-Droid Mode Commands
+// Factory-Droid Mode Commands (simplified - no agent options)
 program
   .command('poetiq')
-  .description('Poetiq: Verification-first solver (FORMALIZE→TEST→DIVERGE→CONVERGE→SELECT)')
+  .description('Verification-first problem solving')
   .argument('<task>', 'The task to solve')
-  .option('-a, --agent <agent>', 'Agent to use', 'claude')
-  .option('-c, --max-candidates <n>', 'Max candidates to generate', '4')
-  .option('--verify <command>', 'Verification command (e.g., "npm test")')
-  .action((task, opts) => poetiqCommand(task, {
-    agent: opts.agent,
-    maxCandidates: opts.maxCandidates,
-    verify: opts.verify
-  }));
+  .option('--verify <command>', 'Verification command')
+  .action((task, opts) => poetiqCommand(task, { verify: opts.verify }));
 
 program
   .command('adversary')
-  .description('Adversary: Red-team attack simulation and vulnerability discovery')
+  .description('Security red-team analysis')
   .argument('<task>', 'The target to analyze')
-  .option('-a, --agent <agent>', 'Agent to use', 'claude')
-  .option('-f, --files <files>', 'Comma-separated target files')
-  .option('--max-vectors <n>', 'Max attack vectors to explore', '15')
-  .action((task, opts) => adversaryCommand(task, {
-    agent: opts.agent,
-    files: opts.files,
-    maxVectors: opts.maxVectors
-  }));
+  .option('-f, --files <files>', 'Target files (comma-separated)')
+  .action((task, opts) => adversaryCommand(task, { files: opts.files }));
 
 program
   .command('discover')
-  .description('Self-Discover: Atomic problem analysis using SELF-DISCOVER v5')
+  .description('Atomic problem analysis')
   .argument('<task>', 'The task to analyze')
-  .option('-a, --agent <agent>', 'Agent to use', 'claude')
   .option('-d, --depth <depth>', 'Analysis depth: shallow, medium, deep', 'medium')
-  .action((task, opts) => discoverCommand(task, {
-    agent: opts.agent,
-    depth: opts.depth
-  }));
+  .action((task, opts) => discoverCommand(task, { depth: opts.depth }));
 
 program
   .command('codereason')
-  .description('Code-Reason: Solve problems using code as reasoning medium')
+  .description('Solve problems using code as reasoning')
   .argument('<task>', 'The problem to solve')
-  .option('-a, --agent <agent>', 'Agent to use', 'claude')
-  .option('-l, --language <lang>', 'Programming language to reason in', 'python')
-  .action((task, opts) => codereasonCommand(task, {
-    agent: opts.agent,
-    language: opts.language
-  }));
+  .action((task) => codereasonCommand(task, {}));
 
 program
   .command('feature')
-  .description('Large-Feature: Multi-phase feature workflow with validation gates')
+  .description('Multi-phase feature implementation')
   .argument('<task>', 'The feature to implement')
-  .option('-a, --agent <agent>', 'Agent to use', 'claude')
-  .option('-p, --phases <n>', 'Target number of phases', '5')
-  .option('--verify <command>', 'Verification command (e.g., "npm test")')
-  .action((task, opts) => featureCommand(task, {
-    agent: opts.agent,
-    phases: opts.phases,
-    verify: opts.verify
-  }));
+  .option('--verify <command>', 'Verification command')
+  .action((task, opts) => featureCommand(task, { verify: opts.verify }));
 
 // Memory commands
 program
@@ -483,25 +466,13 @@ program
     list: opts.list
   }));
 
-// Interactive mode command
+// Interactive mode command (simplified)
 program
   .command('interact')
-  .description('Run a CLI tool in interactive mode (pk-puzldai responds to prompts)')
-  .argument('<prompt>', 'Initial prompt/task for the interactive session')
-  .option('-a, --agent <agent>', 'CLI agent to run interactively', 'gemini')
-  .option('-r, --responder <agent>', 'Agent for generating responses', 'ollama')
-  .option('-n, --max-interactions <n>', 'Max number of interactions', '50')
-  .option('-t, --timeout <seconds>', 'Session timeout in seconds', '300')
-  .option('-m, --model <model>', 'Model to use for the CLI agent')
-  .option('-v, --verbose', 'Show detailed output and interactions')
-  .action((prompt, opts) => interactiveCommand(prompt, {
-    agent: opts.agent,
-    responder: opts.responder,
-    maxInteractions: opts.maxInteractions,
-    timeout: opts.timeout,
-    model: opts.model,
-    verbose: opts.verbose
-  }));
+  .description('Run a task with interactive CLI tool handling')
+  .argument('<task>', 'The task to execute interactively')
+  .option('-v, --verbose', 'Show detailed output')
+  .action((task, opts) => interactiveCommand(task, { verbose: opts.verbose }));
 
 // Task management commands
 program
