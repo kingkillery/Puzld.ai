@@ -27,6 +27,7 @@ import {
   consensusCommand
 } from './commands/collaboration';
 import { pickbuildCommand } from './commands/pickbuild';
+import { pkpoetCommand } from './commands/pkpoet';
 import {
   modelShowCommand,
   modelListCommand,
@@ -366,6 +367,38 @@ program
     interactive: opts.interactive,
     format: opts.format,
     noReview: !opts.review
+  }));
+
+// PK-Poet: Ultimate Reasoning Paradigm
+program
+  .command('pkpoet')
+  .description('PK-Poet: REASON→DISCOVER→ATTACK→FORTIFY→EXECUTE unified reasoning paradigm')
+  .argument('<task>', 'The task to analyze and implement')
+  .option('-d, --depth <depth>', 'Analysis depth: shallow, medium, deep', 'medium')
+  .option('-a, --agent <agent>', 'Default agent for all phases', 'claude')
+  .option('--reason-agent <agent>', 'Agent for REASON phase')
+  .option('--discover-agent <agent>', 'Agent for DISCOVER phase')
+  .option('--attack-agent <agent>', 'Agent for ATTACK phase')
+  .option('--fortify-agent <agent>', 'Agent for FORTIFY phase')
+  .option('--execute-agent <agent>', 'Agent for EXECUTE phase')
+  .option('--verify <command>', 'Verification command (e.g., "npm test")')
+  .option('--scope <pattern>', 'Scope pattern for verification (e.g., "src/auth/*")')
+  .option('--max-iterations <n>', 'Max EXECUTE iterations', '5')
+  .option('--max-files <n>', 'Max files to change', '8')
+  .option('-i, --interactive', 'Confirm between phases')
+  .action((task, opts) => pkpoetCommand(task, {
+    depth: opts.depth,
+    agent: opts.agent,
+    reasonAgent: opts.reasonAgent,
+    discoverAgent: opts.discoverAgent,
+    attackAgent: opts.attackAgent,
+    fortifyAgent: opts.fortifyAgent,
+    executeAgent: opts.executeAgent,
+    verify: opts.verify,
+    scope: opts.scope,
+    maxIterations: opts.maxIterations,
+    maxFiles: opts.maxFiles,
+    interactive: opts.interactive
   }));
 
 // Task management commands

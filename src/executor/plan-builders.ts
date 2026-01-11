@@ -14,8 +14,12 @@ import type {
   CorrectionOptions,
   DebateOptions,
   ConsensusOptions,
-  PickBuildOptions
+  PickBuildOptions,
+  PKPoetOptions
 } from './types';
+
+// Re-export PK-Poet builder
+export { buildPKPoetPlan } from './pk-poet-builder';
 
 function generatePlanId(): string {
   return `plan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

@@ -81,7 +81,8 @@ export type PlanMode =
   | 'debate'      // Multi-round agent debate with moderator
   | 'consensus'   // Propose → vote → iterate until agreement
   | 'correction'  // Producer → reviewer → optional fix
-  | 'pickbuild';  // Compare→Pick→Build: propose plans, pick best, implement with agentic tools
+  | 'pickbuild'   // Compare→Pick→Build: propose plans, pick best, implement with agentic tools
+  | 'pkpoet';     // PK-Poet: REASON→DISCOVER→ATTACK→FORTIFY→EXECUTE unified reasoning paradigm
 
 // Execution timeline event for UI/logging
 export interface TimelineEvent {
@@ -220,6 +221,27 @@ export interface PickBuildOptions {
   format?: 'json' | 'md';            // Plan output format (default: 'json')
   skipReview?: boolean;              // Skip review step
   projectStructure?: string;         // Project file listing for context
+}
+
+// --- PK-Poet Options ---
+
+/**
+ * PKPoetOptions - Configuration for PK-Poet workflow
+ * REASON → DISCOVER → ATTACK → FORTIFY → EXECUTE
+ */
+export interface PKPoetOptions {
+  depth?: 'shallow' | 'medium' | 'deep';   // Analysis depth
+  reasonAgent?: AgentName;                  // Agent for REASON phase
+  discoverAgent?: AgentName;                // Agent for DISCOVER phase
+  attackAgent?: AgentName;                  // Agent for ATTACK phase
+  fortifyAgent?: AgentName;                 // Agent for FORTIFY phase
+  executeAgent?: AgentName;                 // Agent for EXECUTE phase
+  verifyCommand?: string;                   // Test command (e.g., "npm test")
+  verifyScope?: string;                     // Scope (e.g., "src/auth/*")
+  maxIterations?: number;                   // Max EXECUTE iterations (default: 5)
+  maxFiles?: number;                        // Max files to change (default: 8)
+  projectStructure?: string;                // Project file listing
+  interactive?: boolean;                    // Confirm between phases
 }
 
 // --- Dynamic Memory Injection (Phase 7) ---
