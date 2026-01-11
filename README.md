@@ -25,6 +25,9 @@
 
 > **Beyond CLI wrappers.** PuzldAI is a complete AI orchestration framework — route tasks, explore codebases, execute file edits, build memory, and generate training data.
 
+> **Current Status (v0.1.0)**
+> PuzldAI v0.1.0 is an early preview release. The core CLI/TUI, Factory AI Droid game system, task persistence layer, structured logging, and eval harness are in place, but APIs and behavior may change in upcoming versions.
+
 PuzldAI is a terminal-native framework for orchestrating multiple AI agents. Route tasks to the best agent, compare responses, chain agents in pipelines, or let them collaborate. **Agentic Mode** gives LLMs tools to explore your codebase (view, glob, grep, bash) and propose file edits with permission prompts — like Claude Code, but for any LLM. **Memory/RAG** stores decisions and code for future context. **Observation Layer** logs everything for DPO fine-tuning. One framework that grows with your AI workflow.
 
 ---
