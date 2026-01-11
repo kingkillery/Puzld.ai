@@ -74,15 +74,21 @@ export interface ExecutionPlan {
 
 // Plan mode determines execution behavior
 export type PlanMode =
-  | 'single'      // Single agent, single step
-  | 'compare'     // Parallel execution, compare results
-  | 'pipeline'    // Sequential with dependencies
-  | 'auto'        // LLM-generated plan
-  | 'debate'      // Multi-round agent debate with moderator
-  | 'consensus'   // Propose → vote → iterate until agreement
-  | 'correction'  // Producer → reviewer → optional fix
-  | 'pickbuild'   // Compare→Pick→Build: propose plans, pick best, implement with agentic tools
-  | 'pkpoet';     // PK-Poet: REASON→DISCOVER→ATTACK→FORTIFY→EXECUTE unified reasoning paradigm
+  | 'single'        // Single agent, single step
+  | 'compare'       // Parallel execution, compare results
+  | 'pipeline'      // Sequential with dependencies
+  | 'auto'          // LLM-generated plan
+  | 'debate'        // Multi-round agent debate with moderator
+  | 'consensus'     // Propose → vote → iterate until agreement
+  | 'correction'    // Producer → reviewer → optional fix
+  | 'pickbuild'     // Compare→Pick→Build: propose plans, pick best, implement with agentic tools
+  | 'pkpoet'        // PK-Poet: REASON→DISCOVER→ATTACK→FORTIFY→EXECUTE unified reasoning paradigm
+  // Factory-Droid modes
+  | 'poetiq'        // Verification-first: FORMALIZE→TEST→DIVERGE→CONVERGE→SELECT
+  | 'adversary'     // Red-team attack simulation and vulnerability discovery
+  | 'selfdiscover'  // Atomic analysis: SELECT→IMPLEMENT→VERIFY (SELF-DISCOVER v5)
+  | 'codereason'    // Code-as-reasoning: FORMALIZE→CODE→EXECUTE→VERIFY
+  | 'largefeature'; // Multi-phase feature workflow with validation gates
 
 // Execution timeline event for UI/logging
 export interface TimelineEvent {
@@ -242,6 +248,46 @@ export interface PKPoetOptions {
   maxFiles?: number;                        // Max files to change (default: 8)
   projectStructure?: string;                // Project file listing
   interactive?: boolean;                    // Confirm between phases
+}
+
+// --- Factory-Droid Mode Options ---
+
+/** Poetiq: Verification-first solver */
+export interface PoetiqOptions {
+  agent?: AgentName;
+  maxCandidates?: number;
+  verifyCommand?: string;
+  projectStructure?: string;
+}
+
+/** Adversary: Red-team attack simulation */
+export interface AdversaryOptions {
+  agent?: AgentName;
+  targetFiles?: string[];
+  maxAttackVectors?: number;
+  projectStructure?: string;
+}
+
+/** Self-Discover: Atomic problem analysis (SELF-DISCOVER v5) */
+export interface SelfDiscoverOptions {
+  agent?: AgentName;
+  depth?: 'shallow' | 'medium' | 'deep';
+  projectStructure?: string;
+}
+
+/** Code-Reason: Code as reasoning medium */
+export interface CodeReasonOptions {
+  agent?: AgentName;
+  language?: string;
+  projectStructure?: string;
+}
+
+/** Large-Feature: Multi-phase feature workflow */
+export interface LargeFeatureOptions {
+  agent?: AgentName;
+  phases?: number;
+  verifyCommand?: string;
+  projectStructure?: string;
 }
 
 // --- Dynamic Memory Injection (Phase 7) ---

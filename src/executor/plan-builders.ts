@@ -21,6 +21,15 @@ import type {
 // Re-export PK-Poet builder
 export { buildPKPoetPlan } from './pk-poet-builder';
 
+// Re-export Factory-Droid mode builders
+export {
+  buildPoetiqPlan,
+  buildAdversaryPlan,
+  buildSelfDiscoverPlan,
+  buildCodeReasonPlan,
+  buildLargeFeaturePlan
+} from './factory-modes-builder';
+
 function generatePlanId(): string {
   return `plan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }

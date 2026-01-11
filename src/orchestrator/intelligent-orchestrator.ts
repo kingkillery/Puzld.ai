@@ -19,6 +19,7 @@ export interface OrchestrateOptions extends RunOptions {
   mode?: 'single' | 'delegate' | 'coordinate' | 'supervise';
   agents?: string[];
   maxIterations?: number;
+  agentic?: boolean;
   onAgentResponse?: (agent: string, response: ModelResponse) => void;
   onToolCall?: (agent: string, tool: string, args: Record<string, unknown>) => void;
   context?: Record<string, unknown>;

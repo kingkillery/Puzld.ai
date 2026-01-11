@@ -29,6 +29,14 @@ import {
 import { pickbuildCommand } from './commands/pickbuild';
 import { pkpoetCommand } from './commands/pkpoet';
 import {
+  poetiqCommand,
+  adversaryCommand,
+  discoverCommand,
+  codereasonCommand,
+  featureCommand
+} from './commands/factory-modes';
+import { rememberCommand } from './commands/remember';
+import {
   modelShowCommand,
   modelListCommand,
   modelSetCommand,
@@ -399,6 +407,79 @@ program
     maxIterations: opts.maxIterations,
     maxFiles: opts.maxFiles,
     interactive: opts.interactive
+  }));
+
+// Factory-Droid Mode Commands
+program
+  .command('poetiq')
+  .description('Poetiq: Verification-first solver (FORMALIZE→TEST→DIVERGE→CONVERGE→SELECT)')
+  .argument('<task>', 'The task to solve')
+  .option('-a, --agent <agent>', 'Agent to use', 'claude')
+  .option('-c, --max-candidates <n>', 'Max candidates to generate', '4')
+  .option('--verify <command>', 'Verification command (e.g., "npm test")')
+  .action((task, opts) => poetiqCommand(task, {
+    agent: opts.agent,
+    maxCandidates: opts.maxCandidates,
+    verify: opts.verify
+  }));
+
+program
+  .command('adversary')
+  .description('Adversary: Red-team attack simulation and vulnerability discovery')
+  .argument('<task>', 'The target to analyze')
+  .option('-a, --agent <agent>', 'Agent to use', 'claude')
+  .option('-f, --files <files>', 'Comma-separated target files')
+  .option('--max-vectors <n>', 'Max attack vectors to explore', '15')
+  .action((task, opts) => adversaryCommand(task, {
+    agent: opts.agent,
+    files: opts.files,
+    maxVectors: opts.maxVectors
+  }));
+
+program
+  .command('discover')
+  .description('Self-Discover: Atomic problem analysis using SELF-DISCOVER v5')
+  .argument('<task>', 'The task to analyze')
+  .option('-a, --agent <agent>', 'Agent to use', 'claude')
+  .option('-d, --depth <depth>', 'Analysis depth: shallow, medium, deep', 'medium')
+  .action((task, opts) => discoverCommand(task, {
+    agent: opts.agent,
+    depth: opts.depth
+  }));
+
+program
+  .command('codereason')
+  .description('Code-Reason: Solve problems using code as reasoning medium')
+  .argument('<task>', 'The problem to solve')
+  .option('-a, --agent <agent>', 'Agent to use', 'claude')
+  .option('-l, --language <lang>', 'Programming language to reason in', 'python')
+  .action((task, opts) => codereasonCommand(task, {
+    agent: opts.agent,
+    language: opts.language
+  }));
+
+program
+  .command('feature')
+  .description('Large-Feature: Multi-phase feature workflow with validation gates')
+  .argument('<task>', 'The feature to implement')
+  .option('-a, --agent <agent>', 'Agent to use', 'claude')
+  .option('-p, --phases <n>', 'Target number of phases', '5')
+  .option('--verify <command>', 'Verification command (e.g., "npm test")')
+  .action((task, opts) => featureCommand(task, {
+    agent: opts.agent,
+    phases: opts.phases,
+    verify: opts.verify
+  }));
+
+// Memory commands
+program
+  .command('remember [memory]')
+  .description('Capture a memory to personal or project memory file')
+  .option('-s, --scope <scope>', 'Memory scope: personal or project', 'personal')
+  .option('-l, --list', 'List saved memories instead of adding one')
+  .action((memory, opts) => rememberCommand(memory, {
+    scope: opts.scope as 'personal' | 'project',
+    list: opts.list
   }));
 
 // Task management commands
