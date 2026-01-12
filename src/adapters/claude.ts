@@ -2,10 +2,23 @@ import { execa } from 'execa';
 
 /** Type for execa subprocess with streaming capabilities */
 type ExecaProcess = ReturnType<typeof execa>;
-import type { Adapter, ModelResponse, RunOptions } from '../lib/types';
+import {
+  SessionState,
+  type Adapter,
+  type ModelResponse,
+  type RunOptions,
+  type InteractiveSession,
+  type InteractiveSessionOptions,
+  type PromptEvent,
+} from '../lib/types';
 import { getConfig } from '../lib/config';
 import { StreamParser, type ResultEvent } from '../lib/stream-parser';
 import { extractProposedEdits, type ProposedEdit } from '../lib/edit-review';
+// Import directly from specific files to avoid circular dependency
+// (interactive/index.ts re-exports responder.ts which imports from adapters)
+import { getSessionManager, type ManagedSession } from '../interactive/session-manager';
+import { CLAUDE_PATTERNS, PromptDetector } from '../interactive/prompt-detector';
+import { detectVersion } from '../interactive/version-detector';
 
 /**
  * Claude CLI Wrapper Guide Reference:
@@ -154,7 +167,67 @@ export interface DryRunResult {
   resultEvent: ResultEvent | null;
 }
 
+/**
+ * Interactive session options for Claude CLI
+ */
+export interface ClaudeInteractiveOptions extends InteractiveSessionOptions {
+  /** Model to use */
+  model?: string;
+  /** Tools to enable */
+  tools?: string;
+  /** System prompt */
+  systemPrompt?: string;
+  /** Agent name */
+  agent?: string;
+}
+
+/**
+ * Claude interactive session wrapper
+ */
+class ClaudeInteractiveSession implements InteractiveSession {
+  readonly id: string;
+  readonly tool = 'claude';
+  readonly createdAt: number;
+  version?: string;
+
+  private managedSession: ManagedSession;
+  private _state: SessionState = SessionState.IDLE;
+
+  constructor(managed: ManagedSession, version?: string) {
+    this.managedSession = managed;
+    this.id = managed.id;
+    this.createdAt = Date.now();
+    this.version = version;
+  }
+
+  get state(): SessionState {
+    return this._state;
+  }
+
+  async send(input: string): Promise<void> {
+    await this.managedSession.send(input);
+  }
+
+  onOutput(callback: (chunk: string) => void): () => void {
+    this.managedSession.on('output', callback);
+    return () => this.managedSession.off('output', callback);
+  }
+
+  onPrompt(callback: (prompt: PromptEvent) => void): () => void {
+    this.managedSession.on('prompt', callback);
+    return () => this.managedSession.off('prompt', callback);
+  }
+
+  async close(reason?: string): Promise<void> {
+    await this.managedSession.close(reason);
+    this._state = SessionState.CLOSED;
+  }
+}
+
 export const claudeAdapter: Adapter & {
+  supportsInteractive: true;
+  startInteractive: (options?: ClaudeInteractiveOptions) => Promise<InteractiveSession>;
+  parsePrompt: (buffer: string) => PromptEvent | null;
   dryRun: (prompt: string, options?: RunOptions) => Promise<DryRunResult>;
   extract: <T>(prompt: string, schema: object, options?: ClaudeRunOptions) => Promise<StructuredResult<T>>;
   autonomous: (task: string, options?: ClaudeRunOptions) => Promise<ModelResponse>;
@@ -162,6 +235,7 @@ export const claudeAdapter: Adapter & {
   spawnAgent: (agentName: string, task: string, options?: ClaudeRunOptions) => ExecaProcess;
 } = {
   name: 'claude',
+  supportsInteractive: true,
 
   async isAvailable(): Promise<boolean> {
     const config = getConfig();
@@ -174,6 +248,90 @@ export const claudeAdapter: Adapter & {
     } catch {
       return false;
     }
+  },
+
+  /**
+   * Start an interactive Claude CLI session
+   *
+   * The session runs Claude in interactive mode via PTY, allowing
+   * real-time interaction with permission prompts and tool approvals.
+   *
+   * @example
+   * const session = await claudeAdapter.startInteractive({ model: 'sonnet' });
+   * session.onPrompt((prompt) => {
+   *   if (prompt.type === 'permission') {
+   *     session.send('y'); // Approve
+   *   }
+   * });
+   * session.onOutput((chunk) => console.log(chunk));
+   */
+  async startInteractive(options?: ClaudeInteractiveOptions): Promise<InteractiveSession> {
+    const config = getConfig();
+
+    // Detect version for logging/pattern selection
+    const versionResult = await detectVersion('claude');
+    if (versionResult.warning) {
+      console.warn(`[claude] ${versionResult.warning}`);
+    }
+
+    // Build command args for interactive mode (no -p flag)
+    const args: string[] = [];
+
+    // Model selection
+    const model = options?.model ?? config.adapters.claude.model;
+    if (model) {
+      args.push('--model', model);
+    }
+
+    // Tools (if specified)
+    if (options?.tools) {
+      args.push('--tools', options.tools);
+    }
+
+    // System prompt
+    if (options?.systemPrompt) {
+      args.push('--system-prompt', options.systemPrompt);
+    }
+
+    // Agent
+    if (options?.agent) {
+      args.push('--agent', options.agent);
+    }
+
+    // Initial prompt if provided
+    if (options?.initialPrompt) {
+      args.push(options.initialPrompt);
+    }
+
+    // Create managed session via SessionManager
+    const sessionManager = getSessionManager();
+    const managed = await sessionManager.create({
+      tool: 'claude',
+      command: config.adapters.claude.path,
+      args,
+      cwd: options?.cwd ?? process.cwd(),
+    });
+
+    // Check for dangerous flags that bypass permissions
+    if (args.includes('--dangerously-skip-permissions') ||
+        args.includes('--permission-mode') && args.includes('bypassPermissions')) {
+      console.warn(
+        '[claude] WARNING: Running with permission bypass. ' +
+        'No permission prompts will fire - output monitoring only.'
+      );
+    }
+
+    return new ClaudeInteractiveSession(managed, versionResult.version?.raw);
+  },
+
+  /**
+   * Parse Claude-specific prompts from buffer
+   */
+  parsePrompt(buffer: string): PromptEvent | null {
+    const detector = new PromptDetector();
+    detector.setTool('claude');
+    detector.addOutput(buffer);
+    return detector.detect();
   },
 
   async run(prompt: string, options?: RunOptions): Promise<ModelResponse> {
