@@ -47,3 +47,15 @@ export {
   type PtySessionOptions,
   type PtySessionEvents,
 } from './pty-session';
+
+// Mock PTY for deterministic testing
+export {
+  MockPty,
+  createClaudePermissionMock,
+  createCodexPermissionMock,
+  createTimeoutMock,
+  createExitMock,
+  createSpawnFailureMock,
+  type MockResponse,
+  type MockPtyOptions,
+} from './mock-pty';
