@@ -7,8 +7,13 @@
  * Example: When running `gemini -i "prompt"`, pk-puzldai can
  * automatically respond to follow-up questions, verification
  * prompts, and keep the conversation going until the task is complete.
+ *
+ * Two modes available:
+ * 1. Higher-level InteractiveSession with auto-response (session.ts)
+ * 2. Lower-level PtySession for direct PTY control (pty-session.ts)
  */
 
+// Higher-level session management with auto-response
 export {
   InteractiveSession,
   runInteractiveSession,
@@ -30,3 +35,15 @@ export {
   type InteractiveSessionState,
   type ResponderOptions,
 } from './types';
+
+// Lower-level PTY session wrapper with fallback to subprocess
+export {
+  PtySession,
+  createPtySession,
+  isPtyAvailable,
+  getPtyLoadError,
+  isConPtyAvailable,
+  getDefaultShell,
+  type PtySessionOptions,
+  type PtySessionEvents,
+} from './pty-session';
