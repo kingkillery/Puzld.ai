@@ -29,6 +29,57 @@ export async function checkCommand(): Promise<void> {
   } else {
     console.log(pc.yellow(`${available}/${results.length} dependencies available`));
   }
+
+  // Show custom model configurations
+  const config = getConfig();
+  const customModels: { adapter: string; model: string }[] = [];
+
+  if (config.adapters.claude.model) {
+    customModels.push({ adapter: 'claude', model: config.adapters.claude.model });
+  }
+  if (config.adapters.gemini.model) {
+    customModels.push({ adapter: 'gemini', model: config.adapters.gemini.model });
+  }
+  if (config.adapters.codex.model) {
+    customModels.push({ adapter: 'codex', model: config.adapters.codex.model });
+  }
+  if (config.adapters.ollama.model && config.adapters.ollama.model !== 'llama3.2') {
+    customModels.push({ adapter: 'ollama', model: config.adapters.ollama.model });
+  }
+  if (config.adapters.factory?.model) {
+    customModels.push({ adapter: 'factory', model: config.adapters.factory.model });
+  }
+  if (config.adapters.crush?.model) {
+    customModels.push({ adapter: 'crush', model: config.adapters.crush.model });
+  }
+
+  if (customModels.length > 0) {
+    console.log('');
+    console.log(pc.bold('Custom Model Configurations:'));
+    for (const { adapter, model } of customModels) {
+      console.log(`  ${pc.cyan(adapter)}: ${pc.dim(model)}`);
+    }
+  }
+
+  // Show factory-specific config if enabled
+  if (config.adapters.factory?.enabled) {
+    const factory = config.adapters.factory;
+    console.log('');
+    console.log(pc.bold('Factory (droid) Settings:'));
+    if (factory.model) console.log(`  Model: ${pc.dim(factory.model)}`);
+    if (factory.autonomy) console.log(`  Autonomy: ${pc.dim(factory.autonomy)}`);
+    if (factory.reasoningEffort) console.log(`  Reasoning: ${pc.dim(factory.reasoningEffort)}`);
+    if (factory.skipPermissions) console.log(`  Skip Permissions: ${pc.yellow('true')}`);
+  }
+
+  // Show crush-specific config if enabled
+  if (config.adapters.crush?.enabled) {
+    const crush = config.adapters.crush;
+    console.log('');
+    console.log(pc.bold('Crush Settings:'));
+    if (crush.model) console.log(`  Model: ${pc.dim(crush.model)}`);
+    if (crush.autoAccept) console.log(`  Auto Accept: ${pc.yellow('true')}`);
+  }
 }
 
 async function checkDependencies(): Promise<CheckResult[]> {

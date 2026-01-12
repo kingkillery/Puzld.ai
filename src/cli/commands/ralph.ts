@@ -1,10 +1,10 @@
 import pc from 'picocolors';
-import { adapters } from '../../adapters';
+import { adapters, getAvailableAdapters } from '../../adapters';
 import { getConfig } from '../../lib/config';
 import { routeTask, isRouterAvailable } from '../../router/router';
 import { resolveAgentSelection } from '../../lib/agent-selection';
 import type { AgentName } from '../../executor/types';
-import type { ModelResponse } from '../../lib/types';
+import type { Adapter, ModelResponse } from '../../lib/types';
 
 interface RalphOptions {
   planner?: string;
@@ -47,7 +47,13 @@ interface RalphIterationState {
   changedFiles: string[];
 }
 
-const RALPH_PLANNER_PROMPT = `You are a planning agent. Produce a comprehensive implementation plan as JSON.
+// Dynamic planner prompt with available agents
+function buildPlannerPrompt(availableAgents: string[]): string {
+  const agentList = availableAgents.length > 0
+    ? availableAgents.join('|')
+    : 'claude';
+
+  return `You are a planning agent. Produce a comprehensive implementation plan as JSON.
 Output ONLY JSON.
 Schema:
 {
@@ -59,7 +65,7 @@ Schema:
       "title": "...",
       "objective": "...",
       "acceptance": ["..."],
-      "agent": "claude|gemini|codex|ollama|mistral|factory|crush|auto",
+      "agent": "${agentList}|auto",
       "action": "analyze|code|review|fix|test|summarize"
     }
   ]
@@ -68,8 +74,10 @@ Rules:
 - If you need user input, populate questions and keep steps empty.
 - Keep steps minimal and ordered.
 - Use the completion phrase exactly in completion.
+- IMPORTANT: Only use agents from the available list: ${agentList}
 
 Task: `;
+}
 
 function extractJson(content: string): RalphPlan {
   const start = content.indexOf('{');
@@ -80,18 +88,38 @@ function extractJson(content: string): RalphPlan {
   return JSON.parse(content.slice(start, end + 1)) as RalphPlan;
 }
 
-async function pickAgent(agent: AgentName | 'auto', prompt: string): Promise<AgentName> {
+async function pickAgent(
+  agent: AgentName | 'auto',
+  prompt: string,
+  availableAdapterNames: string[]
+): Promise<AgentName> {
+  const cfg = getConfig();
+  const fallback = cfg.fallbackAgent as AgentName;
+
+  // Helper to check if agent is available
+  const isAgentAvailable = (name: string): boolean =>
+    availableAdapterNames.includes(name);
+
   if (agent === 'auto') {
     if (await isRouterAvailable()) {
       const route = await routeTask(prompt);
       const selection = resolveAgentSelection(route.agent as AgentName);
-      return selection.agent as AgentName;
+      // Verify the routed agent is actually available
+      if (isAgentAvailable(selection.agent)) {
+        return selection.agent as AgentName;
+      }
+      console.log(pc.dim(`   [Ralph] Routed agent '${selection.agent}' unavailable, falling back to '${fallback}'`));
     }
-    const cfg = getConfig();
-    const selection = resolveAgentSelection(cfg.fallbackAgent as AgentName);
+    const selection = resolveAgentSelection(fallback);
     return selection.agent as AgentName;
   }
+
+  // Validate requested agent is available
   const selection = resolveAgentSelection(agent);
+  if (!isAgentAvailable(selection.agent)) {
+    console.log(pc.dim(`   [Ralph] Agent '${agent}' unavailable, falling back to '${fallback}'`));
+    return fallback;
+  }
   return selection.agent as AgentName;
 }
 
@@ -112,8 +140,14 @@ async function runAdapter(agent: AgentName, prompt: string, model?: string): Pro
   });
 
   try {
+    // Enable tools for Claude so it can write files in Ralph loop
+    // Other adapters use their defaults
+    const runOptions = agent === 'claude'
+      ? { model, disableTools: false }
+      : { model };
+
     const result = await Promise.race([
-      adapter.run(prompt, { model }),
+      adapter.run(prompt, runOptions),
       timeoutPromise
     ]);
     return result;
@@ -147,14 +181,24 @@ export async function ralphCommand(task: string, options: RalphOptions): Promise
     process.exit(1);
   }
 
+  // Query available adapters BEFORE planning
+  const availableAdapters = await getAvailableAdapters();
+  const availableAdapterNames = availableAdapters.map(a => a.name);
+
+  // Ensure we have at least one adapter
+  if (availableAdapterNames.length === 0) {
+    console.error(pc.red('Error: No adapters available. Run `pk-puzldai check` to diagnose.'));
+    process.exit(1);
+  }
+
   const planner = (options.planner || 'gemini') as AgentName;
-  const maxIters = options.iterations ? parseInt(options.iterations, 10) : MAX_ITERS_DEFAULT;
+  const maxIters = options.iterations ? Number(options.iterations) : MAX_ITERS_DEFAULT;
   const completionToken = options.completion || '<promise>COMPLETE</promise>';
   const verifyCommand = options.tests;
   const scopePattern = options.scope;
 
   // Validate iterations
-  if (isNaN(maxIters) || maxIters < 1) {
+  if (!Number.isInteger(maxIters) || maxIters < 1) {
     console.error(pc.red('Error: --iters must be a positive number'));
     process.exit(1);
   }
@@ -162,6 +206,7 @@ export async function ralphCommand(task: string, options: RalphOptions): Promise
   console.log(pc.bold('\n🔄 Ralph Wiggum Loop'));
   console.log(pc.dim('═'.repeat(50)));
   console.log(pc.dim(`Planner: ${planner}`));
+  console.log(pc.dim(`Available agents: ${availableAdapterNames.join(', ')}`));
   console.log(pc.dim(`Max Iterations: ${maxIters}`));
   console.log(pc.dim(`Max Files Changed: ${MAX_FILES_CHANGED}`));
   console.log(pc.dim(`Max Tool Calls: ${MAX_TOOL_CALLS}`));
@@ -174,8 +219,9 @@ export async function ralphCommand(task: string, options: RalphOptions): Promise
   console.log(pc.dim(`Completion token: ${completionToken}`));
 
   console.log(pc.bold('\n--- Planning Phase ---\n'));
-  const plannerAgent = await pickAgent(planner, task);
-  const planning = await runAdapter(plannerAgent, RALPH_PLANNER_PROMPT + task, options.model);
+  const plannerAgent = await pickAgent(planner, task, availableAdapterNames);
+  const plannerPrompt = buildPlannerPrompt(availableAdapterNames);
+  const planning = await runAdapter(plannerAgent, plannerPrompt + task, options.model);
   if (planning.error) {
     console.error(pc.red(`Planning failed: ${planning.error}`));
     process.exit(1);
@@ -252,7 +298,7 @@ export async function ralphCommand(task: string, options: RalphOptions): Promise
       }
 
       const agentName = (step.agent || 'auto') as AgentName;
-      const stepAgent = await pickAgent(agentName, step.objective || task);
+      const stepAgent = await pickAgent(agentName, step.objective || task, availableAdapterNames);
       console.log(pc.dim(`   Agent: ${stepAgent}`));
 
       const prompt = buildStepPrompt(step, task);
