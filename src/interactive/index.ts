@@ -73,3 +73,15 @@ export {
   type MockResponse,
   type MockPtyOptions,
 } from './mock-pty';
+
+// Security: credential filtering
+export {
+  CredentialFilter,
+  filterCredentials,
+  containsCredentials,
+  detectCredentialTypes,
+  createCredentialFilter,
+  type CredentialType,
+  type CredentialPattern,
+  type CredentialFilterOptions,
+} from './security';
