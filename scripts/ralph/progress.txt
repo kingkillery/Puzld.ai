@@ -1,0 +1,105 @@
+# Ralph Progress Log - Interactive CLI Integration
+Started: 2026-01-12
+
+## Codebase Patterns
+
+### Adapter Pattern
+- All adapters implement `Adapter` interface from `src/lib/types.ts`
+- Required methods: `name`, `run()`, `isAvailable()`
+- Optional: `onChunk` callback for streaming
+- Return `ModelResponse` with content, model, duration, tokens, error
+
+### Tool Aliasing
+- Tool names normalized in `src/agentic/agent-loop.ts`
+- Map multiple names to canonical tools (e.g., `read_file` → `view`)
+- Provider-specific prefixes stripped (e.g., `default_api:`)
+
+### Permission System
+- `src/agentic/tools/permissions.ts` categorizes tools by permission type
+- Categories: read, write, execute
+- User confirmation required for write/execute operations
+
+### Config Pattern
+- Config loaded from `~/.puzldai/config.json`
+- Schema defined in `src/lib/config.ts`
+- Use `getConfig()` to access, `updateConfig()` to modify
+
+### CLI Command Pattern
+- Commands in `src/cli/commands/*.ts`
+- Use Commander.js for argument parsing
+- Register in `src/cli/index.ts`
+
+### TUI Components
+- Ink-based React components in `src/tui/`
+- Use hooks from `src/tui/hooks/`
+- Render with `render()` from ink
+
+### node-pty Usage
+- Already installed as dependency
+- Import: `import * as pty from 'node-pty'`
+- Windows uses `conpty`, Unix uses standard PTY
+
+## Key Files
+
+- `src/lib/types.ts` - Core type definitions
+- `src/adapters/index.ts` - Adapter registry
+- `src/adapters/claude.ts` - Claude adapter (reference implementation)
+- `src/agentic/agent-loop.ts` - Main agent loop with tool handling
+- `src/lib/config.ts` - Configuration management
+- `plan-output.md` - Full implementation plan from Codex
+
+## Validation Results
+
+### Adversary Analysis (2026-01-12)
+Red-team analysis identified the following attack surfaces:
+- **Input injection**: PTY input could contain shell escapes
+- **Credential leakage**: Session logs may contain API keys
+- **Zombie processes**: Hung sessions leave orphan processes
+- **Resource exhaustion**: Unlimited concurrent sessions
+
+### Self-Discover Analysis (2026-01-12)
+Deep atomic analysis found:
+
+**Residual Risks:**
+1. node-pty prebuild binaries may not exist for all Node/platform combos
+2. Claude Code may add new prompt types not covered by regex
+3. Windows ConPTY line endings differ from Unix
+4. Factory autonomy=full bypasses permission prompts entirely
+5. Session persistence in SQLite may bottleneck under high load
+
+**Verification Gaps Addressed:**
+- Added INT-003: Mock PTY for deterministic testing
+- Added INT-007: Watchdog for hung session detection
+- Added INT-009: Credential filtering in output
+- Added INT-020: Security test suite with injection payloads
+- Added INT-021: Integration tests with mock PTY
+
+**Critical Path Identified:**
+```
+INT-001 (interfaces)
+    ↓
+INT-002 (PTY driver) ← INT-019 (OS helpers, parallel)
+    ↓
+INT-004 (prompt detector)
+    ↓
+INT-006 (session manager) ← INT-005 (version detector, parallel)
+    ↓
+INT-007 (watchdog)
+    ↓
+INT-010/011/012 (adapters, parallel)
+    ↓
+INT-015 (CLI flag)
+```
+
+**V2 Deferrals:**
+- Session reconnection after crash
+- Checkpoint-based resume
+- Parallel load testing
+
+---
+
+## Implementation Log
+
+(Implementation entries will be appended below as stories are completed)
+
+---

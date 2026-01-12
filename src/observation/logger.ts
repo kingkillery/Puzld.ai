@@ -35,6 +35,7 @@ export interface RoutingDecision {
   routerModel?: string;
   profile?: string;
   mode?: string;
+  suggestedHarness?: string;
 }
 
 export interface ReviewDecision {

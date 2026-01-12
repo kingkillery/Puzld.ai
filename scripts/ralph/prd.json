@@ -1,0 +1,459 @@
+{
+  "branchName": "ralph/interactive-cli-integration",
+  "feature": "Interactive CLI Integration",
+  "description": "Drive CLI tools (Claude Code, Codex, Factory, Crush) interactively via PTY to leverage their full capabilities without reimplementing features",
+  "criticalPath": ["INT-001", "INT-002", "INT-003", "INT-004", "INT-009", "INT-012"],
+  "v2Deferrals": ["Session reconnection after crash", "Checkpoint-based resume", "Parallel load testing"],
+  "userStories": [
+    {
+      "id": "INT-001",
+      "title": "Define InteractiveSession and InteractiveAdapter interfaces",
+      "description": "Add TypeScript interfaces for interactive sessions. InteractiveSession handles PTY lifecycle. InteractiveAdapter extends Adapter with interactive capabilities. PromptEvent union covers all prompt types.",
+      "acceptanceCriteria": [
+        "InteractiveSession interface: id, send(), onOutput(), onPrompt(), close()",
+        "InteractiveAdapter extends Adapter with supportsInteractive, startInteractive(), parsePrompt?()",
+        "PromptEvent union: permission | input | confirm | error",
+        "SessionState enum: idle | waiting | processing | prompting | closing",
+        "Typecheck passes"
+      ],
+      "files": ["src/lib/types.ts"],
+      "priority": 1,
+      "complexity": "low",
+      "dependsOn": [],
+      "passes": false
+    },
+    {
+      "id": "INT-002",
+      "title": "Create PTY session wrapper with fallback",
+      "description": "Create pty-session.ts wrapping node-pty with automatic fallback to execa when PTY unavailable. Must work on Windows (ConPTY) and Unix. Include graceful cleanup and CRLF normalization.",
+      "acceptanceCriteria": [
+        "PtySession class with spawn(), send(), close(), kill() methods",
+        "Automatic fallback to execa subprocess when node-pty fails",
+        "Windows ConPTY support with taskkill cleanup",
+        "Unix PTY with SIGTERM/SIGKILL cleanup",
+        "CRLF → LF normalization on Windows",
+        "EventEmitter for output, error, exit events"
+      ],
+      "files": ["src/interactive/pty-session.ts"],
+      "priority": 2,
+      "complexity": "high",
+      "dependsOn": ["INT-001"],
+      "edgeCases": [
+        "node-pty native compilation fails - fallback to execa",
+        "Process hangs - watchdog timeout triggers kill",
+        "Windows lacks SIGTERM - use taskkill /T /F",
+        "ConPTY not available on Windows < 1809 - error with guidance"
+      ],
+      "passes": false
+    },
+    {
+      "id": "INT-003",
+      "title": "Create mock PTY for deterministic testing",
+      "description": "Create mock-pty.ts that simulates PTY behavior with scripted responses for unit testing. Enables testing without real CLI tools.",
+      "acceptanceCriteria": [
+        "MockPty class implements same interface as PtySession",
+        "Scripted response sequences for test scenarios",
+        "Simulates timing/delays for async behavior",
+        "Simulates permission prompts, errors, timeouts",
+        "Can inject arbitrary output patterns"
+      ],
+      "files": ["src/interactive/mock-pty.ts"],
+      "priority": 3,
+      "complexity": "medium",
+      "dependsOn": ["INT-002"],
+      "passes": false
+    },
+    {
+      "id": "INT-004",
+      "title": "Create prompt detector with sample dataset",
+      "description": "Create prompt-detector.ts that buffers output and detects prompts using regex patterns. Include sample prompt dataset from real CLI tools for testing.",
+      "acceptanceCriteria": [
+        "PromptDetector class with detect(buffer) returning PromptEvent | null",
+        "Pattern registry keyed by CLI tool name",
+        "Buffer management with configurable max size",
+        "Debounce to handle partial token delivery",
+        "Sample dataset: 20+ real prompts per CLI tool in fixtures/",
+        "95%+ detection rate on sample dataset"
+      ],
+      "files": ["src/interactive/prompt-detector.ts", "src/interactive/fixtures/"],
+      "priority": 4,
+      "complexity": "medium",
+      "dependsOn": ["INT-001"],
+      "edgeCases": [
+        "Prompt split across multiple chunks - buffer and retry",
+        "Non-ASCII characters in output - handle encoding",
+        "CLI tool updates prompt format - log warning, continue"
+      ],
+      "passes": false
+    },
+    {
+      "id": "INT-005",
+      "title": "Add CLI version detection",
+      "description": "Add version detection for Claude, Codex, Factory, Crush CLIs. Log warnings on unknown versions. Store version for pattern selection.",
+      "acceptanceCriteria": [
+        "detectCliVersion(tool) function returns semver or null",
+        "Version check on adapter initialization",
+        "Warning logged if version unknown or unsupported",
+        "Version stored in session metadata",
+        "Pattern selection can vary by version"
+      ],
+      "files": ["src/interactive/version-detector.ts"],
+      "priority": 5,
+      "complexity": "low",
+      "dependsOn": [],
+      "passes": false
+    },
+    {
+      "id": "INT-006",
+      "title": "Create session manager with concurrency limits",
+      "description": "Create session-manager.ts to manage PTY session lifecycle. Include configurable concurrency limit with queue, timeouts, and cleanup of orphaned sessions.",
+      "acceptanceCriteria": [
+        "SessionManager singleton with create(), get(), close(), closeAll()",
+        "Configurable max_concurrent_sessions (default: 5)",
+        "Queue for excess sessions with configurable max queue size",
+        "Reject with error when queue full",
+        "Timeout handling with configurable duration (default: 120s)",
+        "Cleanup orphaned sessions on manager shutdown",
+        "Session registry keyed by id"
+      ],
+      "files": ["src/interactive/session-manager.ts"],
+      "priority": 6,
+      "complexity": "medium",
+      "dependsOn": ["INT-002", "INT-004"],
+      "edgeCases": [
+        "All slots full - queue or reject based on config",
+        "Session timeout during user prompt - extend timeout",
+        "Manager shutdown with active sessions - graceful close all"
+      ],
+      "passes": false
+    },
+    {
+      "id": "INT-007",
+      "title": "Create watchdog for hung session detection",
+      "description": "Create watchdog.ts that monitors sessions for hangs (no output for N seconds) and triggers cleanup. Prevents zombie processes.",
+      "acceptanceCriteria": [
+        "Watchdog class monitors all active sessions",
+        "Configurable inactivity timeout (default: 60s)",
+        "Escalating termination: SIGTERM → wait 5s → SIGKILL/taskkill",
+        "Emits warning event before killing",
+        "Logs killed sessions for debugging",
+        "Zero orphan processes after watchdog cleanup"
+      ],
+      "files": ["src/interactive/watchdog.ts"],
+      "priority": 7,
+      "complexity": "medium",
+      "dependsOn": ["INT-006"],
+      "passes": false
+    },
+    {
+      "id": "INT-008",
+      "title": "Add unit tests for prompt detector",
+      "description": "Create comprehensive tests for prompt detector using sample dataset. Cover all CLI tools and edge cases.",
+      "acceptanceCriteria": [
+        "Test file at src/interactive/__tests__/prompt-detector.test.ts",
+        "Tests for Claude, Codex, Factory, Crush patterns",
+        "Tests for buffer splitting edge cases",
+        "Tests for unknown/malformed prompts",
+        "95%+ pass rate on sample dataset",
+        "All tests pass with bun test"
+      ],
+      "files": ["src/interactive/__tests__/prompt-detector.test.ts"],
+      "priority": 8,
+      "complexity": "medium",
+      "dependsOn": ["INT-003", "INT-004"],
+      "passes": false
+    },
+    {
+      "id": "INT-009",
+      "title": "Add credential filtering in session output",
+      "description": "Add security module that filters sensitive data (API keys, tokens, passwords) from session output before logging or display.",
+      "acceptanceCriteria": [
+        "filterCredentials(text) function redacts sensitive patterns",
+        "Patterns: sk-*, ANTHROPIC_*, OPENAI_*, bearer tokens, passwords",
+        "Redaction format: [REDACTED:type]",
+        "Applied to all session output before logging",
+        "Applied before observation storage",
+        "No false positives on common code patterns"
+      ],
+      "files": ["src/interactive/security.ts"],
+      "priority": 9,
+      "complexity": "medium",
+      "dependsOn": [],
+      "passes": false
+    },
+    {
+      "id": "INT-010",
+      "title": "Implement interactive mode for Claude adapter",
+      "description": "Add startInteractive() to Claude adapter. Handle Claude-specific prompts. Detect CLI version. Handle claude --dangerously-skip-permissions mode.",
+      "acceptanceCriteria": [
+        "Claude adapter implements InteractiveAdapter",
+        "startInteractive() spawns claude CLI in PTY",
+        "parsePrompt() detects Claude permission prompts",
+        "Handles tool approval prompts (y/n/a)",
+        "Detects and warns on --dangerously-skip-permissions",
+        "Version detection on startup",
+        "Existing run() unchanged"
+      ],
+      "files": ["src/adapters/claude.ts"],
+      "priority": 10,
+      "complexity": "high",
+      "dependsOn": ["INT-002", "INT-004", "INT-005", "INT-006"],
+      "passes": false
+    },
+    {
+      "id": "INT-011",
+      "title": "Implement interactive mode for Codex adapter",
+      "description": "Add startInteractive() to Codex adapter. Handle Codex-specific prompts including sandbox and approval modes.",
+      "acceptanceCriteria": [
+        "Codex adapter implements InteractiveAdapter",
+        "startInteractive() spawns codex CLI in PTY",
+        "parsePrompt() detects Codex approval prompts",
+        "Handles sandbox mode prompts",
+        "Detects --dangerously-bypass-approvals-and-sandbox flag",
+        "Existing run() unchanged"
+      ],
+      "files": ["src/adapters/codex.ts"],
+      "priority": 11,
+      "complexity": "high",
+      "dependsOn": ["INT-002", "INT-004", "INT-005", "INT-006"],
+      "passes": false
+    },
+    {
+      "id": "INT-012",
+      "title": "Implement interactive mode for Factory adapter",
+      "description": "Add startInteractive() to Factory adapter. CRITICAL: Handle autonomy=full mode where no prompts fire. Detect autonomy level and warn.",
+      "acceptanceCriteria": [
+        "Factory adapter implements InteractiveAdapter",
+        "startInteractive() spawns factory CLI in PTY",
+        "parsePrompt() detects Factory approval prompts",
+        "Detects autonomy level from config/args",
+        "Warns when autonomy=full (no prompts will fire)",
+        "Falls back to output-only monitoring in full autonomy",
+        "Existing run() unchanged"
+      ],
+      "files": ["src/adapters/factory.ts"],
+      "priority": 12,
+      "complexity": "high",
+      "dependsOn": ["INT-002", "INT-004", "INT-005", "INT-006"],
+      "edgeCases": [
+        "autonomy=full - no permission prompts fire, monitor output only",
+        "autonomy changes mid-session - re-detect on prompt timeout"
+      ],
+      "passes": false
+    },
+    {
+      "id": "INT-013",
+      "title": "Create permission router with policy engine",
+      "description": "Create permission-router.ts that routes PromptEvents to approval logic. Support policies: ask (always prompt user), auto-approve, auto-deny, smart (approve safe, deny dangerous).",
+      "acceptanceCriteria": [
+        "PermissionRouter class with route(event) returning response string",
+        "Policy enum: ask | auto_approve | auto_deny | smart",
+        "Smart policy uses tool categorization from existing permission-tracker",
+        "Configurable per-adapter policy override",
+        "Audit log of all decisions",
+        "Integration with TUI for user prompts"
+      ],
+      "files": ["src/interactive/permission-router.ts"],
+      "priority": 13,
+      "complexity": "medium",
+      "dependsOn": ["INT-001", "INT-004"],
+      "passes": false
+    },
+    {
+      "id": "INT-014",
+      "title": "Add interactive config schema",
+      "description": "Update config to include interactive mode settings. All settings optional with sensible defaults.",
+      "acceptanceCriteria": [
+        "interactive.enabled: boolean (default: true)",
+        "interactive.timeout: number (default: 120000)",
+        "interactive.maxConcurrentSessions: number (default: 5)",
+        "interactive.maxQueueSize: number (default: 10)",
+        "interactive.watchdogTimeout: number (default: 60000)",
+        "interactive.permissionPolicy: enum (default: ask)",
+        "interactive.adapters.<name>.enabled: boolean"
+      ],
+      "files": ["src/lib/config.ts"],
+      "priority": 14,
+      "complexity": "low",
+      "dependsOn": [],
+      "passes": false
+    },
+    {
+      "id": "INT-015",
+      "title": "Add --interactive flag to run command",
+      "description": "Add -I/--interactive flag to run command. When set, use interactive adapter mode if available. Graceful fallback.",
+      "acceptanceCriteria": [
+        "Flag -I/--interactive added to run command",
+        "When set, check adapter.supportsInteractive",
+        "If supported, use startInteractive()",
+        "If not supported, warn and fall back to run()",
+        "Stream output to terminal in real-time",
+        "Handle permission prompts via TUI or policy"
+      ],
+      "files": ["src/cli/commands/run.ts"],
+      "priority": 15,
+      "complexity": "medium",
+      "dependsOn": ["INT-010", "INT-013", "INT-014"],
+      "passes": false
+    },
+    {
+      "id": "INT-016",
+      "title": "Add --interactive flag to orchestrate command",
+      "description": "Add --interactive flag to orchestrate command for multi-agent interactive workflows.",
+      "acceptanceCriteria": [
+        "Flag added to orchestrate command",
+        "Interactive sessions maintained per agent",
+        "Session handoff between pipeline steps",
+        "Output streaming through orchestrator UI",
+        "Permission prompts aggregated or per-agent"
+      ],
+      "files": ["src/cli/commands/orchestrate.ts"],
+      "priority": 16,
+      "complexity": "high",
+      "dependsOn": ["INT-015"],
+      "passes": false
+    },
+    {
+      "id": "INT-017",
+      "title": "Create TUI output stream component",
+      "description": "Create Ink component for streaming PTY output with ANSI support and scrolling.",
+      "acceptanceCriteria": [
+        "OutputStream component in src/tui/components/",
+        "Handles chunked output rendering",
+        "Preserves ANSI color codes",
+        "Auto-scroll to bottom, manual scroll up",
+        "Configurable max buffer size",
+        "Clear/reset functionality"
+      ],
+      "files": ["src/tui/components/output-stream.tsx"],
+      "priority": 17,
+      "complexity": "medium",
+      "dependsOn": [],
+      "passes": false
+    },
+    {
+      "id": "INT-018",
+      "title": "Create TUI permission modal component",
+      "description": "Create Ink component for permission prompt display with keyboard navigation.",
+      "acceptanceCriteria": [
+        "PermissionModal component in src/tui/components/",
+        "Displays tool name, action, risk level",
+        "Options: Approve (y), Deny (n), Approve All (a), Deny All (d)",
+        "Keyboard navigation with highlight",
+        "Timeout with configurable default action",
+        "Returns user selection via callback"
+      ],
+      "files": ["src/tui/components/permission-modal.tsx"],
+      "priority": 18,
+      "complexity": "medium",
+      "dependsOn": ["INT-017"],
+      "passes": false
+    },
+    {
+      "id": "INT-019",
+      "title": "Add OS-specific helpers",
+      "description": "Create os-utils.ts with cross-platform helpers for shell detection, process management, and encoding.",
+      "acceptanceCriteria": [
+        "getDefaultShell() returns appropriate shell path",
+        "getShellArgs() returns shell-specific arguments",
+        "killProcess(pid) uses SIGTERM/taskkill appropriately",
+        "normalizeLineEndings(text) handles CRLF/LF",
+        "isConPtyAvailable() checks Windows version",
+        "Works on Windows, Linux, macOS"
+      ],
+      "files": ["src/lib/os-utils.ts"],
+      "priority": 19,
+      "complexity": "medium",
+      "dependsOn": [],
+      "passes": false
+    },
+    {
+      "id": "INT-020",
+      "title": "Add security test suite",
+      "description": "Create security tests with OWASP-inspired injection payloads adapted for PTY context.",
+      "acceptanceCriteria": [
+        "Test file at src/interactive/__tests__/security.test.ts",
+        "Command injection payloads (;, &&, ||, backticks, $())",
+        "Path traversal payloads (../, etc)",
+        "Control character injection (ANSI escapes)",
+        "All payloads rejected or sanitized",
+        "No code execution from malicious input"
+      ],
+      "files": ["src/interactive/__tests__/security.test.ts"],
+      "priority": 20,
+      "complexity": "medium",
+      "dependsOn": ["INT-009"],
+      "passes": false
+    },
+    {
+      "id": "INT-021",
+      "title": "Add integration tests with mock PTY",
+      "description": "Create integration tests verifying end-to-end flow using mock PTY for determinism.",
+      "acceptanceCriteria": [
+        "Test file at src/interactive/__tests__/integration.test.ts",
+        "Tests for full session lifecycle (create → prompt → respond → close)",
+        "Tests for timeout handling",
+        "Tests for permission routing",
+        "Tests for concurrent session limits",
+        "All tests use MockPty for determinism",
+        "90%+ pass rate"
+      ],
+      "files": ["src/interactive/__tests__/integration.test.ts"],
+      "priority": 21,
+      "complexity": "high",
+      "dependsOn": ["INT-003", "INT-006", "INT-007", "INT-013"],
+      "passes": false
+    },
+    {
+      "id": "INT-022",
+      "title": "Add tool telemetry from interactive sessions",
+      "description": "Record tool usage events from permission prompts to observation system for analytics.",
+      "acceptanceCriteria": [
+        "Tool calls logged with: tool name, args, decision, timestamp, duration",
+        "Integrated with existing observe command",
+        "Credentials filtered before storage",
+        "Session ID linked for correlation",
+        "Export includes interactive session data"
+      ],
+      "files": ["src/observation/index.ts", "src/interactive/session-manager.ts"],
+      "priority": 22,
+      "complexity": "low",
+      "dependsOn": ["INT-006", "INT-009"],
+      "passes": false
+    },
+    {
+      "id": "INT-023",
+      "title": "Register interactive adapters in index",
+      "description": "Update adapter registry with interactive capabilities discovery.",
+      "acceptanceCriteria": [
+        "adapters registry includes supportsInteractive flag per adapter",
+        "getInteractiveAdapters() returns only interactive-capable adapters",
+        "isInteractiveAdapter(adapter) type guard",
+        "Backwards compatible with existing adapter usage"
+      ],
+      "files": ["src/adapters/index.ts"],
+      "priority": 23,
+      "complexity": "low",
+      "dependsOn": ["INT-010", "INT-011", "INT-012"],
+      "passes": false
+    },
+    {
+      "id": "INT-024",
+      "title": "Document interactive mode",
+      "description": "Add comprehensive documentation for interactive mode setup, configuration, and troubleshooting.",
+      "acceptanceCriteria": [
+        "CLI-ADAPTERS.md updated with interactive section",
+        "Configuration options documented with examples",
+        "Per-adapter notes and quirks documented",
+        "Troubleshooting section for common issues",
+        "Windows-specific notes (ConPTY, taskkill)",
+        "Minimum Windows version noted (10 1809+)"
+      ],
+      "files": ["CLI-ADAPTERS.md", "README.md"],
+      "priority": 24,
+      "complexity": "low",
+      "dependsOn": ["INT-015", "INT-016"],
+      "passes": false
+    }
+  ]
+}
