@@ -108,3 +108,21 @@ export {
   type WatchdogStats,
   type WatchdogEvents,
 } from './watchdog';
+
+// CLI version detection
+export {
+  detectVersion,
+  detectAllVersions,
+  parseVersion,
+  compareVersions,
+  meetsMinimumVersion,
+  formatVersion,
+  getVersionString,
+  clearVersionCache,
+  clearToolVersionCache,
+  getAllCLITools,
+  isKnownCLITool,
+  type CLITool,
+  type VersionInfo,
+  type VersionResult,
+} from './version-detector';
