@@ -1,4 +1,4 @@
-import type { Adapter } from '../lib/types';
+import { isInteractiveAdapter, type Adapter, type InteractiveAdapter } from '../lib/types';
 import { claudeAdapter } from './claude';
 import { geminiAdapter } from './gemini';
 import { geminiSafeAdapter } from './gemini-safe';
@@ -43,6 +43,40 @@ export async function getAvailableAdapters(): Promise<Adapter[]> {
   return available;
 }
 
+/**
+ * Get all adapters that support interactive mode
+ */
+export function getInteractiveAdapters(): InteractiveAdapter[] {
+  const interactive: InteractiveAdapter[] = [];
+  for (const adapter of Object.values(adapters)) {
+    if (isInteractiveAdapter(adapter)) {
+      interactive.push(adapter);
+    }
+  }
+  return interactive;
+}
+
+/**
+ * Get available adapters that support interactive mode
+ */
+export async function getAvailableInteractiveAdapters(): Promise<InteractiveAdapter[]> {
+  const available: InteractiveAdapter[] = [];
+  for (const adapter of Object.values(adapters)) {
+    if (isInteractiveAdapter(adapter) && (await adapter.isAvailable())) {
+      available.push(adapter);
+    }
+  }
+  return available;
+}
+
+/**
+ * Check if a specific adapter supports interactive mode
+ */
+export function adapterSupportsInteractive(adapterName: string): boolean {
+  const adapter = adapters[adapterName];
+  return adapter ? isInteractiveAdapter(adapter) : false;
+}
+
 export {
   claudeAdapter,
   geminiAdapter,
@@ -63,6 +97,8 @@ export {
   // Interactive mode support
   createInteractiveAdapter,
   runInteractive,
+  // Note: getInteractiveAdapters, getAvailableInteractiveAdapters, adapterSupportsInteractive
+  // are already exported via 'export function' declarations above
 };
 
 export type { InteractiveRunOptions };
