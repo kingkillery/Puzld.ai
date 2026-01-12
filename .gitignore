@@ -37,3 +37,6 @@ docs/*.md
 # Test artifacts
 fibonacci.py
 hello.js
+
+# Local Claude/agent scratch files
+tmpclaude-*
