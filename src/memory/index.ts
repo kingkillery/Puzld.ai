@@ -110,3 +110,12 @@ export {
   type InjectionOptions,
   type InjectionResult
 } from './injector';
+
+// Caching Layer
+export {
+  createCache,
+  RedisCache,
+  MemoryCache,
+  type ICache
+} from './cache';
+

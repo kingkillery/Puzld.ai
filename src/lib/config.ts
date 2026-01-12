@@ -79,16 +79,17 @@ const DEFAULT_CONFIG: PulzdConfig = {
     claude: { enabled: true, path: 'claude' },
     gemini: { enabled: true, path: 'gemini' },
     codex: { enabled: true, path: 'codex' },
-    ollama: { enabled: true, model: 'llama3.2', host: 'http://localhost:11434' },
-    mistral: { enabled: true, path: 'vibe' },
+    ollama: { enabled: false, model: 'llama3.2', host: 'http://localhost:11434' },
+    mistral: { enabled: false, path: 'vibe' },
     factory: {
       enabled: true,
       path: 'droid',
+      model: 'GLM-4.7',
       autonomy: 'low',
       reasoningEffort: 'medium'
     },
     crush: {
-      enabled: false,
+      enabled: true,
       path: 'crush',
       autoAccept: false,
       debug: false

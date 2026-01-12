@@ -1,0 +1,46 @@
+{
+  "questions": [],
+  "completion": "<promise>COMPLETE</promise>",
+  "steps": [
+    {
+      "id": "step_1",
+      "title": "Install Dependencies",
+      "objective": "Install @fastify/jwt and bcrypt for authentication support.",
+      "acceptance": ["Dependencies added to package.json", "node_modules updated"],
+      "agent": "auto",
+      "action": "fix"
+    },
+    {
+      "id": "step_2",
+      "title": "Create Auth Types",
+      "objective": "Create src/api/auth/types.ts to define User and Token interfaces.",
+      "acceptance": ["File src/api/auth/types.ts exists", "Interfaces User, RefreshToken, AuthTokens defined"],
+      "agent": "auto",
+      "action": "code"
+    },
+    {
+      "id": "step_3",
+      "title": "Update Database Schema",
+      "objective": "Add migration for users and refresh_tokens tables in src/memory/database.ts.",
+      "acceptance": ["Migration 9 added", "Tables users and refresh_tokens created on init"],
+      "agent": "auto",
+      "action": "code"
+    },
+    {
+      "id": "step_4",
+      "title": "Configure Server Auth",
+      "objective": "Register jwt plugin and auth routes in src/api/server.ts.",
+      "acceptance": ["fastify-jwt registered", "authRoutes registered", "authenticate decorator added"],
+      "agent": "auto",
+      "action": "code"
+    },
+    {
+      "id": "step_5",
+      "title": "Verify Authentication",
+      "objective": "Create and run a test script to verify registration, login, and JWT validation.",
+      "acceptance": ["Test script passes", "Users can register and login", "Protected routes require valid JWT"],
+      "agent": "auto",
+      "action": "test"
+    }
+  ]
+}

@@ -78,5 +78,7 @@ export const errorResponseSchema = {
   type: 'object',
   properties: {
     error: { type: 'string' },
+    code: { type: 'string' },
+    details: { type: 'object', additionalProperties: true }
   },
 };

@@ -7,6 +7,7 @@
 
 import { getDatabase } from '../memory/database';
 import { createLogger } from '../lib/logger';
+import { DatabaseError } from './errors';
 
 export interface TaskEntry {
   prompt: string;
@@ -104,7 +105,7 @@ export function saveTask(id: string, entry: TaskEntry, queuePosition?: number): 
     ]);
   } catch (error) {
     logger.error({ taskId: id, error }, 'Failed to save task');
-    throw error;
+    throw new DatabaseError('Failed to save task', error);
   }
 }
 
@@ -130,7 +131,7 @@ export function updateTask(
     ]);
   } catch (error) {
     logger.error({ taskId: id, error }, 'Failed to update task');
-    throw error;
+    throw new DatabaseError('Failed to update task', error);
   }
 }
 
@@ -145,7 +146,7 @@ export function getTask(id: string): TaskEntry | null {
     return row ? mapRowToTaskEntry(row) : null;
   } catch (error) {
     logger.error({ taskId: id, error }, 'Failed to get task');
-    return null;
+    throw new DatabaseError('Failed to get task', error);
   }
 }
 
@@ -160,7 +161,7 @@ export function getAllTasks(): TaskEntry[] {
     return rows.map(mapRowToTaskEntry);
   } catch (error) {
     logger.error({ error }, 'Failed to get all tasks');
-    return [];
+    throw new DatabaseError('Failed to get all tasks', error);
   }
 }
 
@@ -174,8 +175,8 @@ export function deleteTask(id: string): boolean {
     const result = deleteTaskStmt!.run(id);
     return (result.changes ?? 0) > 0;
   } catch (error) {
-    console.error(`[task-persistence] Failed to delete task ${id}:`, error);
-    return false;
+    logger.error({ taskId: id, error }, 'Failed to delete task');
+    throw new DatabaseError(`Failed to delete task ${id}`, error);
   }
 }
 
@@ -190,12 +191,12 @@ export function deleteOldTasks(olderThanMs: number): number {
     const result = deleteOldTasksStmt!.run(cutoff);
     const deleted = result.changes ?? 0;
     if (deleted > 0) {
-      console.log(`[task-persistence] Cleaned up ${deleted} tasks older than ${olderThanMs}ms`);
+      logger.info({ deleted, olderThanMs }, 'Cleaned up old tasks');
     }
     return deleted;
   } catch (error) {
-    console.error('[task-persistence] Failed to delete old tasks:', error);
-    return 0;
+    logger.error({ error }, 'Failed to delete old tasks');
+    throw new DatabaseError('Failed to delete old tasks', error);
   }
 }
 
@@ -210,13 +211,13 @@ export function loadActiveTasks(): TaskEntry[] {
     const tasks = rows.map(mapRowToTaskEntry);
 
     if (tasks.length > 0) {
-      console.log(`[task-persistence] Loaded ${tasks.length} active tasks from database`);
+      logger.info({ count: tasks.length }, 'Loaded active tasks from database');
     }
 
     return tasks;
   } catch (error) {
-    console.error('[task-persistence] Failed to load active tasks:', error);
-    return [];
+    logger.error({ error }, 'Failed to load active tasks');
+    throw new DatabaseError('Failed to load active tasks', error);
   }
 }
 

@@ -100,6 +100,7 @@ import {
   parseFiles
 } from '../indexing';
 import { globSync } from 'glob';
+import { usePersistentState } from './hooks/usePersistentState';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8'));
@@ -173,8 +174,8 @@ function App() {
   const [currentPlanTask, setCurrentPlanTask] = useState<string | null>(null); // Task that generated the plan
   const [modeChangeNotice, setModeChangeNotice] = useState<string | null>(null); // Brief notification when mode changes
   const [isTrusted, setIsTrusted] = useState<boolean | null>(null); // null = checking, true/false = result
-  const [approvalMode, setApprovalMode] = useState<ApprovalMode>('default');
-  const [allowAllEdits, setAllowAllEdits] = useState(false); // Persists "allow all edits" across messages
+  const [approvalMode, setApprovalMode] = usePersistentState<ApprovalMode>('approvalMode', 'default');
+  const [allowAllEdits, setAllowAllEdits] = usePersistentState('allowAllEdits', false); // Persists "allow all edits" across messages
   const [mcpStatus, setMcpStatus] = useState<McpStatus>('local'); // MCP connection status
 
   // Tool activity state (for background display like Claude Code)
@@ -377,22 +378,22 @@ function App() {
 
 
   // Value options
-  const [currentAgent, setCurrentAgent] = useState('auto');
+  const [currentAgent, setCurrentAgent] = usePersistentState('currentAgent', 'auto');
   const [currentRouter, setCurrentRouter] = useState('ollama');
   const [currentPlanner, setCurrentPlanner] = useState('ollama');
 
   // Toggle options
-  const [sequential, setSequential] = useState(false);
-  const [pick, setPick] = useState(false);
-  const [executeMode, setExecuteMode] = useState(false);
-  const [interactive, setInteractive] = useState(false);
+  const [sequential, setSequential] = usePersistentState('sequential', false);
+  const [pick, setPick] = usePersistentState('pick', false);
+  const [executeMode, setExecuteMode] = usePersistentState('autoExecute', false);
+  const [interactive, setInteractive] = usePersistentState('interactive', false);
 
   // Collaboration settings
-  const [correctFix, setCorrectFix] = useState(false);
-  const [debateRounds, setDebateRounds] = useState(2);
-  const [debateModerator, setDebateModerator] = useState('none');
-  const [consensusRounds, setConsensusRounds] = useState(2);
-  const [consensusSynthesizer, setConsensusSynthesizer] = useState('auto');
+  const [correctFix, setCorrectFix] = usePersistentState('correctFix', false);
+  const [debateRounds, setDebateRounds] = usePersistentState('debateRounds', 2);
+  const [debateModerator, setDebateModerator] = usePersistentState('debateModerator', 'none');
+  const [consensusRounds, setConsensusRounds] = usePersistentState('consensusRounds', 2);
+  const [consensusSynthesizer, setConsensusSynthesizer] = usePersistentState('consensusSynthesizer', 'auto');
 
   // Model settings (loaded from config, fallback to CLI defaults)
   const config = getConfig();

@@ -1,40 +1,71 @@
 export interface ModelResponse {
+  /** The text content of the response */
   content: string;
+  /** The specific model that generated the response */
   model: string;
+  /** Token usage statistics */
   tokens?: {
     input: number;
     output: number;
   };
+  /** Execution duration in milliseconds */
   duration?: number;
+  /** Error message if execution failed */
   error?: string;
-  /** Game state for game adapters (resumable gameplay) */
+  /** Updated game state for game adapters (resumable gameplay) */
   state?: unknown;
 }
 
 export type GameStatus = 'playing' | 'won' | 'lost' | 'invalid';
 
 export interface GameState {
+  /** Current status of the game */
   status: GameStatus;
+  /** History of moves made */
   moves?: string[];
+  /** Current score */
   score?: number;
+  /** Message to display to the user */
   message?: string;
+  /** Custom game-specific data */
   data?: unknown;
 }
 
 export type GameDifficulty = 'easy' | 'medium' | 'hard';
 
 export interface GameOptions {
+  /** Difficulty level of the game */
   difficulty: GameDifficulty;
 }
 
 export interface GameCommandValidation {
+  /** Whether the command is valid */
   valid: boolean;
+  /** Error message if invalid */
   error?: string;
 }
 
 export interface GameAdapter extends Adapter {
+  /**
+   * Initializes a new game state.
+   * @param options - Game configuration options (difficulty, etc.).
+   * @returns The initial GameState.
+   */
   initializeGame(options: GameOptions): GameState;
+
+  /**
+   * Renders the current game state into a string representation.
+   * @param state - The current game state.
+   * @returns A string visualization of the state.
+   */
   renderState(state: GameState): string;
+
+  /**
+   * Optional: Validates a user command before execution.
+   * @param command - The command string to validate.
+   * @param state - The current game state.
+   * @returns Validation result (valid boolean and optional error).
+   */
   validateCommand?(command: string, state: GameState): GameCommandValidation;
 }
 
@@ -61,21 +92,41 @@ export interface RalphWiggumOptions {
 }
 
 export interface RunOptions {
+  /** Signal to abort the operation */
   signal?: AbortSignal;
+  /** Callback for streaming response chunks */
   onChunk?: (chunk: string) => void;
+  /** Callback for tool use events */
   onToolEvent?: (event: import('./stream-parser').StreamEvent) => void;
+  /** Specific model identifier to use (e.g., 'gpt-4', 'claude-3-opus') */
   model?: string;
   /** Disable native tools (for agentic mode - LLM returns JSON, we apply files) */
   disableTools?: boolean;
-  /** Game state for game adapters (resumable gameplay) */
+  /** Initial state for game adapters */
   state?: unknown;
   /** Ralph Wiggum loop options for persistent retry until completion */
   ralphWiggum?: RalphWiggumOptions;
 }
 
 export interface Adapter {
+  /**
+   * The unique name of the adapter (e.g., 'claude', 'gemini', 'ollama').
+   * Used for configuration and routing.
+   */
   name: string;
+
+  /**
+   * Executes a prompt against the adapter's underlying model or engine.
+   * @param prompt - The input text or command to process.
+   * @param options - Optional configuration for this specific run.
+   * @returns A promise resolving to the model's response.
+   */
   run(prompt: string, options?: RunOptions): Promise<ModelResponse>;
+
+  /**
+   * Checks if the adapter is currently available (e.g., binary installed, API reachable).
+   * @returns A promise resolving to true if available, false otherwise.
+   */
   isAvailable(): Promise<boolean>;
 }
 

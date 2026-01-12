@@ -2,11 +2,13 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
+import fastifyJwt from '@fastify/jwt';
 import { resolve } from 'path';
 import { orchestrate } from '../orchestrator';
 import { adapters, getAvailableAdapters } from '../adapters';
 import { TaskQueue, TaskStatus, MAX_CONCURRENT_TASKS } from './task-queue';
 import * as persistence from './task-persistence';
+import { authRoutes } from './auth/routes';
 import { logger, createLogger, generateRequestId, apiLogger } from '../lib/logger';
 import {
   taskSubmissionSchema,
@@ -16,6 +18,13 @@ import {
   agentsResponseSchema,
   errorResponseSchema
 } from './schema';
+import { AppError, ValidationError, NotFoundError, DatabaseError } from './errors';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate: any;
+  }
+}
 
 interface ServerOptions {
   port: number;
@@ -24,20 +33,10 @@ interface ServerOptions {
 
 export interface CreateServerOptions extends Partial<ServerOptions> {
   restoreTasks?: boolean;
+  redisUrl?: string;
 }
 
-interface TaskEntry {
-  prompt: string;
-  agent?: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
-  result?: string;
-  error?: string;
-  model?: string;
-  startedAt: number;
-  completedAt?: number;
-}
-
-const tasks: Map<string, TaskEntry> = new Map();
+let taskCache: ICache<TaskEntry>;
 const taskQueue = new TaskQueue();
 
 function generateId(): string {
@@ -45,39 +44,36 @@ function generateId(): string {
 }
 
 // Sync cache with persistence layer
-function syncTaskToCache(id: string, entry: TaskEntry): void {
-  tasks.set(id, entry);
+async function syncTaskToCache(id: string, entry: TaskEntry): Promise<void> {
+  // Default TTL 24h for active tasks
+  await taskCache.set(id, entry, 86400);
 }
 
-function removeTaskFromCache(id: string): void {
-  tasks.delete(id);
+async function removeTaskFromCache(id: string): Promise<void> {
+  await taskCache.del(id);
 }
 
 // Evict completed/failed tasks from cache to prevent memory leaks (Fix #4)
-function evictFromCache(id: string): void {
-  const task = tasks.get(id);
+async function evictFromCache(id: string): Promise<void> {
+  const task = await taskCache.get(id);
   if (task && (task.status === 'completed' || task.status === 'failed')) {
-    tasks.delete(id);
+    await taskCache.del(id);
     apiLogger.info({ taskId: id, status: task.status }, 'Evicted task from cache');
   }
 }
 
-// Cleanup tasks older than 1 hour (from database + cache)
+// Cleanup tasks older than 1 hour (from database)
+// Cache cleanup is handled by TTLs or explicit eviction.
 setInterval(() => {
   // Clean database
-  const dbDeleted = persistence.deleteOldTasks(3600000);
-
-  // Clean cache
-  const oneHourAgo = Date.now() - 3600000;
-  for (const [id, task] of tasks) {
-    if (task.completedAt && task.completedAt < oneHourAgo) {
-      removeTaskFromCache(id);
-    }
-  }
+  persistence.deleteOldTasks(3600000);
 }, 60000);
 
 export async function createServer(options: CreateServerOptions = {}): Promise<ReturnType<typeof Fastify>> {
   const fastify = Fastify({ logger: false });
+
+  // Initialize Cache
+  taskCache = createCache<TaskEntry>({ redisUrl: options.redisUrl });
 
   // Add request ID tracing middleware
   fastify.addHook('onRequest', async (request, reply) => {
@@ -86,6 +82,40 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
     req.requestId = requestId;
     req.log = createLogger({ module: 'api', requestId });
     reply.header('x-request-id', requestId);
+  });
+
+  fastify.addHook('onClose', async () => {
+    await taskCache.disconnect();
+  });
+
+  // Centralized Error Handler
+  fastify.setErrorHandler((error, request, reply) => {
+    const requestId = (request as any).requestId;
+    const log = (request as any).log || apiLogger;
+
+    if (error instanceof AppError) {
+      log.error({ error, requestId }, `API Error: ${error.message}`);
+      reply.status(error.statusCode).send({
+        error: error.message,
+        code: error.code,
+        details: error.details,
+      });
+    } else if (error.validation) {
+      // Fastify validation error
+      log.warn({ error, requestId }, 'Validation Error');
+      reply.status(400).send({
+        error: 'Validation Error',
+        code: 'VALIDATION_ERROR',
+        details: error.validation,
+      });
+    } else {
+      // Unknown error
+      log.error({ error, requestId }, 'Unhandled Server Error');
+      reply.status(500).send({
+        error: 'Internal Server Error',
+        code: 'INTERNAL_SERVER_ERROR',
+      });
+    }
   });
 
   if (options.restoreTasks ?? true) {
@@ -97,13 +127,14 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
     for (const task of activeTasks) {
       const taskId = task.startedAt.toString(); // Use startedAt as ID since we need the original
       if (task.status === 'queued') {
-        syncTaskToCache(taskId, task);
+        await syncTaskToCache(taskId, task);
 
         // Fix #3: Re-enqueue the task so it actually executes
         taskQueue.enqueue(taskId, async () => {
-          const taskForRun = tasks.get(taskId);
+          const taskForRun = await taskCache.get(taskId);
           if (taskForRun) {
             taskForRun.status = 'running';
+            await syncTaskToCache(taskId, taskForRun);
             try {
               persistence.updateTask(taskId, { status: 'running' });
             } catch (dbError) {
@@ -115,7 +146,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
             // Fix #10: Wrap orchestrate in try-catch to handle unexpected errors
             const result = await orchestrate(task.prompt, { agent: task.agent });
 
-            const currentTask = tasks.get(taskId);
+            const currentTask = await taskCache.get(taskId);
             if (currentTask) {
               if (result.error) {
                 currentTask.status = 'failed';
@@ -137,7 +168,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
               }
 
               // Fix #4: Evict completed/failed tasks from cache
-              evictFromCache(taskId);
+              await evictFromCache(taskId);
             }
             return result;
           } catch (orchestrateError) {
@@ -148,7 +179,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 
             apiLogger.error({ taskId, error: errorMessage }, 'Orchestrate error');
 
-            const currentTask = tasks.get(taskId);
+            const currentTask = await taskCache.get(taskId);
             if (currentTask) {
               currentTask.status = 'failed';
               currentTask.error = errorMessage;
@@ -158,12 +189,10 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
                   error: errorMessage,
                   completedAt: Date.now()
                 });
+                await evictFromCache(taskId);
               } catch (dbError) {
                 apiLogger.error({ taskId, error: dbError }, 'Failed to persist orchestrate error');
               }
-
-              // Fix #4: Evict failed tasks from cache
-              evictFromCache(taskId);
             }
 
             throw orchestrateError; // Re-throw for task queue error handling
@@ -189,6 +218,23 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
       apiLogger.info({ restoredCount, failedCount }, 'Restored tasks on startup');
     }
   }
+
+  // Register JWT
+  await fastify.register(fastifyJwt, {
+    secret: process.env.JWT_SECRET || 'dev-secret-do-not-use-in-prod'
+  });
+
+  // Decorate with authenticate
+  fastify.decorate('authenticate', async (request: any, reply: any) => {
+    try {
+      await request.jwtVerify();
+    } catch (err) {
+      reply.send(err);
+    }
+  });
+
+  // Register Auth Routes
+  await fastify.register(authRoutes);
 
   // Serve static web UI
   await fastify.register(fastifyStatic, {
@@ -233,14 +279,15 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 
     // Save to database WITH queue position (Fix #2: atomic save)
     persistence.saveTask(id, entry, queuePosition);
-    syncTaskToCache(id, entry);
+    await syncTaskToCache(id, entry);
 
     // Use task queue with concurrency limit (max 5)
     taskQueue.enqueue(id, async () => {
-      const taskForRun = tasks.get(id);
+      const taskForRun = await taskCache.get(id);
       if (taskForRun) {
         taskForRun.status = 'running';
         // Fix #6: Add error handling for DB update
+        await syncTaskToCache(id, taskForRun);
         try {
           persistence.updateTask(id, { status: 'running' });
         } catch (dbError) {
@@ -252,7 +299,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
         // Fix #10: Wrap orchestrate in try-catch to handle unexpected errors
         const result = await orchestrate(prompt, { agent });
 
-        const currentTask = tasks.get(id);
+        const currentTask = await taskCache.get(id);
         if (currentTask) {
           if (result.error) {
             currentTask.status = 'failed';
@@ -260,7 +307,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
             // Fix #2 & #6: Wrap DB update in try-catch, only evict on success
             try {
               persistence.updateTask(id, { status: 'failed', error: result.error, completedAt: Date.now() });
-              evictFromCache(id); // ✅ Only evict after successful DB update
+              await evictFromCache(id); // ✅ Only evict after successful DB update
             } catch (dbError) {
               apiLogger.error({ taskId: id, error: dbError }, 'Failed to persist task failure');
               // Keep in cache so user can still see it
@@ -272,7 +319,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
             // Fix #2 & #6: Wrap DB update in try-catch, only evict on success
             try {
               persistence.updateTask(id, { status: 'completed', result: result.content, model: result.model, completedAt: Date.now() });
-              evictFromCache(id); // ✅ Only evict after successful DB update
+              await evictFromCache(id); // ✅ Only evict after successful DB update
             } catch (dbError) {
               apiLogger.error({ taskId: id, error: dbError }, 'Failed to persist task completion');
               // Keep in cache so user can still see it
@@ -288,7 +335,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 
         apiLogger.error({ taskId: id, error: errorMessage }, 'Orchestrate error');
 
-        const currentTask = tasks.get(id);
+        const currentTask = await taskCache.get(id);
         if (currentTask) {
           currentTask.status = 'failed';
           currentTask.error = errorMessage;
@@ -299,7 +346,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
               error: errorMessage,
               completedAt: Date.now()
             });
-            evictFromCache(id); // ✅ Only evict after successful DB update
+            await evictFromCache(id); // ✅ Only evict after successful DB update
           } catch (dbError) {
             apiLogger.error({ taskId: id, error: dbError }, 'Failed to persist orchestrate error');
             // Keep in cache so user can still see it
@@ -318,13 +365,13 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
     const { id } = request.params;
 
     // Try cache first
-    let task = tasks.get(id);
+    let task = await taskCache.get(id);
 
     // Fallback to database if not in cache
     if (!task) {
       const dbTask = persistence.getTask(id);
       if (dbTask) {
-        syncTaskToCache(id, dbTask);
+        await syncTaskToCache(id, dbTask);
         task = dbTask;
       }
     }
@@ -345,11 +392,11 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
   fastify.get<{ Params: { id: string } }>('/task/:id/stream', async (request, reply) => {
     const { id } = request.params;
 
-    let task = tasks.get(id);
+    let task = await taskCache.get(id);
     if (!task) {
       const dbTask = persistence.getTask(id);
       if (dbTask) {
-        syncTaskToCache(id, dbTask);
+        await syncTaskToCache(id, dbTask);
         task = dbTask;
       }
     }
@@ -368,36 +415,43 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
       reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
-    const interval = setInterval(() => {
-      const current = tasks.get(id);
-      if (!current) {
-        sendEvent('error', { id, error: 'Task not found' });
-        clearInterval(interval);
-        reply.raw.end();
-        return;
-      }
+    let timeoutId: NodeJS.Timeout;
+    let isClosed = false;
 
-      if (current.status === 'completed') {
-        sendEvent('complete', { id, result: current.result, model: current.model });
-        clearInterval(interval);
-        reply.raw.end();
-      } else if (current.status === 'failed') {
-        sendEvent('error', { id, error: current.error });
-        clearInterval(interval);
-        reply.raw.end();
-      } else {
-        sendEvent('status', { id, status: current.status });
-      }
-    }, 100);
+    const checkStatus = async () => {
+        if (isClosed) return;
+
+        const current = await taskCache.get(id);
+        if (!current) {
+            sendEvent('error', { id, error: 'Task not found' });
+            reply.raw.end();
+            return;
+        }
+
+        if (current.status === 'completed') {
+            sendEvent('complete', { id, result: current.result, model: current.model });
+            reply.raw.end();
+        } else if (current.status === 'failed') {
+            sendEvent('error', { id, error: current.error });
+            reply.raw.end();
+        } else {
+            sendEvent('status', { id, status: current.status });
+            timeoutId = setTimeout(checkStatus, 100);
+        }
+    };
+
+    checkStatus();
 
     // Fix #5: Handle client disconnect to prevent resource leaks
     reply.raw.on('close', () => {
-      clearInterval(interval);
+      isClosed = true;
+      if (timeoutId) clearTimeout(timeoutId);
       apiLogger.info({ taskId: id }, 'SSE client disconnected');
     });
 
     reply.raw.on('error', (err) => {
-      clearInterval(interval);
+      isClosed = true;
+      if (timeoutId) clearTimeout(timeoutId);
       apiLogger.error({ taskId: id, error: err }, 'SSE error');
     });
   });
@@ -408,6 +462,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
 export async function startServer(options: ServerOptions): Promise<void> {
   // Structured logging for server startup
   apiLogger.info({ port: options.port, host: options.host }, 'Starting PuzldAI API server');
-  const fastify = await createServer({ ...options, restoreTasks: true });
+  const redisUrl = process.env.REDIS_URL;
+  const fastify = await createServer({ ...options, restoreTasks: true, redisUrl });
   await fastify.listen({ port: options.port, host: options.host });
 }

@@ -375,6 +375,51 @@ function runMigrations(database: any): void {
 
     database.prepare("UPDATE metadata SET value = '7' WHERE key = 'schema_version'").run();
   }
+
+  // Migration 8: Add user_preferences table for persistent settings
+  if (currentVersion < 8) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS user_preferences (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_user_preferences_updated ON user_preferences(updated_at DESC);
+    `);
+
+    database.prepare("UPDATE metadata SET value = '8' WHERE key = 'schema_version'").run();
+  }
+
+  // Migration 9: Add users and refresh_tokens tables for authentication
+  if (currentVersion < 9) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        revoked INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+    `);
+
+    database.prepare("UPDATE metadata SET value = '9' WHERE key = 'schema_version'").run();
+  }
 }
 
 /**
