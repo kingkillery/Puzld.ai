@@ -1,6 +1,6 @@
 {
   "name": "pk-puzldai",
-  "version": "0.2.95",
+  "version": "0.3.0",
   "description": "Multi-LLM orchestration framework with agentic execution, memory/RAG, and training data generation",
   "type": "module",
   "bin": {
