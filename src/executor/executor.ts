@@ -23,6 +23,7 @@ import {
   anyDependencyFailed,
   type ExecutionContext
 } from './context';
+import { validateExecutionPlan, formatValidationErrors } from './plan-validation';
 import { adapters, runInteractive } from '../adapters';
 import { routeTask, isRouterAvailable } from '../router/router';
 import { getConfig } from '../lib/config';
@@ -43,6 +44,27 @@ export async function execute(
   const startTime = Date.now();
   const timeline: TimelineEvent[] = [];
   const results: StepResult[] = [];
+
+  // Validate plan structure before execution
+  // This prevents hangs from missing dependencies or cycles
+  const validation = validateExecutionPlan(plan);
+  if (!validation.valid) {
+    const errorMessage = formatValidationErrors(validation);
+    timeline.push({
+      timestamp: Date.now(),
+      stepId: 'validation',
+      type: 'error',
+      message: errorMessage
+    });
+
+    return {
+      planId: plan.id,
+      status: 'failed',
+      results: [],
+      timeline,
+      duration: Date.now() - startTime
+    };
+  }
 
   let ctx = createContext(plan.prompt, plan.context);
 

@@ -50,6 +50,16 @@ export {
 // Executor
 export { execute } from './executor';
 
+// Plan validation
+export {
+  validateExecutionPlan,
+  formatValidationErrors,
+  assertValidPlan,
+  type ValidationError,
+  type ValidationErrorCode,
+  type ValidationResult
+} from './plan-validation';
+
 // Templates
 export {
   loadTemplate,

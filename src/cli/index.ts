@@ -69,6 +69,7 @@ import {
 import { tasksCommand } from './commands/tasks';
 import { gameCommand } from './commands/game';
 import { orchestrateCommand } from './commands/orchestrate';
+import { chatCommand } from './commands/chat';
 import { puzzleCommand } from './commands/puzzle';
 import { arenaCommand } from './commands/arena';
 import { loopCommand } from './commands/loop';
@@ -217,6 +218,22 @@ program
   .option('-a, --agent <agent>', 'Force specific agent (claude, gemini, codex, ollama)', 'auto')
   .option('-m, --model <model>', 'Override model for the agent')
   .action((opts) => agentCommand({ agent: opts.agent, model: opts.model }));
+
+program
+  .command('chat')
+  .description('Conversational chat mode with slash commands (Claude Code-like experience)')
+  .option('-a, --agent <agent>', 'Starting agent', 'claude')
+  .option('-m, --model <model>', 'Override model')
+  .option('-x, --agentic', 'Enable agentic mode (tool access)')
+  .option('-s, --session <id>', 'Resume a session')
+  .option('-v, --verbose', 'Verbose output')
+  .action((opts) => chatCommand({
+    agent: opts.agent,
+    model: opts.model,
+    agentic: opts.agentic,
+    session: opts.session,
+    verbose: opts.verbose
+  }));
 
 program
   .command('spawn [agents...]')
