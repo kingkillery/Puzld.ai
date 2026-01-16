@@ -18,6 +18,7 @@ export interface InteractiveConfig {
     codex: { enabled: boolean };
     factory: { enabled: boolean };
     crush: { enabled: boolean };
+    ixagent: { enabled: boolean };
   };
 }
 
@@ -34,7 +35,8 @@ export interface PulzdConfig {
     | 'ollama'
     | 'mistral'
     | 'factory'
-    | 'crush';
+    | 'crush'
+    | 'ixagent';
   routerModel: string;
   timeout: number;
   fallbackAgent: string;
@@ -61,6 +63,12 @@ export interface PulzdConfig {
       model?: string;
       autoAccept?: boolean;
       debug?: boolean;
+      cwd?: string;
+    };
+    ixagent?: {
+      enabled: boolean;
+      pythonPath?: string;
+      module?: string;
       cwd?: string;
     };
   };
@@ -98,6 +106,7 @@ const DEFAULT_INTERACTIVE: InteractiveConfig = {
     codex: { enabled: true },
     factory: { enabled: true },
     crush: { enabled: true },
+    ixagent: { enabled: false },
   },
 };
 
@@ -126,6 +135,11 @@ const DEFAULT_CONFIG: PulzdConfig = {
       path: 'crush',
       autoAccept: false,
       debug: false
+    },
+    ixagent: {
+      enabled: false,
+      pythonPath: 'python',
+      module: 'ix_agent.cli'
     }
   },
   api: { port: 3000, host: '0.0.0.0' },

@@ -401,7 +401,9 @@ async function executeStep(
           step.fallback,
           step.prompt,
           config,
-          step.id
+          step.id,
+          step.model,
+          step.timeout
         );
 
         if (!fallbackResult.error) {
@@ -477,7 +479,7 @@ async function executeStepOnce(
   if (selection.notice) {
     console.log(`[executor] ${selection.notice}`);
   }
-  const result = await runAdapter(selection.agent as AgentName, prompt, config, step.id, step.model);
+  const result = await runAdapter(selection.agent as AgentName, prompt, config, step.id, step.model, step.timeout);
 
   return {
     stepId: step.id,
@@ -545,12 +547,13 @@ async function runAdapter(
   prompt: string,
   config: ExecutorConfig,
   stepId: string,
-  model?: string
+  model?: string,
+  stepTimeout?: number
 ): Promise<{ content: string; model: string; error?: string }> {
   // Use shared adapter runner utility
   const result = await runAdapterUtil(agent, prompt, {
     model,
-    timeout: config.defaultTimeout,
+    timeout: stepTimeout ?? config.defaultTimeout,
     signal: config.signal,
     onChunk: config.onChunk
       ? (chunk: string) => config.onChunk?.(stepId, chunk)

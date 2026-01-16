@@ -14,6 +14,7 @@ import { charmCrushAdapter } from './charm-crush';
 import { openrouterAdapter, runOpenRouter } from './openrouter';
 import { GameStateParser } from './base-game-adapter';
 import { createInteractiveAdapter, runInteractive } from './interactive-adapter';
+import { ixagentAdapter } from './ixagent';
 import type { InteractiveRunOptions } from './interactive-adapter';
 
 export const adapters: Record<string, Adapter> = {
@@ -30,7 +31,8 @@ export const adapters: Record<string, Adapter> = {
   crush: crushAdapter,
   openrouter: openrouterAdapter,
   'factory-ai-droid': factoryDroidAdapter,
-  'charm-crush': charmCrushAdapter
+  'charm-crush': charmCrushAdapter,
+  ixagent: ixagentAdapter
 };
 
 export async function getAvailableAdapters(): Promise<Adapter[]> {
@@ -93,6 +95,7 @@ export {
   charmCrushAdapter,
   openrouterAdapter,
   runOpenRouter,
+  ixagentAdapter,
   GameStateParser,
   // Interactive mode support
   createInteractiveAdapter,
