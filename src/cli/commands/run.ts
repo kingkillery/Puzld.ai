@@ -4,6 +4,7 @@ import { orchestrate } from '../../orchestrator';
 import { orchestrate as orchestrateIntelligent } from '../../orchestrator/intelligent-orchestrator';
 import { runAgentLoop } from '../../agentic/agent-loop';
 import { adapters } from '../../adapters';
+import { ralphCommand } from './ralph';
 import { getConfig } from '../../lib/config';
 import { resolveOrchestrationConfig } from '../../orchestrator/profiles';
 import { selectPlanForProfile } from '../../orchestrator/profile-orchestrator';
@@ -30,6 +31,14 @@ interface RunCommandOptions {
   profile?: string;
   dryRun?: boolean;
   noCompress?: boolean;
+  ralph?: boolean;
+  ralphIters?: string;
+  ralphPlanner?: string;
+  ralphCompletion?: string;
+  ralphModel?: string;
+  ralphTests?: string;
+  ralphScope?: string;
+  ralphStop?: string;
 }
 
 export async function runCommand(task: string, options: RunCommandOptions): Promise<void> {
@@ -37,6 +46,19 @@ export async function runCommand(task: string, options: RunCommandOptions): Prom
     console.error(pc.red('Error: No task provided'));
     console.log(pc.dim('Usage: ai run "your task here"'));
     process.exit(1);
+  }
+
+  if (options.ralph) {
+    await ralphCommand(task, {
+      iterations: options.ralphIters,
+      planner: options.ralphPlanner,
+      completion: options.ralphCompletion,
+      model: options.ralphModel || options.model,
+      tests: options.ralphTests,
+      scope: options.ralphScope,
+      stop: options.ralphStop
+    });
+    return;
   }
 
   if (options.pipeline) {
@@ -172,7 +194,6 @@ async function runProfiledTask(task: string, options: RunCommandOptions): Promis
 }
 
 async function runAgenticMode(task: string, options: RunCommandOptions): Promise<void> {
-  const config = getConfig();
   const startTime = Date.now();
   const agentName = options.agent && options.agent !== 'auto' ? options.agent : 'claude';
 
@@ -189,14 +210,13 @@ async function runAgenticMode(task: string, options: RunCommandOptions): Promise
     process.exit(1);
   }
 
-  let streamedContent = '';
   let toolCallsCount = 0;
 
   try {
     const result = await runAgentLoop(adapter, task, {
       cwd: process.cwd(),
       disableTools: true, // We handle tools ourselves
-      onIteration: (iteration: number, response: string) => {
+      onIteration: (iteration: number) => {
         console.log(pc.dim(`\n--- Iteration ${iteration} ---`));
       },
       onToolCall: (call) => {

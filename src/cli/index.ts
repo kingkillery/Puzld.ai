@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { runCommand } from './commands/run';
-import { pipeCommand } from './commands/pipe';
 import { checkCommand } from './commands/check';
 import { auditCommand } from './commands/audit';
 import { serveCommand } from './commands/serve';
@@ -131,6 +130,14 @@ program
   .option('--dry-run', 'Show the plan and exit')
   .option('--no-compress', 'Disable context compression')
   .option('-p, --profile <name>', 'Use orchestration profile (speed, balanced, quality)')
+  .option('--ralph', 'Run via Ralph Wiggum loop')
+  .option('--ralph-iters <n>', 'Ralph loop iterations')
+  .option('--ralph-planner <agent>', 'Ralph planner agent')
+  .option('--ralph-completion <token>', 'Ralph completion token')
+  .option('--ralph-model <model>', 'Ralph planner/step model override')
+  .option('--ralph-tests <command>', 'Ralph verification command')
+  .option('--ralph-scope <paths>', 'Ralph file scope guard')
+  .option('--ralph-stop <criteria>', 'Ralph stop conditions')
   .action(runCommand);
 
 program
@@ -152,13 +159,29 @@ program
   .option('--dry-run', 'Show the plan and exit')
   .option('--no-compress', 'Disable context compression')
   .option('-p, --profile <name>', 'Use orchestration profile (speed, balanced, quality)')
+  .option('--ralph', 'Run via Ralph Wiggum loop')
+  .option('--ralph-iters <n>', 'Ralph loop iterations')
+  .option('--ralph-planner <agent>', 'Ralph planner agent')
+  .option('--ralph-completion <token>', 'Ralph completion token')
+  .option('--ralph-model <model>', 'Ralph planner/step model override')
+  .option('--ralph-tests <command>', 'Ralph verification command')
+  .option('--ralph-scope <paths>', 'Ralph file scope guard')
+  .option('--ralph-stop <criteria>', 'Ralph stop conditions')
   .action((task, opts) => orchestrateCommand(task, {
     mode: opts.mode as 'delegate' | 'coordinate' | 'supervise',
     agents: opts.agents,
     agent: opts.agent,
     profile: opts.profile,
     dryRun: opts.dryRun,
-    noCompress: opts.noCompress
+    noCompress: opts.noCompress,
+    ralph: opts.ralph,
+    ralphIters: opts.ralphIters,
+    ralphPlanner: opts.ralphPlanner,
+    ralphCompletion: opts.ralphCompletion,
+    ralphModel: opts.ralphModel,
+    ralphTests: opts.ralphTests,
+    ralphScope: opts.ralphScope,
+    ralphStop: opts.ralphStop
   }));
 
 program
@@ -332,14 +355,14 @@ templateCmd
   .description('Create a new template')
   .requiredOption('-P, --pipeline <steps>', 'Pipeline steps (e.g., "claude:plan,codex:code")')
   .option('-d, --description <desc>', 'Template description')
-  .action((name, opts, cmd) => templateCreateCommand(name, cmd.opts()));
+  .action((name, _opts, cmd) => templateCreateCommand(name, cmd.opts()));
 
 templateCmd
   .command('edit <name>')
   .description('Edit an existing user template')
   .option('-P, --pipeline <steps>', 'New pipeline steps')
   .option('-d, --description <desc>', 'New description')
-  .action((name, opts, cmd) => templateEditCommand(name, cmd.opts()));
+  .action((name, _opts, cmd) => templateEditCommand(name, cmd.opts()));
 
 templateCmd
   .command('delete <name>')
@@ -370,7 +393,7 @@ profileCmd
   .command('create <name>')
   .description('Create a new profile')
   .option('-f, --from <name>', 'Clone from existing profile')
-  .action((name, opts, cmd) => profileCreateCommand(name, cmd.opts()));
+  .action((name, _opts, cmd) => profileCreateCommand(name, cmd.opts()));
 
 profileCmd
   .command('delete <name>')

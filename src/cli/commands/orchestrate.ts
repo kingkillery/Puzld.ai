@@ -4,6 +4,7 @@ import { buildSingleAgentPlan, execute, formatPlanForDisplay } from '../../execu
 import { getConfig } from '../../lib/config';
 import { resolveOrchestrationConfig } from '../../orchestrator/profiles';
 import { selectPlanForProfile } from '../../orchestrator/profile-orchestrator';
+import { ralphCommand } from './ralph';
 
 interface OrchestrateCommandOptions {
   agent?: string;
@@ -13,6 +14,14 @@ interface OrchestrateCommandOptions {
   profile?: string;
   dryRun?: boolean;
   noCompress?: boolean;
+  ralph?: boolean;
+  ralphIters?: string;
+  ralphPlanner?: string;
+  ralphCompletion?: string;
+  ralphModel?: string;
+  ralphTests?: string;
+  ralphScope?: string;
+  ralphStop?: string;
 }
 
 export async function orchestrateCommand(
@@ -23,6 +32,19 @@ export async function orchestrateCommand(
     console.error(pc.red('Error: No task provided'));
     console.log(pc.dim('Usage: pk-puzldai orchestrate "complex task" --mode delegate'));
     process.exit(1);
+  }
+
+  if (options.ralph) {
+    await ralphCommand(task, {
+      iterations: options.ralphIters,
+      planner: options.ralphPlanner,
+      completion: options.ralphCompletion,
+      model: options.ralphModel,
+      tests: options.ralphTests,
+      scope: options.ralphScope,
+      stop: options.ralphStop
+    });
+    return;
   }
 
   const startTime = Date.now();

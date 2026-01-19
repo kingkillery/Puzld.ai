@@ -38,9 +38,9 @@ This document tracks the implementation of game mechanics, CLI improvements, and
 
 ### Orchestration Mastery Roadmap
 
-- [ ] Integrate the Ralph Wiggum plan loop into `pk-puzldai` orchestrate/run flows so each task begins with structured planning plus clarifying questions.
+- [ ] 🔄 Integrate the Ralph Wiggum plan loop into `pk-puzldai` orchestrate/run flows so each task begins with structured planning plus clarifying questions.
 - [ ] Expand `poetiq`, `pk-poet`, and related script aliases (`self-discover`, `adversary`, `pk-poet-activate.py`) into the CLI harness and ensure Claude/Gemini/pk-puzldai each expose the verification-first workflow.
-- [ ] Validate every orchestration harness (Gemini CLI, Claude Code, pk-puzldai) with agentic smoke tests and capture results for each to prove their capabilities.
+- [ ] 🔄 Validate every orchestration harness (Gemini CLI, Claude Code, pk-puzldai) with agentic smoke tests and capture results for each to prove their capabilities.
 
 
 ---
@@ -1676,6 +1676,16 @@ Phase 7 (Docs) can run independently after Phase 2
 - Updated profile selection to honor custom pipeline steps.
 - Set smart-efficient as the default orchestration profile.
 - Added migration to update existing profiles.json default from speed to smart-efficient.
+
+### 2026-01-18: Orchestration mastery kickoff
+
+- Started integrating the Ralph Wiggum plan loop into orchestrate/run flows.
+- Started validating orchestration harnesses (Gemini CLI, Claude Code, pk-puzldai) with agentic smoke tests.
+
+### 2026-01-18: Ralph loop + smoke harness updates
+
+- Added Ralph loop passthrough options for run/orchestrate commands.
+- Added a combined agentic smoke runner script to validate Gemini/Claude/pk-puzldai.
 
 ### 2025-12-24
 - Documentation consolidation completed:
