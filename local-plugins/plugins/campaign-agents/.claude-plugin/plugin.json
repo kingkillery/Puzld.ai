@@ -1,5 +1,6 @@
 {
   "name": "campaign-agents",
+  "commandPrefix": "campaign",
   "version": "0.1.0",
   "description": "Hierarchical agent system for long-running autonomous coding campaigns. Uses Claude Opus 4.5 for planning and pk-puzldai/droid with minimax-m2.1 and GLM-4.7 for task execution.",
   "author": {

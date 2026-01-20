@@ -1,5 +1,5 @@
 ---
-name: campaign-init
+name: init
 description: Initialize a new coding campaign with goal and optional name
 allowed-tools: ["Read", "Write", "Bash", "Task", "Glob", "Grep", "TodoWrite"]
 argument-hint: "<goal> [--name <campaign-name>]"

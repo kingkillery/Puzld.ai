@@ -1,5 +1,5 @@
 ---
-name: campaign-pause
+name: pause
 description: Checkpoint campaign state and pause all workers
 allowed-tools: ["Read", "Write"]
 ---

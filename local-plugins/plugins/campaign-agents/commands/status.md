@@ -1,5 +1,5 @@
 ---
-name: campaign-status
+name: status
 description: Show current campaign progress, task board, and blockers
 allowed-tools: ["Read", "Glob"]
 argument-hint: "[--verbose]"

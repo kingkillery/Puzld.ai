@@ -1,5 +1,5 @@
 ---
-name: campaign-resume
+name: resume
 description: Resume paused campaign from last checkpoint
 allowed-tools: ["Read", "Write", "Task", "Glob"]
 ---

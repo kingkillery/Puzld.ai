@@ -10,7 +10,29 @@
       "Bash(npm run typecheck:*)",
       "Bash(node dist/cli/index.js audit:*)",
       "Bash(node dist/cli/index.js:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(node --version:*)",
+      "Bash(bun:*)",
+      "Bash(npm --version)",
+      "Bash(git --version:*)",
+      "Bash(gh:*)",
+      "Bash(claude --version:*)",
+      "Bash(ollama:*)",
+      "Bash(codex --version:*)",
+      "Bash(codex --help:*)",
+      "Bash(curl:*)",
+      "Bash(bash)",
+      "Bash(~/.bun/bin/bun:*)",
+      "Bash(brew services start:*)",
+      "Bash(droid --version:*)",
+      "Bash(droid --help:*)",
+      "Bash(gemini --version:*)",
+      "Bash(brew install:*)",
+      "Bash(crush --version:*)",
+      "Bash(npm install)",
+      "Bash(npm link)",
+      "Bash(pk-puzldai --version:*)",
+      "Bash(tree:*)"
     ]
   }
 }
