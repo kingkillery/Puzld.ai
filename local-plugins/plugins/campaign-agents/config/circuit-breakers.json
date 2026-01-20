@@ -1,0 +1,96 @@
+{
+  "circuit_breakers": {
+    "retry_limits": {
+      "max_retries_per_task": 3,
+      "max_retries_per_file": 5,
+      "max_total_failures_per_campaign": 10
+    },
+    "loop_detection": {
+      "enabled": true,
+      "similarity_threshold": 0.85,
+      "window_size": 3,
+      "triggers": [
+        {
+          "pattern": "same_error_repeated",
+          "description": "Same error message appears in consecutive attempts",
+          "action": "ESCALATE_WITH_HINT",
+          "hint": "Consider alternative approach - same error recurring"
+        },
+        {
+          "pattern": "same_diff_repeated",
+          "description": "Worker produces identical git diff across attempts",
+          "action": "ESCALATE_IMMEDIATELY",
+          "hint": "Worker stuck in deterministic loop"
+        },
+        {
+          "pattern": "oscillating_changes",
+          "description": "Worker alternates between two states",
+          "action": "ESCALATE_IMMEDIATELY",
+          "hint": "Oscillation detected - conflicting fixes"
+        }
+      ]
+    },
+    "timeout_policies": {
+      "worker_execution_timeout_seconds": 300,
+      "planner_thinking_timeout_seconds": 120,
+      "reflector_assessment_timeout_seconds": 60,
+      "total_task_timeout_seconds": 900
+    },
+    "resource_limits": {
+      "max_tokens_per_task": 50000,
+      "max_tokens_per_worker_turn": 8000,
+      "max_file_changes_per_task": 20,
+      "max_lines_changed_per_task": 500
+    },
+    "escalation_triggers": {
+      "automatic_escalation": [
+        "INTEGRATION_ERROR",
+        "STRATEGIC_ERROR",
+        "security_violation",
+        "dependency_cycle_detected",
+        "test_regression"
+      ],
+      "human_escalation": [
+        "budget_exceeded",
+        "architectural_decision_required",
+        "external_api_failure",
+        "permission_denied"
+      ]
+    }
+  },
+  "recovery_strategies": {
+    "SYNTAX_ERROR": {
+      "first_retry": "same_model_with_error_context",
+      "second_retry": "alternate_model",
+      "third_retry": "escalate_to_planner"
+    },
+    "LOGIC_ERROR": {
+      "first_retry": "same_model_with_test_output",
+      "second_retry": "alternate_model_verbose",
+      "third_retry": "escalate_to_planner"
+    },
+    "INTEGRATION_ERROR": {
+      "action": "escalate_immediately",
+      "reason": "Cross-cutting concerns require planner intervention"
+    },
+    "STRATEGIC_ERROR": {
+      "action": "escalate_immediately",
+      "reason": "Architectural deviation requires re-planning"
+    }
+  },
+  "health_checks": {
+    "campaign_health_interval_tasks": 5,
+    "metrics_to_check": [
+      "completion_rate",
+      "average_retries",
+      "time_per_task",
+      "token_efficiency"
+    ],
+    "thresholds": {
+      "min_completion_rate": 0.6,
+      "max_average_retries": 2.0,
+      "max_time_per_task_seconds": 600
+    },
+    "on_unhealthy": "pause_and_notify_user"
+  }
+}

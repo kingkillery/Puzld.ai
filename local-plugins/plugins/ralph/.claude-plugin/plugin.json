@@ -1,0 +1,9 @@
+{
+  "name": "ralph",
+  "version": "1.0.0",
+  "description": "Autonomous AI coding loop that ships features while you sleep. Ralph picks stories from a PRD, implements them, runs checks, commits, and repeats until done.",
+  "author": {
+    "name": "prest"
+  },
+  "keywords": ["automation", "autonomous", "coding-loop", "prd", "user-stories"]
+}

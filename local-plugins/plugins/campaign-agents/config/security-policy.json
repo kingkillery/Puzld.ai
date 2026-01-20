@@ -1,0 +1,156 @@
+{
+  "security_policy": {
+    "version": "1.0.0",
+    "description": "HAWK Resource Layer security configuration"
+  },
+  "sandbox": {
+    "runtime": "docker",
+    "image": "campaign-worker:latest",
+    "security_options": ["no-new-privileges:true"],
+    "read_only_root": false,
+    "drop_capabilities": ["ALL"],
+    "add_capabilities": []
+  },
+  "network": {
+    "mode": "restricted",
+    "allowed_domains": [
+      "pypi.org",
+      "files.pythonhosted.org",
+      "registry.npmjs.org",
+      "github.com",
+      "api.github.com",
+      "crates.io",
+      "index.crates.io"
+    ],
+    "blocked_domains": [
+      "*.onion",
+      "pastebin.com"
+    ],
+    "egress_logging": true
+  },
+  "secrets": {
+    "injection_method": "environment_variables",
+    "never_in_prompts": true,
+    "allowed_secret_names": [
+      "GITHUB_TOKEN",
+      "NPM_TOKEN",
+      "PYPI_TOKEN"
+    ],
+    "rotation_reminder_days": 90
+  },
+  "file_system": {
+    "allowed_paths": [
+      "/workspace",
+      "/tmp"
+    ],
+    "blocked_paths": [
+      "/etc/passwd",
+      "/etc/shadow",
+      "~/.ssh",
+      "~/.aws"
+    ],
+    "max_file_size_mb": 10
+  },
+  "resource_limits": {
+    "memory_mb": 2048,
+    "cpu_cores": 2,
+    "disk_mb": 5000,
+    "process_count": 50,
+    "execution_time_seconds": 300
+  },
+  "audit": {
+    "log_all_commands": true,
+    "log_file_changes": true,
+    "log_network_requests": true,
+    "retention_days": 30
+  },
+  "command_allowlist": {
+    "description": "Pre-approved commands that agents can execute",
+    "planner_commands": [
+      "git status",
+      "git log",
+      "git diff",
+      "git branch",
+      "ls",
+      "find",
+      "cat",
+      "grep"
+    ],
+    "worker_commands": [
+      "npm test",
+      "npm run",
+      "pytest",
+      "cargo test",
+      "go test",
+      "make",
+      "git add",
+      "git commit",
+      "git checkout"
+    ],
+    "reflector_commands": [
+      "git diff",
+      "git log",
+      "git show",
+      "test",
+      "grep",
+      "npm test",
+      "pytest"
+    ],
+    "blocked_patterns": [
+      "rm -rf",
+      "curl.*\\|.*sh",
+      "wget.*\\|.*bash",
+      "eval",
+      "> /dev",
+      "sudo",
+      "chmod 777",
+      "ssh",
+      "scp"
+    ]
+  },
+  "input_validation": {
+    "task_spec": {
+      "max_length": 10000,
+      "forbidden_patterns": [
+        "\\$\\(.*\\)",
+        "`.*`",
+        "\\${.*}",
+        "<script",
+        "javascript:"
+      ],
+      "required_fields": ["id", "title", "domain", "entry_criteria", "exit_criteria"]
+    },
+    "file_paths": {
+      "must_be_relative": true,
+      "forbidden_prefixes": ["/etc", "/root", "~/.ssh", "~/.aws", "../.."],
+      "allowed_extensions": [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java", ".md", ".json", ".yaml", ".yml", ".toml", ".sql", ".sh"]
+    }
+  },
+  "secrets_in_tasks": {
+    "detection_patterns": [
+      "password",
+      "api[_-]?key",
+      "secret",
+      "token",
+      "credential",
+      "auth[_-]?token",
+      "bearer",
+      "private[_-]?key"
+    ],
+    "action_on_detection": "reject_and_warn",
+    "never_log_secrets": true
+  },
+  "prompt_injection_defense": {
+    "enabled": true,
+    "scan_inputs": ["repo_map", "task_spec", "file_content", "git_diff"],
+    "suspicious_patterns": [
+      "ignore previous instructions",
+      "disregard your",
+      "new instructions:",
+      "system prompt:",
+      "you are now",
+      "pretend you are"
+    ],
+    "action_on_detection": "sanitize_and_log"
+  }
+}

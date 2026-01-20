@@ -1,0 +1,25 @@
+{
+  "primary_model": "minimax-m2.1",
+  "fallback_model": "glm-4.7",
+  "max_retries": 3,
+  "retry_strategy": "alternate_model",
+  "timeout_seconds": 300,
+  "task_template": {
+    "branch_prefix": "campaign/{campaign_id}/task-",
+    "commit_format": "conventional",
+    "run_tests": true,
+    "run_linter": true,
+    "auto_merge": false
+  },
+  "worker_behavior": {
+    "single_task_focus": true,
+    "no_strategic_decisions": true,
+    "atomic_commits": true,
+    "escalate_on_failure": true
+  },
+  "retry_behavior": {
+    "first_retry": "same_model",
+    "second_retry": "alternate_model",
+    "third_retry": "alternate_model_verbose"
+  }
+}

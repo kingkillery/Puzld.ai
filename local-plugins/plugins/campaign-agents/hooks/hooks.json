@@ -1,0 +1,24 @@
+{
+  "SessionStart": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "Check if there's an active or paused campaign in ${CLAUDE_PLUGIN_ROOT}/state/campaigns/. If found, briefly summarize the campaign status (name, goal, progress %) and remind the user they can use /campaign-status for details or /campaign-resume to continue. Keep the notification concise (2-3 lines max). If no campaigns exist, do nothing."
+        }
+      ]
+    }
+  ],
+  "SessionEnd": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "If there's an active campaign with in_progress tasks, automatically create a checkpoint in campaign.json with the current state. Update last_activity timestamp. Log the session end to logs/decisions.jsonl. This preserves state for the next session."
+        }
+      ]
+    }
+  ]
+}

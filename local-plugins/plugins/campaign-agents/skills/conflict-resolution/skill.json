@@ -1,0 +1,18 @@
+{
+  "name": "conflict-resolution",
+  "description": "Conflict resolution prompt for merging worker changes safely.",
+  "agentDefaults": {
+    "planner": "droid:gpt-5.2-codex-medium"
+  },
+  "inputs": {
+    "conflictingFiles": "string",
+    "diffSummary": "string",
+    "preferredStrategy": "merge|rebase|squash"
+  },
+  "outputSchema": {
+    "decision": "string",
+    "resolutionSteps": ["string"],
+    "riskNotes": ["string"]
+  },
+  "prompt": "Resolve merge conflicts for a campaign task. Prefer the provided strategy when safe.\n\nConflicting Files:\n{{conflictingFiles}}\n\nDiff Summary:\n{{diffSummary}}\n\nPreferred Strategy:\n{{preferredStrategy}}\n\nReturn ONLY valid JSON matching the output schema."
+}

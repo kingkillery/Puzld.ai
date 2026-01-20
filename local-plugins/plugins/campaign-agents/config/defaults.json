@@ -1,0 +1,17 @@
+{
+  "agents": {
+    "planner": "droid:gpt-5.2-codex-medium",
+    "subPlanner": "gemini:3-pro",
+    "workers": [
+      "droid:minimax-m2.1",
+      "droid:glm-4.7"
+    ]
+  },
+  "autonomy": "checkpoint",
+  "checkpointEvery": 5,
+  "freshStartEvery": 25,
+  "maxWorkers": 8,
+  "gitMode": "task-branch",
+  "mergeStrategy": "merge",
+  "stateDir": ".campaign"
+}

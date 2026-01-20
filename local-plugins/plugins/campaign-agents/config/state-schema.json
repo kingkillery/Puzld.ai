@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Campaign State Schema",
+  "description": "File-based agent state following HMAS best practices. JSON/file-based storage is an INTENTIONAL design choice for Claude Code plugins: (1) No external database dependencies, (2) Human-readable state for debugging, (3) Git-trackable campaign history, (4) Portable across environments. For production systems requiring SQL, implement a persistence adapter that reads/writes this schema to your preferred database.",
+  "type": "object",
+  "required": ["project_goal", "status", "plan"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Campaign UUID"
+    },
+    "project_goal": {
+      "type": "string",
+      "description": "The original user request - NEVER modify this"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["PLANNING", "EXECUTING", "PAUSED", "COMPLETED", "FAILED"],
+      "description": "Current mode of operation"
+    },
+    "git_branch": {
+      "type": "string",
+      "default": "campaign/main",
+      "description": "Dedicated branch for agent work - NEVER main"
+    },
+    "project_path": {
+      "type": "string",
+      "description": "Absolute path to project root"
+    },
+    "plan": {
+      "type": "object",
+      "properties": {
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/task"
+          }
+        }
+      }
+    },
+    "retry_counter": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3,
+      "default": 0
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "tasks_total": {"type": "integer"},
+        "tasks_completed": {"type": "integer"},
+        "tasks_failed": {"type": "integer"},
+        "total_retries": {"type": "integer"}
+      }
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "logs": {
+      "type": "string",
+      "description": "Error logs passed to Architect on escalation"
+    }
+  },
+  "definitions": {
+    "task": {
+      "type": "object",
+      "required": ["id", "title", "domain", "files", "status", "entry_criteria", "exit_criteria"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^T[0-9]+$",
+          "description": "Task ID in T<number> format (T1, T2, T3...)"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Short task title"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "domain": {
+          "type": "string",
+          "enum": ["ui", "data", "infra", "test", "devops", "docs"],
+          "description": "Domain for model routing"
+        },
+        "files": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Files the worker should read/modify"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "completed", "failed", "blocked", "escalated"]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Task IDs that must complete first"
+        },
+        "step_hints": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Technical hints from milestone library"
+        },
+        "entry_criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["criterion", "check_command"],
+            "properties": {
+              "criterion": {"type": "string", "description": "Human-readable precondition"},
+              "check_command": {"type": "string", "description": "Shell command to verify"}
+            }
+          },
+          "minItems": 1,
+          "description": "Preconditions that must be true before task can start"
+        },
+        "exit_criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["criterion", "check_command"],
+            "properties": {
+              "criterion": {"type": "string", "description": "Human-readable success condition"},
+              "check_command": {"type": "string", "description": "Shell command to verify"}
+            }
+          },
+          "minItems": 1,
+          "description": "Success conditions that must be true for task completion"
+        },
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "default": 0
+        },
+        "failure_type": {
+          "type": ["string", "null"],
+          "enum": ["SYNTAX_ERROR", "LOGIC_ERROR", "INTEGRATION_ERROR", "STRATEGIC_ERROR", null]
+        }
+      }
+    }
+  }
+}

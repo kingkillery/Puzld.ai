@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Campaign Task Schema",
+  "description": "HiPlan-compliant task specification with entry/exit criteria",
+  "type": "object",
+  "required": ["id", "title", "domain", "entry_criteria", "exit_criteria"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^T[0-9]+$",
+      "description": "Task ID in T<number> format (T1, T2, T3...)"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "domain": {
+      "type": "string",
+      "enum": ["ui", "data", "infra", "test", "devops", "docs"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "in_progress", "completed", "failed", "blocked", "escalated"]
+    },
+    "entry_criteria": {
+      "type": "array",
+      "description": "Preconditions that must be true before task can start",
+      "items": {
+        "type": "object",
+        "required": ["criterion", "check_command"],
+        "properties": {
+          "criterion": {"type": "string"},
+          "check_command": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      },
+      "minItems": 1
+    },
+    "exit_criteria": {
+      "type": "array",
+      "description": "Success conditions that must be true for task completion",
+      "items": {
+        "type": "object",
+        "required": ["criterion", "check_command"],
+        "properties": {
+          "criterion": {"type": "string"},
+          "check_command": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      },
+      "minItems": 1
+    },
+    "step_hints": {
+      "type": "array",
+      "description": "Technical constraints from milestone library",
+      "items": {"type": "string"}
+    },
+    "files": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "branch": {
+      "type": "string"
+    },
+    "retries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "failure_type": {
+      "type": "string",
+      "enum": ["SYNTAX_ERROR", "LOGIC_ERROR", "INTEGRATION_ERROR", "STRATEGIC_ERROR", null]
+    }
+  }
+}

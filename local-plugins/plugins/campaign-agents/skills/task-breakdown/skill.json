@@ -1,0 +1,36 @@
+{
+  "name": "task-breakdown",
+  "description": "Planner prompt for decomposing a campaign goal into executable tasks and sub-plans.",
+  "agentDefaults": {
+    "planner": "droid:gpt-5.2-codex-medium"
+  },
+  "inputs": {
+    "goal": "string",
+    "checkpointSummary": "string",
+    "openTasks": "string",
+    "completedTasks": "string",
+    "constraints": "string"
+  },
+  "outputSchema": {
+    "summary": "string",
+    "tasks": [
+      {
+        "id": "string",
+        "title": "string",
+        "description": "string",
+        "acceptanceCriteria": ["string"],
+        "area": "string",
+        "agentHint": "worker|subplanner"
+      }
+    ],
+    "subPlans": [
+      {
+        "area": "string",
+        "goal": "string",
+        "notes": "string"
+      }
+    ],
+    "done": "boolean"
+  },
+  "prompt": "You are the campaign planner. Break the goal into executable tasks.\n\nGoal:\n{{goal}}\n\nCheckpoint Summary:\n{{checkpointSummary}}\n\nOpen Tasks:\n{{openTasks}}\n\nCompleted Tasks:\n{{completedTasks}}\n\nConstraints:\n{{constraints}}\n\nReturn ONLY valid JSON matching the output schema."
+}

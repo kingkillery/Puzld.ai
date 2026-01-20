@@ -1,0 +1,30 @@
+{
+  "name": "session-recovery",
+  "description": "Recovery prompt for resuming a campaign from checkpoint state and failed tasks.",
+  "agentDefaults": {
+    "planner": "droid:gpt-5.2-codex-medium"
+  },
+  "inputs": {
+    "lastCheckpoint": "string",
+    "activeTasks": "string",
+    "failedTasks": "string",
+    "repoSummary": "string"
+  },
+  "outputSchema": {
+    "summary": "string",
+    "resumePlan": [
+      {
+        "step": "string",
+        "action": "string",
+        "owner": "planner|subplanner|worker"
+      }
+    ],
+    "risks": [
+      {
+        "risk": "string",
+        "mitigation": "string"
+      }
+    ]
+  },
+  "prompt": "You are resuming a long-running campaign. Use the checkpoint and task status to propose a safe resume plan.\n\nLast Checkpoint:\n{{lastCheckpoint}}\n\nActive Tasks:\n{{activeTasks}}\n\nFailed Tasks:\n{{failedTasks}}\n\nRepo Summary:\n{{repoSummary}}\n\nReturn ONLY valid JSON matching the output schema."
+}

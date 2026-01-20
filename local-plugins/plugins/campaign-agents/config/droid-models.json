@@ -1,0 +1,38 @@
+{
+  "models": {
+    "minimax-m2.1": {
+      "provider": "minimax",
+      "model_id": "m2.1",
+      "type": "custom",
+      "capabilities": ["code_generation", "code_review", "refactoring"],
+      "context_window": 128000,
+      "cost_tier": "medium",
+      "speed": "fast",
+      "notes": "Primary worker model - fast execution, good code generation"
+    },
+    "glm-4.7": {
+      "provider": "zhipu",
+      "model_id": "glm-4.7",
+      "type": "custom",
+      "capabilities": ["code_generation", "reasoning", "multilingual"],
+      "context_window": 128000,
+      "cost_tier": "medium",
+      "speed": "medium",
+      "notes": "Fallback worker model - alternative perspective on retries"
+    }
+  },
+  "routing": {
+    "default": "minimax-m2.1",
+    "on_retry": "glm-4.7",
+    "complex_tasks": "minimax-m2.1",
+    "simple_tasks": "minimax-m2.1"
+  },
+  "droid_cli": {
+    "command": "pk-puzldai",
+    "run_args": ["run", "--model", "{model}", "--task", "{task_spec}", "--cwd", "{project_path}"],
+    "env_vars": {
+      "DROID_LOG_LEVEL": "info",
+      "DROID_TIMEOUT": "300"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# Campaign state is local and should not be committed
+campaigns/
+*.log
+*.jsonl

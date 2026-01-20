@@ -1,0 +1,156 @@
+{
+  "routing_rules": {
+    "description": "Domain-based model routing following research recommendations",
+    "version": "1.0.0"
+  },
+  "planning_tier": {
+    "primary": {
+      "provider": "claude",
+      "model": "opus",
+      "use_for": ["global_planning", "task_decomposition", "architecture_design", "milestone_generation"],
+      "context_strategy": "repo_map_only",
+      "notes": "Claude Opus 4.5 for strategic reasoning"
+    },
+    "cross_validator": {
+      "provider": "openai",
+      "model": "gpt-5.2",
+      "use_for": ["architecture_review", "safety_critical_decisions", "api_design"],
+      "enabled": false,
+      "notes": "Optional GPT-5.2 for cross-checking critical decisions"
+    }
+  },
+  "implementation_tier": {
+    "domains": {
+      "ui": {
+        "primary_model": "minimax-m2.1",
+        "fallback_model": "glm-4.7",
+        "notes": "UI work benefits from MiniMax's cleaner code style"
+      },
+      "data": {
+        "primary_model": "glm-4.7",
+        "fallback_model": "minimax-m2.1",
+        "notes": "Data layer needs GLM's stronger multi-step reasoning"
+      },
+      "infra": {
+        "primary_model": "glm-4.7",
+        "fallback_model": "minimax-m2.1",
+        "notes": "Infrastructure requires careful reasoning"
+      },
+      "test": {
+        "primary_model": "minimax-m2.1",
+        "fallback_model": "glm-4.7",
+        "notes": "Test writing is often straightforward, MiniMax faster"
+      },
+      "devops": {
+        "provider": "gemini",
+        "model": "gemini-cli",
+        "fallback_model": "glm-4.7",
+        "notes": "Gemini CLI specialized for CI/CD, GitHub Actions"
+      },
+      "docs": {
+        "primary_model": "minimax-m2.1",
+        "fallback_model": "glm-4.7",
+        "notes": "Documentation benefits from MiniMax's readability"
+      }
+    },
+    "complexity_routing": {
+      "simple": {
+        "files_threshold": 2,
+        "lines_threshold": 100,
+        "model": "minimax-m2.1",
+        "notes": "Fast model for simple tasks"
+      },
+      "medium": {
+        "files_threshold": 5,
+        "lines_threshold": 300,
+        "model": "glm-4.7",
+        "notes": "Stronger reasoning for medium complexity"
+      },
+      "complex": {
+        "files_threshold": 10,
+        "lines_threshold": 500,
+        "model": "glm-4.7",
+        "mode": "verbose",
+        "notes": "Complex tasks need extended reasoning"
+      }
+    }
+  },
+  "reflection_tier": {
+    "task_reflector": {
+      "provider": "claude",
+      "model": "sonnet",
+      "notes": "Sonnet for efficient, unbiased assessment"
+    },
+    "conflict_integrator": {
+      "provider": "claude",
+      "model": "sonnet",
+      "notes": "Sonnet for code understanding and merge logic"
+    }
+  },
+  "gemini_cli_config": {
+    "enabled": true,
+    "use_for": [
+      "github_actions",
+      "ci_cd_pipelines",
+      "dockerfile_generation",
+      "kubernetes_manifests",
+      "terraform_configs"
+    ],
+    "invocation": {
+      "command": "gemini-cli",
+      "args": ["--project", "{project_path}", "--task", "{task_spec}"]
+    },
+    "fallback_on_failure": "glm-4.7"
+  },
+  "tool_access_policies": {
+    "description": "Per-agent tool restrictions following principle of least privilege",
+    "campaign-planner": {
+      "allowed": ["Read", "Glob", "Grep", "Task", "Bash", "Write", "TodoWrite"],
+      "restrictions": {
+        "Read": "Prefer Repo Map over full file reads; only read specific files when necessary",
+        "Bash": "Only for git commands, repo-map generation, and state file operations",
+        "Write": "Only for state files (campaign.json, tasks.json)"
+      }
+    },
+    "domain-planner": {
+      "allowed": ["Read", "Glob", "Grep", "Task", "Bash", "Write"],
+      "restrictions": {
+        "Read": "Domain-scoped files only",
+        "Bash": "Only for worker invocation via pk-puzldai",
+        "Write": "Only for task specifications"
+      }
+    },
+    "task-reflector": {
+      "allowed": ["Read", "Grep", "Glob", "Bash"],
+      "restrictions": {
+        "Read": "Task spec and affected files only",
+        "Bash": "Only for running pre-defined check_commands from exit criteria",
+        "forbidden": "Write/Edit - reflector must not modify code"
+      }
+    },
+    "conflict-integrator": {
+      "allowed": ["Read", "Write", "Edit", "Bash", "Grep", "Glob"],
+      "restrictions": {
+        "Bash": "Only for git operations and test running",
+        "Write/Edit": "Only for conflict resolution in affected files"
+      }
+    }
+  },
+  "model_capabilities": {
+    "minimax-m2.1": {
+      "strengths": ["code_generation", "readability", "speed", "cost_efficiency"],
+      "weaknesses": ["complex_reasoning", "architectural_decisions"],
+      "best_for": ["utilities", "glue_code", "simple_features", "tests"]
+    },
+    "glm-4.7": {
+      "strengths": ["multi_step_reasoning", "modularity", "complex_refactors"],
+      "weaknesses": ["verbosity", "speed"],
+      "best_for": ["infrastructure", "data_layer", "complex_features"]
+    },
+    "gemini-cli": {
+      "strengths": ["devops", "github_integration", "repo_automation"],
+      "weaknesses": ["application_code"],
+      "best_for": ["ci_cd", "github_actions", "deployment"]
+    }
+  }
+}
