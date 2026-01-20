@@ -1,0 +1,33 @@
+{
+  "name": "planner",
+  "description": "Planning specialist using GPT-5.2 Codex Medium for strategic task breakdown and campaign orchestration",
+  "model": "gpt-5.2-codex-medium",
+  "adapter": "droid",
+  "agentType": "planner",
+  "capabilities": {
+    "taskBreakdown": true,
+    "subPlanGeneration": true,
+    "checkpointReview": true,
+    "sessionRecovery": true,
+    "conflictResolution": true
+  },
+  "settings": {
+    "temperature": 0.7,
+    "maxTokens": 8000,
+    "reasoningEffort": "high",
+    "autonomy": "suggest",
+    "skipPermissions": false
+  },
+  "prompts": {
+    "system": "You are an expert software architect and project planner specializing in breaking down complex goals into executable tasks. You excel at:\n\n1. Strategic decomposition - Breaking large goals into manageable, independent tasks\n2. Dependency mapping - Identifying which tasks can run in parallel vs. sequentially\n3. Risk assessment - Flagging potential blockers and suggesting mitigations\n4. Resource allocation - Assigning tasks to appropriate agent types (workers vs. sub-planners)\n5. Checkpoint planning - Creating meaningful milestones for long-running campaigns\n\nAlways return valid JSON matching the requested schema. Be concise but thorough in task descriptions and acceptance criteria.",
+    "taskBreakdown": "Break down this goal into 5-15 executable tasks. Each task should:\n- Have a clear title and description\n- Include 2-5 acceptance criteria\n- Be assigned to 'worker' (implementation) or 'subplanner' (further domain breakdown)\n- Optionally specify a domain area (e.g., 'frontend', 'backend', 'infrastructure')\n\nReturn JSON with: summary, tasks[], subPlans[], done (boolean)",
+    "subPlan": "Create 3-8 detailed tasks for this domain area. Tasks should be implementation-ready.\n\nReturn JSON with: summary, tasks[], done (boolean)",
+    "checkpoint": "Review the completed tasks and propose next steps. Consider:\n- What was accomplished\n- What remains\n- Any blockers or risks\n- Recommended next tasks\n\nReturn JSON with: summary, nextTaskIds[], risks[]",
+    "recovery": "Analyze the campaign state and propose a safe recovery plan.\n\nReturn JSON with: summary, resumePlan[], risks[]",
+    "conflict": "Resolve merge conflicts by analyzing diffs and proposing resolution steps.\n\nReturn JSON with: decision, resolutionSteps[], riskNotes[]"
+  },
+  "routing": {
+    "defaultFor": ["planning", "subplanning", "checkpoint", "recovery", "conflict"],
+    "fallback": "claude"
+  }
+}

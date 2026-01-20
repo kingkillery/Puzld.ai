@@ -5,6 +5,15 @@ import { adapters } from '../adapters';
 import { routeTask, isRouterAvailable } from '../router/router';
 import { resolveAgentSelection } from '../lib/agent-selection';
 
+// Campaign mode exports
+export {
+  runCampaign,
+  loadCampaign,
+  resumeCampaign,
+  type CampaignOptions,
+  type CampaignResult
+} from './campaign/index.js';
+
 export interface OrchestrateOptions extends RunOptions {
   agent?: string;
 }

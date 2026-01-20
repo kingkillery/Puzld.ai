@@ -1,14 +1,14 @@
 # PuzldAI - Game System Implementation Plan
 
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-20
 **Status:** In Progress
-**Completion:** 10/13 tasks (Game system); 6/6 tasks (CLI orchestration); 4/4 tasks (Ralph/Poet CLI) ✅
+**Completion:** 10/13 tasks (Game system); 6/6 tasks (CLI orchestration); 4/4 tasks (Ralph/Poet CLI) ✅; 2/10 tasks (Campaign mode)
 
 ---
 
 ## 📋 Task Overview
 
-This document tracks the implementation of game mechanics, CLI improvements, and testing for the PuzldAI game system. All changes should be documented here as they are completed.
+This document tracks the implementation of game mechanics, CLI improvements, campaign-mode development, and testing for the PuzldAI system. All changes should be documented here as they are completed.
 
 ### Outstanding Tasks
 
@@ -41,6 +41,28 @@ This document tracks the implementation of game mechanics, CLI improvements, and
 - [ ] 🔄 Integrate the Ralph Wiggum plan loop into `pk-puzldai` orchestrate/run flows so each task begins with structured planning plus clarifying questions.
 - [ ] Expand `poetiq`, `pk-poet`, and related script aliases (`self-discover`, `adversary`, `pk-poet-activate.py`) into the CLI harness and ensure Claude/Gemini/pk-puzldai each expose the verification-first workflow.
 - [ ] 🔄 Validate every orchestration harness (Gemini CLI, Claude Code, pk-puzldai) with agentic smoke tests and capture results for each to prove their capabilities.
+
+
+### Campaign Mode (Hierarchical Long-Running Agents)
+
+#### Development Tasks
+- [x] Add campaign schema validation tests for planner/recovery/conflict outputs
+- [ ] 🔄 Wire campaign defaults across CLI/engine and ensure stateDir overrides
+- [ ] 🔄 Add repo map + git context injection for planner/recovery
+- [x] Add SQLite-backed campaign persistence tables (projects/tasks/execution logs)
+- [x] Persist campaign tasks + execution logs during runs
+- [ ] Add unit tests for campaign queue transitions (pending → in_progress → completed/failed/blocked)
+- [ ] Add unit tests for campaign state versioning and optimistic concurrency handling
+- [ ] Add planner/sub-planner parsing tests for JSON extraction and error handling
+- [ ] Add CLI tests for `campaign` options parsing (`--resume`, `--dry-run`, `--checkpoint-every`)
+- [ ] Add integration test for checkpoint + resume flow with persisted `.campaign/campaign.json`
+- [ ] Add regression test for agent resolution (planner subdroid → factory adapter)
+
+#### Testing Best Practices (Campaign Mode)
+- Run `npm run typecheck` after each checkpoint before resuming.
+- Run `npm run test` before finalizing a campaign or merging results.
+- Use smaller checkpoints (`--checkpoint-every 3`) for risky changes.
+- Use `--dry-run` to validate planner output before execution.
 
 
 ---
@@ -1668,6 +1690,27 @@ Phase 7 (Docs) can run independently after Phase 2
 ---
 
 ## 🔄 Change Log
+
+### 2026-01-20: Campaign persistence and execution logging
+
+- Added SQLite campaign tables for projects, tasks, and execution logs.
+- Synced campaign state/tasks to the database during runs.
+- Captured git diffs for execution logs on success/failure.
+
+### 2026-01-20: Campaign repo-map + git context wiring
+
+- Added repo map generator for planner context.
+- Added git context (status + recent commits) to planner and recovery input.
+
+### 2026-01-20: Campaign mode alignment updates
+
+- Added campaign schema validation tests.
+- Started wiring campaign defaults across CLI/engine and state overrides.
+
+### 2026-01-20: Campaign mode planning + documentation
+
+- Added campaign mode development tasks and testing best practices.
+- Updated plan header to track campaign mode completion status.
 
 ### 2026-01-18: Smart-efficient orchestration profile
 

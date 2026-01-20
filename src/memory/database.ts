@@ -429,6 +429,54 @@ function runMigrations(database: any): void {
 
     database.prepare("UPDATE metadata SET value = '9' WHERE key = 'schema_version'").run();
   }
+
+  // Migration 10: Add campaign persistence tables
+  if (currentVersion < 10) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS campaign_projects (
+        id TEXT PRIMARY KEY,
+        objective TEXT NOT NULL,
+        status TEXT NOT NULL,
+        git_branch TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS campaign_tasks (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT NOT NULL,
+        dependencies TEXT,
+        step_hints TEXT,
+        assigned_files TEXT,
+        attempts INTEGER DEFAULT 0,
+        last_error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        FOREIGN KEY (project_id) REFERENCES campaign_projects(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS campaign_execution_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id TEXT NOT NULL,
+        attempt_num INTEGER NOT NULL,
+        stdout TEXT,
+        stderr TEXT,
+        git_diff TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (task_id) REFERENCES campaign_tasks(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_campaign_projects_status ON campaign_projects(status);
+      CREATE INDEX IF NOT EXISTS idx_campaign_tasks_project ON campaign_tasks(project_id);
+      CREATE INDEX IF NOT EXISTS idx_campaign_tasks_status ON campaign_tasks(status);
+      CREATE INDEX IF NOT EXISTS idx_campaign_logs_task ON campaign_execution_logs(task_id);
+    `);
+
+    database.prepare("UPDATE metadata SET value = '10' WHERE key = 'schema_version'").run();
+  }
 }
 
 /**

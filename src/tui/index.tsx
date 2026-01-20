@@ -101,6 +101,7 @@ import {
 } from '../indexing';
 import { globSync } from 'glob';
 import { usePersistentState } from './hooks/usePersistentState';
+import { runCampaign, type CampaignOptions } from '../orchestrator/campaign/campaign-engine';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8'));
@@ -1778,6 +1779,7 @@ Keep your response concise and focused on the plan, not the implementation.`;
 Commands:
   /compare <agents> <task>  - Compare agents side-by-side
   /autopilot <task>         - AI-generated execution plan
+  /campaign <goal>          - Run long-running autonomous coding campaigns
   /workflow <name> <task>   - Run a saved workflow
   /workflows                - Manage workflows (interactive)
   /index                    - Codebase indexing options
@@ -2546,6 +2548,47 @@ Compare View:
           setLoading(false);
         }
 
+        break;
+      }
+
+      case 'campaign': {
+        // Parse: /campaign "goal" or /campaign goal
+        const goalMatch = rest.match(/^(?:"([^"]+)"|(.+))$/);
+        if (!goalMatch) {
+          addMessage('Usage: /campaign <goal>\nExample: /campaign "Build a user authentication system"');
+          break;
+        }
+        const goal = goalMatch[1] || goalMatch[2];
+
+        setMessages(prev => [...prev, { id: nextId(), role: 'user', content: '/campaign "' + goal + '"' }]);
+        setLoading(true);
+        setLoadingText('starting campaign...');
+
+        try {
+          const options: CampaignOptions = {
+            goal,
+            autonomy: 'checkpoint',
+            useDroid: true
+          };
+
+          const result = await runCampaign(options);
+
+          const summary = `
+Campaign ${result.status}
+Tasks: ${result.tasksCompleted}/${result.tasksTotal} completed
+Duration: ${(result.duration / 1000).toFixed(1)}s
+Checkpoints: ${result.checkpoints}
+Decisions: ${result.decisions}
+${result.recoverySummary ? '\nRecovery:\n' + result.recoverySummary : ''}
+${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
+`.trim();
+
+          addMessage(summary, 'campaign');
+        } catch (err) {
+          addMessage('Error: ' + (err as Error).message, 'campaign');
+        }
+
+        setLoading(false);
         break;
       }
 

@@ -48,6 +48,7 @@ import { rememberCommand } from './commands/remember';
 import { interactiveCommand } from './commands/interactive';
 import { doCommand } from './commands/do';
 import { evalCommand } from './commands/eval';
+import { campaignCommand } from './commands/campaign';
 import {
   modelShowCommand,
   modelListCommand,
@@ -705,6 +706,9 @@ program
 
 // Game commands
 gameCommand(program);
+
+// Campaign commands (hierarchical long-running agents)
+campaignCommand(program);
 
 // If no arguments, launch TUI; otherwise parse commands
 if (process.argv.length <= 2) {

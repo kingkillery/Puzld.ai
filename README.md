@@ -83,6 +83,9 @@ pk-puzldai consensus "best database choice" -a claude,gemini,ollama
 # Interactive mode (AI responds to CLI prompts)
 pk-puzldai interact "implement user auth"
 
+# Campaign mode (hierarchical long-running execution)
+pk-puzldai campaign "migrate to TypeScript"
+
 # Check available agents
 pk-puzldai check
 ```
@@ -103,6 +106,7 @@ pk-puzldai check
 | `pk-puzldai orchestrate "task"` | Intelligent multi-agent orchestration |
 | `pk-puzldai autopilot "task"` | AI generates and executes plan |
 | `pk-puzldai interact "task"` | Interactive mode — AI responds to prompts |
+| `pk-puzldai campaign "goal"` | Long-running hierarchical campaign mode |
 
 ### Collaboration Commands
 
@@ -170,6 +174,7 @@ pk-puzldai pipe "task" "gemini -> claude -> ollama"
 | **PickBuild** | Propose plans -> Pick best -> Implement | Strategic planning |
 | **Agentic** | LLM explores -> Tools -> Permission prompts | Codebase exploration |
 | **Interactive** | AI responds to CLI tool prompts | Autonomous CLI driving |
+| **Campaign** | Planner → Sub-planner → Workers with checkpoints | Long-running multi-task execution |
 
 ### Chat Mode Slash Commands
 

@@ -16,6 +16,7 @@ PuzldAI provides multiple orchestration modes for coordinating multi-agent workf
 | **Correction** | Producer → reviewer → optional fix | Optional | Code review and improvement cycle |
 | **Debate** | Multi-round agent discussion | No | Exploring complex topics with different perspectives |
 | **Consensus** | Propose → vote → iterate until agreement | No | Building agreement on contentious decisions |
+| **Campaign** | Planner → sub-planners → workers with checkpoints | Optional | Long-running multi-task execution |
 
 ---
 
@@ -370,6 +371,35 @@ $ pk-puzldai pickbuild "add feature" -i
   Apply this change? [y/N/a] >
 ```
 
+## Mode D: Campaign Mode
+
+### Purpose
+Run long-lived, hierarchical campaigns with a planner, optional sub-planner, and worker agents. Tasks are persisted to a campaign state file and can be resumed over multiple sessions.
+
+### Use Cases
+- Large refactors or migrations spanning multiple sessions
+- Multi-domain tasks that benefit from separate sub-plans
+- Long-running backlogs that require periodic checkpoints
+
+### CLI Examples
+
+```bash
+# Start a campaign
+pk-puzldai campaign "migrate services to TS"
+
+# Resume an existing campaign
+pk-puzldai campaign "continue" --resume
+
+# Custom agent stack
+pk-puzldai campaign "harden auth flow" --planner droid:gpt-5.2-codex-medium --worker droid:minimax-m2.1
+```
+
+### Testing Best Practices
+- Run `npm run typecheck` after each checkpoint before resuming.
+- Run `npm run test` before finalizing a campaign or merging results.
+- Use smaller checkpoints (`--checkpoint-every 3`) for risky changes.
+- Use `--dry-run` to validate planner output before execution.
+
 ### See Also
 - [PROVIDER_SUPPORT_MATRIX.md](PROVIDER_SUPPORT_MATRIX.md) - Adapter safety classifications
 - [AGENTS.md](AGENTS.md) - Agent capabilities and configuration
@@ -377,8 +407,8 @@ $ pk-puzldai pickbuild "add feature" -i
 
 ---
 
-*Last updated: 2026-01-11*
-*Version: 0.2.95*
+*Last updated: 2026-01-20*
+*Version: 0.2.96*
 
 ## Orchestration Profiles
 

@@ -12,6 +12,7 @@ const COMMANDS: Command[] = [
   // Commands
   { label: '/compare', value: '/compare ', description: 'Compare agents side-by-side' },
   { label: '/autopilot', value: '/autopilot ', description: 'AI-generated execution plan' },
+  { label: '/campaign', value: '/campaign ', description: 'Run long-running autonomous coding campaigns' },
   { label: '/workflow', value: '/workflow ', description: 'Run a saved workflow' },
   { label: '/index', value: '/index', description: 'Codebase indexing options' },
   // Multi-agent collaboration
