@@ -421,6 +421,88 @@ To extend config with new features, update `src/lib/config.ts`
 
 ---
 
+## Campaign Orchestrator
+
+The Campaign Orchestrator (`src/orchestrator/campaign/`) enables long-running, multi-domain coding campaigns with hierarchical agents.
+
+### Key Features
+
+- **Multi-domain campaigns** - Run UI, API, and infrastructure work in parallel
+- **Entry/exit criteria** - Objective task validation via shell commands
+- **Parallel execution** - Domain-scoped queues with configurable concurrency
+- **Drift detection** - Automatic checks at milestones (25%, 50%, 75%, 100%)
+- **Checkpoint/resume** - Full state capture for session recovery
+- **Task reflection** - Failure classification (SYNTAX, LOGIC, INTEGRATION, STRATEGIC)
+
+### Quick Start
+
+```bash
+# Start a campaign
+pk-puzldai campaign run "Add user authentication"
+
+# Monitor with TUI dashboard
+pk-puzldai campaign status --tui
+
+# Show per-domain progress
+pk-puzldai campaign progress
+
+# Validate all criteria
+pk-puzldai campaign validate
+
+# Check for drift
+pk-puzldai campaign drift
+```
+
+### Key Types
+
+```typescript
+// Domain configuration
+interface CampaignDomain {
+  name: string;           // e.g., "ui", "api", "infra"
+  goal: string;
+  file_patterns: string[];
+  status: DomainStatus;
+  progress_percent: number;
+}
+
+// Task validation criterion
+interface TaskCriterion {
+  description: string;
+  check_command: string;  // Shell command to run
+  timeout_seconds?: number;
+  blocking?: boolean;
+}
+
+// Enhanced task with criteria
+interface EnhancedCampaignTask {
+  entry_criteria: TaskCriterion[];  // Must pass before start
+  exit_criteria: TaskCriterion[];   // Validates completion
+  domain?: string;
+  priority?: number;
+}
+```
+
+### Architecture
+
+```
+Campaign Engine
+    │
+    ├── Parallel Orchestrator (runs domains concurrently)
+    │       ├── Domain Queue (UI)
+    │       ├── Domain Queue (API)
+    │       └── Domain Queue (Infra)
+    │
+    ├── Task Reflector (classifies failures)
+    ├── Drift Detector (monitors goal alignment)
+    └── Checkpoint Manager (state persistence)
+```
+
+### Documentation
+
+See [docs/campaign-orchestrator.md](docs/campaign-orchestrator.md) for complete documentation.
+
+---
+
 ## CLI Commands
 
 ```bash

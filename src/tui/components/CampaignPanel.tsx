@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, useStdout } from 'ink';
 import type { CampaignState, CampaignTask } from '../../orchestrator/campaign/campaign-state.js';
 import type { DriftDetectionResult } from '../../orchestrator/campaign/campaign-types.js';
+import { DomainProgress, DomainSummary } from './DomainProgress.js';
 
 const COLORS = {
   primary: '#8CA9FF',
@@ -174,7 +175,7 @@ function DriftIndicator({ driftResult }: { driftResult?: DriftDetectionResult })
   );
 }
 
-type ViewMode = 'overview' | 'tasks' | 'drift';
+type ViewMode = 'overview' | 'tasks' | 'domains' | 'drift';
 
 export function CampaignPanel({ state, driftResult, onRefresh, onBack }: CampaignPanelProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
@@ -228,6 +229,8 @@ export function CampaignPanel({ state, driftResult, onRefresh, onBack }: Campaig
       onRefresh();
     } else if (input === 't') {
       setViewMode('tasks');
+    } else if (input === 'p') {
+      setViewMode('domains');
     } else if (input === 'd') {
       setViewMode('drift');
     } else if (input === 'o') {
@@ -302,6 +305,9 @@ export function CampaignPanel({ state, driftResult, onRefresh, onBack }: Campaig
               <Box marginTop={1}>
                 <DriftIndicator driftResult={driftResult} />
               </Box>
+              <Box marginTop={1}>
+                <DomainSummary tasks={state.tasks} />
+              </Box>
             </Box>
           </Box>
         )}
@@ -320,6 +326,12 @@ export function CampaignPanel({ state, driftResult, onRefresh, onBack }: Campaig
           </Box>
         )}
 
+        {viewMode === 'domains' && (
+          <Box flexDirection="column">
+            <DomainProgress tasks={state.tasks} maxVisible={8} />
+          </Box>
+        )}
+
         {viewMode === 'drift' && (
           <Box flexDirection="column">
             <Text bold>Drift Analysis:</Text>
@@ -334,7 +346,7 @@ export function CampaignPanel({ state, driftResult, onRefresh, onBack }: Campaig
         {/* Footer with keybindings */}
         <Box borderStyle="single" borderColor={COLORS.muted} borderTop borderBottom={false} borderLeft={false} borderRight={false}>
           <Text dimColor>
-            [o]verview [t]asks [d]rift | [r]efresh | Esc back
+            [o]verview [t]asks [p]rogress/domains [d]rift | [r]efresh | Esc back
           </Text>
         </Box>
       </Box>
