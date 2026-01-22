@@ -102,6 +102,7 @@ import {
 import { globSync } from 'glob';
 import { usePersistentState } from './hooks/usePersistentState';
 import { runCampaign, type CampaignOptions } from '../orchestrator/campaign/campaign-engine';
+import { getSummaryGenerator } from '../lib/summary-generator';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../../package.json'), 'utf-8'));
@@ -200,6 +201,7 @@ function App() {
   const [loadingStartTime, setLoadingStartTime] = useState<number | undefined>();
   const [loadingAgent, setLoadingAgent] = useState<string>('');
   const [agentPhase, setAgentPhase] = useState<AgentPhase>('thinking');
+  const [agentSummary, setAgentSummary] = useState<string>('');
 
   // Permission prompt state
   const [pendingPermission, setPendingPermission] = useState<{
@@ -831,9 +833,9 @@ function App() {
 
       // Get display name for the collaboration type
       const typeLabel = collaborationType === 'consensus' ? 'Consensus' :
-                       collaborationType === 'debate' ? 'Debate' :
-                       collaborationType === 'correct' ? 'Correction' :
-                       collaborationType === 'pipeline' ? 'Pipeline' : 'Collaboration';
+        collaborationType === 'debate' ? 'Debate' :
+          collaborationType === 'correct' ? 'Correction' :
+            collaborationType === 'pipeline' ? 'Pipeline' : 'Collaboration';
 
       if (!isReEnteringCollaboration) {
         if (completedSteps.length > 0) {
@@ -873,8 +875,8 @@ function App() {
   // Handle post-collaboration actions (Build/Continue/Reject) for consensus, debate, correct
   const handleCollaborationAction = async (action: PostAction, content: string) => {
     const modeLabel = collaborationType === 'consensus' ? 'synthesis' :
-                      collaborationType === 'debate' ? 'conclusion' :
-                      collaborationType === 'correct' ? 'fix' : 'result';
+      collaborationType === 'debate' ? 'conclusion' :
+        collaborationType === 'correct' ? 'fix' : 'result';
 
     // Build summary of all steps for context
     const stepsSummary = collaborationSteps.map(s =>
@@ -1290,7 +1292,7 @@ Keep your response concise and focused on the plan, not the implementation.`;
               toolCallId: `codex-${idx}`,
               filePath: c.path,
               operation: c.kind === 'add' ? 'create' as const :
-                         c.kind === 'delete' ? 'overwrite' as const : 'overwrite' as const,
+                c.kind === 'delete' ? 'overwrite' as const : 'overwrite' as const,
               originalContent: c.originalContent,
               newContent: c.newContent || ''
             }));
@@ -1357,7 +1359,7 @@ Keep your response concise and focused on the plan, not the implementation.`;
                 toolCallId: `gemini-${idx}`,
                 filePath: c.path,
                 operation: c.kind === 'add' ? 'create' as const :
-                           c.kind === 'delete' ? 'overwrite' as const : 'overwrite' as const,
+                  c.kind === 'delete' ? 'overwrite' as const : 'overwrite' as const,
                 originalContent: c.originalContent,
                 newContent: c.newContent || ''
               }));
@@ -1422,6 +1424,12 @@ Keep your response concise and focused on the plan, not the implementation.`;
           toolActivityRef.current = [...toolActivityRef.current, newCall];
           setToolActivity(prev => [...prev, newCall]);
           setAgentPhase('tool_pending');
+
+          // Generate summary (fire and forget)
+          getSummaryGenerator()
+            .summarizeAction('Tool Use', `Prepare ${call.name}`)
+            .then(s => setAgentSummary(s))
+            .catch(() => { });
         },
 
         // Tool started executing (after permission granted)
@@ -1435,6 +1443,12 @@ Keep your response concise and focused on the plan, not the implementation.`;
           ));
           setLoadingText(`${agentName}: ${call.name}...`);
           setAgentPhase('tool_running');
+
+          // Refresh summary (fire and forget)
+          getSummaryGenerator()
+            .summarizeAction('Tool Use', `Running ${call.name}`)
+            .then(s => setAgentSummary(s))
+            .catch(() => { });
         },
 
         // Tool finished
@@ -3491,125 +3505,125 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
         <>
           {/* Messages - hide when active compare/collaboration to prevent terminal scroll */}
           {(mode === 'chat' || mode === 'plan') && (
-          <Box flexDirection="column" marginBottom={1} width="100%">
-            {messages.map((msg) => (
-              msg.role === 'compare' && msg.compareResults ? (
-                // Compact view for historical compare results (like collaboration)
-                <Box key={msg.id} flexDirection="column" width="100%">
-                  <Text color="#fc8657">─── <Text bold>Compare</Text> <Text color="gray">[completed]</Text> ───</Text>
-                  <Box height={1} />
-                  <Box flexDirection="row" width="100%">
-                    {msg.compareResults.map((result, i) => {
-                      const isError = !!result.error;
-                      const content = result.content || result.error || 'No response';
-                      // Truncate to 3 lines
-                      const lines = content.split('\n').slice(0, 3);
-                      const truncated = content.split('\n').length > 3;
-                      const remaining = content.split('\n').length - 3;
-                      const displayText = lines.join('\n');
+            <Box flexDirection="column" marginBottom={1} width="100%">
+              {messages.map((msg) => (
+                msg.role === 'compare' && msg.compareResults ? (
+                  // Compact view for historical compare results (like collaboration)
+                  <Box key={msg.id} flexDirection="column" width="100%">
+                    <Text color="#fc8657">─── <Text bold>Compare</Text> <Text color="gray">[completed]</Text> ───</Text>
+                    <Box height={1} />
+                    <Box flexDirection="row" width="100%">
+                      {msg.compareResults.map((result, i) => {
+                        const isError = !!result.error;
+                        const content = result.content || result.error || 'No response';
+                        // Truncate to 3 lines
+                        const lines = content.split('\n').slice(0, 3);
+                        const truncated = content.split('\n').length > 3;
+                        const remaining = content.split('\n').length - 3;
+                        const displayText = lines.join('\n');
 
-                      return (
-                        <Box
-                          key={i}
-                          flexDirection="column"
-                          borderStyle="round"
-                          borderColor={isError ? 'red' : 'gray'}
-                          flexGrow={1}
-                          flexBasis={0}
-                          minWidth={25}
-                          marginRight={i < msg.compareResults!.length - 1 ? 1 : 0}
-                        >
-                          {/* Header */}
-                          <Box paddingX={1}>
-                            <Text bold color="#06ba9e">{result.agent}</Text>
-                            {isError && <Text color="red"> ✗</Text>}
-                            {result.duration && <Text dimColor> {(result.duration / 1000).toFixed(1)}s</Text>}
+                        return (
+                          <Box
+                            key={i}
+                            flexDirection="column"
+                            borderStyle="round"
+                            borderColor={isError ? 'red' : 'gray'}
+                            flexGrow={1}
+                            flexBasis={0}
+                            minWidth={25}
+                            marginRight={i < msg.compareResults!.length - 1 ? 1 : 0}
+                          >
+                            {/* Header */}
+                            <Box paddingX={1}>
+                              <Text bold color="#06ba9e">{result.agent}</Text>
+                              {isError && <Text color="red"> ✗</Text>}
+                              {result.duration && <Text dimColor> {(result.duration / 1000).toFixed(1)}s</Text>}
+                            </Box>
+
+                            {/* Content */}
+                            <Box paddingX={1} paddingY={1}>
+                              <Text color={isError ? 'red' : 'gray'} wrap="wrap">
+                                {displayText}
+                              </Text>
+                              {truncated && (
+                                <Text dimColor> [+{remaining} lines]</Text>
+                              )}
+                            </Box>
                           </Box>
-
-                          {/* Content */}
-                          <Box paddingX={1} paddingY={1}>
-                            <Text color={isError ? 'red' : 'gray'} wrap="wrap">
-                              {displayText}
+                        );
+                      })}
+                    </Box>
+                    <Box marginTop={1}>
+                      <Text dimColor>Press </Text>
+                      <Text color="#fc8657">Ctrl+E</Text>
+                      <Text dimColor> to expand this compare result</Text>
+                    </Box>
+                  </Box>
+                ) : msg.role === 'collaboration' && msg.collaborationSteps ? (
+                  // Static render for historical collaboration results
+                  <CollaborationView
+                    key={msg.id}
+                    type={msg.collaborationType || 'correct'}
+                    steps={msg.collaborationSteps}
+                    onExit={() => { }}
+                    interactive={false}
+                    pipelineName={msg.pipelineName}
+                  />
+                ) : (
+                  <Box key={msg.id} marginBottom={1}>
+                    {msg.role === 'user' ? (
+                      <Box>
+                        <Text color="green" bold>{'> '}</Text>
+                        <Text>{msg.content}</Text>
+                        {msg.timestamp && (
+                          <Text dimColor> [{formatTimestamp(msg.timestamp)}]</Text>
+                        )}
+                      </Box>
+                    ) : (
+                      <Box flexDirection="column">
+                        {/* Tool calls history from exploration */}
+                        {msg.toolCalls && msg.toolCalls.length > 0 && (
+                          <ToolActivity calls={msg.toolCalls} iteration={0} />
+                        )}
+                        {msg.agent === 'autopilot' ? (
+                          <Text>
+                            <Text color="#fc8657">──</Text>
+                            <Text bold color="#06ba9e"> {msg.agent} </Text>
+                            <Text color="yellow">[Autopilot Mode]</Text>
+                            <Text color="#fc8657"> ──</Text>
+                          </Text>
+                        ) : msg.agent && (
+                          <>
+                            <Text>
+                              <Text dimColor>{'─'.repeat(2)} </Text>
+                              <Text bold color="#06ba9e">{msg.agent}</Text>
+                              <Text dimColor> </Text>
+                              <Text color="#666666">[Single]</Text>
+                              <Text dimColor> </Text>
+                              <Text color="#888888">{currentAgent === 'auto' ? 'auto' : 'selected'}</Text>
                             </Text>
-                            {truncated && (
-                              <Text dimColor> [+{remaining} lines]</Text>
+                            <Text dimColor>{'─'.repeat(Math.floor(((process.stdout.columns || 80) - 2) * 0.8))}</Text>
+                          </>
+                        )}
+                        <Text wrap="wrap">{msg.content}</Text>
+                        {msg.agent && msg.agent !== 'autopilot' && (
+                          <Box marginTop={1}>
+                            <Text color="green">●</Text>
+                            <Text dimColor> {msg.duration ? (msg.duration / 1000).toFixed(1) + 's' : '-'}</Text>
+                            {msg.tokens && (
+                              <Text dimColor> · {msg.tokens.input}↓ {msg.tokens.output}↑</Text>
+                            )}
+                            {msg.timestamp && (
+                              <Text dimColor> · {formatTimestamp(msg.timestamp)}</Text>
                             )}
                           </Box>
-                        </Box>
-                      );
-                    })}
+                        )}
+                      </Box>
+                    )}
                   </Box>
-                  <Box marginTop={1}>
-                    <Text dimColor>Press </Text>
-                    <Text color="#fc8657">Ctrl+E</Text>
-                    <Text dimColor> to expand this compare result</Text>
-                  </Box>
-                </Box>
-              ) : msg.role === 'collaboration' && msg.collaborationSteps ? (
-                // Static render for historical collaboration results
-                <CollaborationView
-                  key={msg.id}
-                  type={msg.collaborationType || 'correct'}
-                  steps={msg.collaborationSteps}
-                  onExit={() => {}}
-                  interactive={false}
-                  pipelineName={msg.pipelineName}
-                />
-              ) : (
-                <Box key={msg.id} marginBottom={1}>
-                  {msg.role === 'user' ? (
-                    <Box>
-                      <Text color="green" bold>{'> '}</Text>
-                      <Text>{msg.content}</Text>
-                      {msg.timestamp && (
-                        <Text dimColor> [{formatTimestamp(msg.timestamp)}]</Text>
-                      )}
-                    </Box>
-                  ) : (
-                    <Box flexDirection="column">
-                      {/* Tool calls history from exploration */}
-                      {msg.toolCalls && msg.toolCalls.length > 0 && (
-                        <ToolActivity calls={msg.toolCalls} iteration={0} />
-                      )}
-                      {msg.agent === 'autopilot' ? (
-                        <Text>
-                          <Text color="#fc8657">──</Text>
-                          <Text bold color="#06ba9e"> {msg.agent} </Text>
-                          <Text color="yellow">[Autopilot Mode]</Text>
-                          <Text color="#fc8657"> ──</Text>
-                        </Text>
-                      ) : msg.agent && (
-                        <>
-                          <Text>
-                            <Text dimColor>{'─'.repeat(2)} </Text>
-                            <Text bold color="#06ba9e">{msg.agent}</Text>
-                            <Text dimColor> </Text>
-                            <Text color="#666666">[Single]</Text>
-                            <Text dimColor> </Text>
-                            <Text color="#888888">{currentAgent === 'auto' ? 'auto' : 'selected'}</Text>
-                          </Text>
-                          <Text dimColor>{'─'.repeat(Math.floor(((process.stdout.columns || 80) - 2) * 0.8))}</Text>
-                        </>
-                      )}
-                      <Text wrap="wrap">{msg.content}</Text>
-                      {msg.agent && msg.agent !== 'autopilot' && (
-                        <Box marginTop={1}>
-                          <Text color="green">●</Text>
-                          <Text dimColor> {msg.duration ? (msg.duration / 1000).toFixed(1) + 's' : '-'}</Text>
-                          {msg.tokens && (
-                            <Text dimColor> · {msg.tokens.input}↓ {msg.tokens.output}↑</Text>
-                          )}
-                          {msg.timestamp && (
-                            <Text dimColor> · {formatTimestamp(msg.timestamp)}</Text>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  )}
-                </Box>
-              )
-            ))}
-          </Box>
+                )
+              ))}
+            </Box>
           )}
 
           {/* Background Loading Indicator - shows when compare/collaboration hidden but still loading */}
@@ -3749,7 +3763,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
               edits={pendingBatchPreview.previews.map(p => ({
                 filePath: p.filePath,
                 operation: p.operation === 'create' ? 'Write' as const :
-                           p.operation === 'overwrite' ? 'Write' as const : 'Edit' as const,
+                  p.operation === 'overwrite' ? 'Write' as const : 'Edit' as const,
                 proposedContent: p.newContent,
                 originalContent: p.originalContent,
                 // Store toolCallId in filePath for tracking (we'll use filePath as ID)
@@ -3765,7 +3779,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
 
                 // Check if "Yes to all" was selected (all accepted)
                 const allowAll = result.accepted.length === pendingBatchPreview.previews.length &&
-                                 result.rejected.length === 0 && result.skipped.length === 0;
+                  result.rejected.length === 0 && result.skipped.length === 0;
 
                 pendingBatchPreview.resolve({ accepted: acceptedIds, rejected: rejectedIds, allowAll });
                 setPendingBatchPreview(null);

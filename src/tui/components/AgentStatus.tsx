@@ -11,6 +11,7 @@ interface AgentStatusProps {
   phase?: AgentPhase;
   toolCount?: number;
   iteration?: number;
+  summary?: string;
 }
 
 // Animated spinner frames
@@ -58,7 +59,8 @@ export function AgentStatus({
   tokens,
   phase = 'thinking',
   toolCount = 0,
-  iteration = 1
+  iteration = 1,
+  summary
 }: AgentStatusProps) {
   const [elapsed, setElapsed] = useState(0);
   const [spinnerFrame, setSpinnerFrame] = useState(0);
@@ -105,7 +107,11 @@ export function AgentStatus({
           <Text dimColor> (iter {iteration})</Text>
         )}
         <Text dimColor> · </Text>
-        <Text color={phaseInfo.color}>{phaseInfo.text}</Text>
+        {summary ? (
+          <Text color={phaseInfo.color}>{summary}</Text>
+        ) : (
+          <Text color={phaseInfo.color}>{phaseInfo.text}</Text>
+        )}
       </Box>
       <Box marginLeft={2}>
         <Text dimColor>⏱ </Text>
