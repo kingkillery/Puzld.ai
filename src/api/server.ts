@@ -19,6 +19,7 @@ import {
   agentsResponseSchema,
   errorResponseSchema
 } from './schema';
+import { getSummaryGenerator } from '../lib/summary-generator';
 import { AppError, ValidationError, NotFoundError, DatabaseError } from './errors';
 import { type IAsyncCache, createAsyncCache } from '../memory/cache';
 import type { TaskEntry } from './task-persistence';
@@ -425,25 +426,33 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
     let isClosed = false;
 
     const checkStatus = async () => {
-        if (isClosed) return;
+      if (isClosed) return;
 
-        const current = await taskCache.get(id);
-        if (!current) {
-            sendEvent('error', { id, error: 'Task not found' });
-            reply.raw.end();
-            return;
-        }
+      const current = await taskCache.get(id);
+      if (!current) {
+        sendEvent('error', { id, error: 'Task not found' });
+        reply.raw.end();
+        return;
+      }
 
-        if (current.status === 'completed') {
-            sendEvent('complete', { id, result: current.result, model: current.model });
-            reply.raw.end();
-        } else if (current.status === 'failed') {
-            sendEvent('error', { id, error: current.error });
-            reply.raw.end();
-        } else {
-            sendEvent('status', { id, status: current.status });
-            timeoutId = setTimeout(checkStatus, 100);
+      if (current.status === 'completed') {
+        sendEvent('complete', { id, result: current.result, model: current.model });
+        reply.raw.end();
+      } else if (current.status === 'failed') {
+        sendEvent('error', { id, error: current.error });
+        reply.raw.end();
+      } else {
+        // Generate AI summary for status updates
+        const elapsed = Date.now() - current.startedAt;
+        let summary: string;
+        try {
+          summary = await getSummaryGenerator().summarizeStatus(current.status);
+        } catch {
+          summary = '⚙️ Processing...';
         }
+        sendEvent('status', { id, status: current.status, summary, elapsed });
+        timeoutId = setTimeout(checkStatus, 500); // Reduced frequency for smoother UX
+      }
     };
 
     checkStatus();

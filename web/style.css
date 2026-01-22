@@ -7,23 +7,32 @@
 :root {
   --bg: #1a1a2e;
   --bg-secondary: #16213e;
+  --bg-tertiary: #0f3460;
   --text: #eee;
   --text-dim: #888;
   --accent: #0f3460;
   --accent-hover: #1a4980;
+  --accent-glow: rgba(15, 52, 96, 0.4);
   --success: #4ade80;
   --error: #f87171;
+  --warning: #fbbf24;
   --border: #333;
+  --glass-bg: rgba(22, 33, 62, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme="light"] {
   --bg: #f5f5f5;
   --bg-secondary: #fff;
+  --bg-tertiary: #e8e8e8;
   --text: #222;
   --text-dim: #666;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.3);
   --border: #ddd;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -49,6 +58,10 @@ header {
 h1 {
   font-size: 1.5rem;
   font-weight: 600;
+  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 #theme-toggle {
@@ -58,6 +71,11 @@ h1 {
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.5rem;
+  transition: transform 0.2s;
+}
+
+#theme-toggle:hover {
+  transform: rotate(180deg);
 }
 
 .input-section {
@@ -75,11 +93,13 @@ textarea {
   font-size: 0.9rem;
   resize: vertical;
   min-height: 100px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 textarea:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .controls {
@@ -102,7 +122,7 @@ select {
 #run-btn {
   flex: 1;
   padding: 0.75rem 1.5rem;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, #1a4980 100%);
   border: none;
   border-radius: 6px;
   color: #fff;
@@ -110,18 +130,95 @@ select {
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: transform 0.1s, box-shadow 0.2s;
 }
 
 #run-btn:hover {
-  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+#run-btn:active {
+  transform: translateY(0);
 }
 
 #run-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
+/* Enhanced Status Panel */
+.status-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.status-panel.hidden {
+  display: none;
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--warning);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+#status-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--warning);
+}
+
+.timer {
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: 1px;
+}
+
+.summary-text {
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  transition: opacity 0.2s;
+}
+
+/* Output Section */
 .output-section {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -133,7 +230,7 @@ select {
   display: flex;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, #1a4980 100%);
   color: #fff;
   font-size: 0.85rem;
 }
@@ -170,4 +267,32 @@ select {
 
 .success {
   color: var(--success);
+}
+
+/* Smooth fade animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.status-panel:not(.hidden) {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
 }

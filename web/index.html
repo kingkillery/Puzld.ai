@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PulzdAI</title>
+  <title>PuzldAI</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>PulzdAI</h1>
+      <h1>PuzldAI</h1>
       <button id="theme-toggle" title="Toggle theme">◐</button>
     </header>
 
@@ -26,6 +26,18 @@
           </select>
           <button id="run-btn">Run Task</button>
         </div>
+      </div>
+
+      <!-- Enhanced Status Section -->
+      <div id="status-panel" class="status-panel hidden">
+        <div class="status-header">
+          <div class="status-indicator">
+            <span class="pulse-dot"></span>
+            <span id="status-text">Processing</span>
+          </div>
+          <div class="timer" id="timer">00:00</div>
+        </div>
+        <div class="summary-text" id="summary">⚙️ Initializing...</div>
       </div>
 
       <div class="output-section">
