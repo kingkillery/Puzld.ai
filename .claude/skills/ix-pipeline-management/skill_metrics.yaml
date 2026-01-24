@@ -1,0 +1,420 @@
+# IX Pipeline Skill Metrics
+# Tracks utility skill validation status and outcomes
+# Used by agents to determine guide reliability and learn from execution
+#
+# Updated by: scripts/log_ix_outcome.py
+# Reference: UTILITY_SKILL_IMPROVEMENT.md (Reflexion Pattern)
+#
+# Skill States:
+#   DRAFT    - Initial extraction, not validated
+#   LEARNING - Being tested in real workflows
+#   VERIFIED - Successfully used 3+ times without rejection
+
+version: 1.0
+last_updated: 2026-01-18
+
+# Utilities with validated processes (sorted by submission volume)
+utilities:
+  xcel-energy-mn:
+    utility_id: "383"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  pacific-gas-electric-co-pge:
+    utility_id: "869"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  consumers-energy:
+    utility_id: "428"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  evergy-ks-metro:
+    utility_id: "302"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  entergy-tx:
+    utility_id: "313"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  evergy-mo-metro:
+    utility_id: "306"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  evergy-mo-west:
+    utility_id: "416"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  city-of-stoughton-utilities:
+    utility_id: "615"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  black-hills-energy:
+    utility_id: "279"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  duke-energy-in:
+    utility_id: "262"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  dte-energy:
+    utility_id: "397"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  city-of-fort-collins-utilities:
+    utility_id: "269"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  evergy-ks-central:
+    utility_id: "365"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  city-of-hartford-electric-utilities:
+    utility_id: "613"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  city-of-slinger-utilities:
+    utility_id: "612"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  energy-united:
+    utility_id: "280"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  madison-gas-and-electric:
+    utility_id: "599"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  wake-electric-membership-corp:
+    utility_id: "418"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  georgia-power:
+    utility_id: "282"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  dakota-electric-association:
+    utility_id: "403"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  minnesota-valley-electric-co-op-mvec:
+    utility_id: "410"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  city-of-sun-prairie-utilities:
+    utility_id: "617"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  dominion-energy-va:
+    utility_id: "270"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  oncor:
+    utility_id: "275"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  puget-sound-energy:
+    utility_id: "381"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  shakopee-public-utility:
+    utility_id: "427"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  fayetteville-pwc:
+    utility_id: "426"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  southwestern-electric-power-company-aep-arkansas:
+    utility_id: "366"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  tacoma-public-power:
+    utility_id: "378"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  idaho-power-or:
+    utility_id: "421"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  louisville-gas-and-electric-lge:
+    utility_id: "375"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+  first-energy-ohio-edison:
+    utility_id: "287"
+    status: LEARNING
+    submissions: 0
+    approvals: 0
+    rejections: 0
+    common_rejections: []
+    last_submission: null
+    last_updated: 2026-01-18
+    guide_version: 1.0
+    notes: "Enriched with portal research - awaiting validation"
+
+# Metrics summary (updated automatically)
+summary:
+  total_utilities: 343
+  draft_count: 311
+  learning_count: 32
+  verified_count: 0
+  rejection_patterns:
+    # Most common rejection reasons across all utilities
+    # Format: reason -> count
+    # Example:
+    # "Missing one-line diagram LINE/LOAD labels": 12
+    # "Insurance expiration < 3 months": 8
+
+# Validation queue - utilities ready for promotion to VERIFIED
+validation_queue: []
+
+# Feedback log - recent outcomes for analysis
+# Entries added by log_ix_outcome.py, pruned to last 100
+recent_outcomes: []

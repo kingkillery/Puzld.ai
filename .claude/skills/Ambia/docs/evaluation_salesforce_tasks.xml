@@ -1,0 +1,58 @@
+<!-- 
+   EVALUATION FILE FOR AMBIA SKILL
+   
+   IMPORTANT: The answers in this file are PLACEHOLDERS and must be verified
+   by navigating Salesforce in read-only mode and solving each question.
+   
+   To verify answers:
+   1. Log into Salesforce (read-only access is sufficient)
+   2. For each question, navigate Salesforce and solve it yourself
+   3. Document the exact answer you find
+   4. Update the <answer> tags with verified real answers
+   5. Remove any questions that require write operations
+   
+   See EVALUATION_GUIDE.md for detailed instructions.
+-->
+<evaluation>
+   <qa_pair>
+      <question>For the TaskRay project associated with the Opportunity at address "2633 JORDAN", navigate to the Related tab and find the TaskRay Tasks list. Among all IX tasks (those with ID prefix a03US), find the task with status "Holding" or "Open". What is the subject line of the most recent log review entry in that task's Activity Timeline? Provide just the subject text.</question>
+      <answer>Interconnection: Follow Up</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>Search Salesforce for a TaskRay Project with project code containing "2633REGA". Once you locate the project, navigate to the Related tab and access the TaskRay Tasks related list (URL contains /related/TASKRAY__Tasks__r/view). Filter tasks by ID prefix a03US to find only TaskRay Project Tasks. Count how many IX tasks have a status of "Completed". Return the numeric count.</question>
+      <answer>3</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>For the Opportunity linked to address "6455 MILANO" (omit street suffix in search), locate its TaskRay Project. Navigate to Related tab → TaskRay Tasks list and identify all IX tasks with ID prefix a03US. Among these IX tasks, find the one with "Part 1" in its name that has status "Holding". What is the owner's name for that task? Provide just the owner name.</question>
+      <answer>Tonia Crank</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>Search Salesforce for a project with identifier "1954TAYL". Navigate to the TaskRay Project page, then go to Related tab → TaskRay Tasks list. Find all IX tasks (ID prefix a03US) and identify which one has "Receive and Process IX Part 2" in its name. Extract all log review entries from that task's Activity Timeline. What is the date (in MM-DD format) of the earliest log review entry? Provide the date in MM-DD format.</question>
+      <answer>06-10</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>For the TaskRay Project linked to Opportunity at address "3763 98th Ct" (search using "3763 98th" without "Ct"), navigate to Related tab → TaskRay Tasks. Filter by task ID prefix a03US to show only TaskRay Project Tasks. Among all IX tasks, find the one with the most recent log review entry in its Activity Timeline. What is the full task name (subject) of that IX task? Provide the complete task name.</question>
+      <answer>Receive and Process IX Part 1</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>Search Salesforce for a TaskRay Project with project code "875RCOLE". Navigate to Related tab → TaskRay Tasks list (URL contains /related/TASKRAY__Tasks__r/view). Identify all IX tasks with ID prefix a03US. For each IX task, check its Activity Timeline for log review entries. Among all IX tasks, which one has a log review entry with subject "Interconnection: Approved"? Provide the full name of that IX task.</question>
+      <answer>Receive and Process IX Part 1</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>For the Opportunity associated with project identifier "2633REGA-1", locate its TaskRay Project. Navigate to Related tab → TaskRay Tasks and filter by ID prefix a03US. Find the IX task that contains "Prepare IX Part 2" in its name. What is the current status of that task? Provide just the status value (e.g., Open, Completed, Holding, Inactive, Not Required).</question>
+      <answer>Holding</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>Search Salesforce for a TaskRay Project using the address "2633 JORDAN" (search without street suffix). Once on the Project page, navigate to Related tab → TaskRay Tasks list. Filter tasks by ID prefix a03US to identify TaskRay Project Tasks only (ignore any with prefix 00T or 00TD). Among all IX tasks found, identify which ones have "Part 1" in the task name. Count how many of these Part 1 IX tasks exist. Return the numeric count.</question>
+      <answer>3</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>For the TaskRay Project linked to Opportunity at address "6455 MILANO" (search using "6455 MILANO" without "ST"), navigate to Related tab → TaskRay Tasks. Find all IX tasks with ID prefix a03US. For each IX task, examine its Activity Timeline to find log review entries. Among all log review entries across all IX tasks, find the one with the most recent date. What is the subject line of that most recent log review entry? Provide just the subject text.</question>
+      <answer>Interconnection: Follow Up</answer>
+   </qa_pair>
+   <qa_pair>
+      <question>Search Salesforce for a TaskRay Project with project code containing "3763MORR". Navigate to the Related tab and click the TaskRay Tasks related list (URL must contain /related/TASKRAY__Tasks__r/view). Filter by task ID prefix a03US to show only TaskRay Project Tasks. Identify the IX task that has "Receive and Process IX Part 1" in its name. Open that task's detail page and examine its Activity Timeline. What is the date (in MM-DD format) of the most recent log review entry? Provide the date in MM-DD format.</question>
+      <answer>10-02</answer>
+   </qa_pair>
+</evaluation>
+

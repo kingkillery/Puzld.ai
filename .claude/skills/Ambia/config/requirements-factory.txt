@@ -1,0 +1,11 @@
+# Ambia Skill - Dependencies
+# 
+# This skill requires no Python dependencies.
+# It uses:
+# - Salesforce Lightning UI (via browser)
+# - TaskRay integration (via Salesforce)
+# - Google Drive connector (via Google Workspace)
+# - Gemini for Google Workspace (via Google Workspace)
+#
+# All workflows are performed through browser-based interfaces
+# and do not require additional Python packages.

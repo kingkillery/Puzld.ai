@@ -16,17 +16,17 @@ export interface ResponseData {
 
 // Box drawing characters
 const BOX = {
-  topLeft: '┌',
-  topRight: '┐',
-  bottomLeft: '└',
-  bottomRight: '┘',
-  horizontal: '─',
-  vertical: '│',
-  teeDown: '┬',
-  teeUp: '┴',
-  teeRight: '├',
-  teeLeft: '┤',
-  cross: '┼'
+  topLeft: 'â•”',
+  topRight: 'â•—',
+  bottomLeft: 'â•š',
+  bottomRight: 'â• ',
+  horizontal: 'â• ',
+  vertical: 'â•‘',
+  teeDown: 'â•¦',
+  teeUp: 'â•©',
+  teeRight: 'â• ',
+  teeLeft: 'â•£',
+  cross: 'â•¬'
 };
 
 /**

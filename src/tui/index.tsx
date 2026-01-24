@@ -3639,8 +3639,8 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
       <Box
         flexDirection="column"
         paddingX={1}
-        borderStyle="bold"
-        borderColor="#fc8657"
+        borderStyle="double"
+        borderColor="#00ffff"
         minHeight={hudHeight}
       >
         {/* Permission Prompt - shows here instead of main flow if we want it fixed */}

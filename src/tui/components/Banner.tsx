@@ -5,8 +5,8 @@ import { fileURLToPath } from 'url';
 import figlet from 'figlet';
 
 // Logo colors
-const RED = '#fc3855';
-const BORDER = 'gray';
+const RED = '#ff00ff'; // Hot Pink
+const BORDER = '#bd93f9'; // Neon Purple
 const GRAY = 'gray';
 
 // Generate ASCII art banner for PK-puzld using figlet with Small font
@@ -37,11 +37,11 @@ function generateBannerArt(): string[] {
   return lines;
 }
 
-// Box drawing characters - rounded corners
+// Box drawing characters - double lines
 const BOX = {
-  tl: '╭', tr: '╮', bl: '╰', br: '╯',
-  h: '─', v: '│',
-  lt: '├', rt: '┤', tt: '┬', bt: '┴',
+  tl: 'â•”', tr: 'â•—', bl: 'â•š', br: 'â• ', 
+  h: 'â• ', v: 'â•‘',
+  lt: 'â• ', rt: 'â•£', tt: 'â•¦', bt: 'â•©',
 };
 
 // Column widths - wider left, narrower right
@@ -213,12 +213,12 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
                 {/* Split line into PK (white) and puzld (red) parts */}
                 {line.includes('  ') ? (
                   <>
-                    <Text bold color="white">{line.split('  ')[0]}</Text>
+                    <Text bold color="#00ffff">{line.split('  ')[0]}</Text>
                     <Text>{'  '}</Text>
                     <Text bold color={RED}>{line.split('  ')[1]}</Text>
                   </>
                 ) : (
-                  <Text bold color="white">{line}</Text>
+                  <Text bold color="#00ffff">{line}</Text>
                 )}
                 <Text color={BORDER}>{BOX.v}</Text>
               </Box>

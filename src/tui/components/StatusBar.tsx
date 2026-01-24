@@ -84,7 +84,7 @@ export const StatusBar = memo(function StatusBar({
   };
 
   return (
-    <Box borderStyle="single" borderColor="gray" paddingX={1} marginTop={1} justifyContent="space-between">
+    <Box borderStyle="double" borderColor="#bd93f9" paddingX={1} marginTop={1} justifyContent="space-between">
       {/* Left section: Agent + Session */}
       <Box>
         <Text color="yellow" bold>{agent}</Text>
