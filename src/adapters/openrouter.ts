@@ -38,10 +38,13 @@ export interface OpenRouterConfig {
   apiKey?: string;  // Can also use OPENROUTER_API_KEY env var
   model?: string;   // Can be a preset name or full model ID
   baseUrl?: string;
+  extraArgs?: Record<string, unknown>;
 }
 
 // Resolve model preset to full model ID
 function resolveModel(model: string): string {
+  if (model === 'zai/glm-4.7') return 'z-ai/glm-4.7';
+  if (model === 'custom:GLM-4.7-Cerebras-3') return 'z-ai/glm-4.7';
   return FAST_MODELS[model as keyof typeof FAST_MODELS] || model;
 }
 
@@ -68,6 +71,7 @@ export const openrouterAdapter: Adapter = {
     const rawModel = options?.model ?? orConfig?.model ?? DEFAULT_MODEL;
     const model = resolveModel(rawModel); // Resolve preset names to full IDs
     const baseUrl = orConfig?.baseUrl || 'https://openrouter.ai/api/v1';
+    const extraArgs = orConfig?.extraArgs ?? {};
 
     if (!apiKey) {
       return {
@@ -94,6 +98,7 @@ export const openrouterAdapter: Adapter = {
           ],
           temperature: 0.7,
           max_tokens: 4096,
+          ...extraArgs,
         }),
         signal: options?.signal,
       });

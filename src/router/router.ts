@@ -17,6 +17,7 @@ import type { RouteResult } from '../lib/types';
 import { getConfig } from '../lib/config';
 import { logRoutingDecision } from '../observation/logger';
 import { adapters } from '../adapters';
+import { runOpenRouter } from '../adapters/openrouter';
 
 let ollamaClient: Ollama | null = null;
 
@@ -78,6 +79,134 @@ const HARNESS_RECOMMENDATIONS: Record<string, string> = {
 
 // Capability cascade: most capable first
 const CAPABILITY_CASCADE = ['codex', 'claude', 'gemini', 'factory'] as const;
+
+const ROUTER_SYSTEM_PROMPT = `You are the PuzldAI router. Your job is to choose the single best agent for the user's task.
+
+You must be conservative, accurate, and explicit. You are not solving the task, only routing it.
+
+## Objective
+Pick the best agent given task requirements, complexity, risk, and expected tool usage.
+
+## Agents (capabilities, in descending order)
+- codex: strongest for deep architecture, complex refactors, multi-file changes, hard debugging
+- claude: strongest generalist for coding + analysis + documentation
+- gemini: strongest for research, analysis, explanations, and synthesis
+- factory: GLM generalist (fallback), good for broad tasks
+
+## Decision Heuristics
+- If the task mentions multi-file refactors, architecture, migrations, security, performance, or complex debugging → favor codex or claude.
+- If the task is primarily analysis, research, explanation, documentation, or comparison → favor gemini.
+- If the task is simple, short, or routine (small edits, formatting, basic checks) → favor gemini or codex depending on coding vs explanation.
+- If the task is ambiguous or safety-sensitive, choose the agent most likely to ask clarifying questions and produce a safe plan (usually claude).
+
+## Output
+Return ONLY valid JSON with this schema:
+{
+  "agent": "codex|claude|gemini|factory",
+  "confidence": 0.0-1.0,
+  "taskType": "high-complexity|medium-complexity|analysis|simple|unknown",
+  "reasoning": "short, concrete reason in 1-2 sentences"
+}
+
+Rules:
+- Do NOT include markdown or extra keys.
+- Do NOT output analysis or commentary outside JSON.
+- Ensure confidence reflects certainty (low if task is vague).`;
+
+const ROUTER_MAX_CHARS = 1000;
+const ROUTER_SNIPPET_CHARS = 320;
+
+function extractRouterJson(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+
+  // Strip ```json or ``` fences if present
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fenceMatch) {
+    return fenceMatch[1].trim();
+  }
+
+  // Fallback: attempt to locate first JSON object in the string
+  const firstBrace = trimmed.indexOf('{');
+  const lastBrace = trimmed.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return trimmed.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  return trimmed;
+}
+
+function extractSignals(task: string): string[] {
+  const signals: string[] = [];
+  const lower = task.toLowerCase();
+
+  const keywords = [
+    'refactor', 'migrate', 'migration', 'multi-file', 'architecture', 'design',
+    'performance', 'optimize', 'security', 'vulnerability', 'auth', 'authentication',
+    'authorization', 'api', 'database', 'schema', 'ui', 'frontend', 'backend',
+    'debug', 'bug', 'error', 'test', 'coverage', 'lint', 'format', 'docs',
+    'implement', 'add', 'remove', 'rename', 'review', 'compare', 'analyze', 'summarize'
+  ];
+
+  for (const key of keywords) {
+    if (lower.includes(key)) signals.push(key);
+  }
+
+  // File/path hints
+  const pathMatches = task.match(/([A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/g) || [];
+  signals.push(...pathMatches.slice(0, 5));
+
+  // Language hints
+  const langHints = ['typescript', 'javascript', 'go', 'python', 'rust', 'java', 'c#', 'sql'];
+  for (const lang of langHints) {
+    if (lower.includes(lang)) signals.push(lang);
+  }
+
+  // Error hints
+  const errorMatches = task.match(/(error|exception|stack trace|traceback|segfault|panic)/gi) || [];
+  if (errorMatches.length > 0) signals.push('error');
+
+  // Unique, preserve order
+  return [...new Set(signals)];
+}
+
+function extractConstraints(task: string): string[] {
+  const constraints: string[] = [];
+  const lower = task.toLowerCase();
+
+  const constraintPatterns = [
+    { pattern: /no tests|skip tests|without tests/, label: 'no-tests' },
+    { pattern: /no refactor|avoid refactor/, label: 'no-refactor' },
+    { pattern: /do not change|don’t change|don't change/, label: 'no-change' },
+    { pattern: /fast|quick|asap/, label: 'speed' },
+    { pattern: /safe|careful|cautious/, label: 'safety' },
+  ];
+
+  for (const entry of constraintPatterns) {
+    if (entry.pattern.test(lower)) constraints.push(entry.label);
+  }
+
+  return [...new Set(constraints)];
+}
+
+function buildRouterContext(task: string): string {
+  const trimmed = task.trim();
+  const snippet = trimmed.slice(0, ROUTER_SNIPPET_CHARS);
+  const signals = extractSignals(trimmed);
+  const constraints = extractConstraints(trimmed);
+
+  const parts = [
+    `TASK: ${snippet}`,
+    `SIGNALS: ${signals.length > 0 ? signals.join(', ') : '-'}`,
+    `CONSTRAINTS: ${constraints.length > 0 ? constraints.join(', ') : '-'}`,
+  ];
+
+  let compact = parts.join('\n');
+  if (compact.length > ROUTER_MAX_CHARS) {
+    compact = compact.slice(0, ROUTER_MAX_CHARS);
+  }
+  return compact;
+}
 
 type TaskType = 'high-complexity' | 'medium-complexity' | 'analysis' | 'simple' | 'unknown';
 
@@ -244,6 +373,10 @@ async function selectAgent(taskType: TaskType): Promise<string> {
 export async function routeTask(task: string): Promise<RouteResult> {
   const config = getConfig();
 
+  if (await isRouterAvailable()) {
+    return routeTaskWithLLM(task);
+  }
+
   // First, try rule-based classification (fast, no LLM needed)
   const classification = classifyTask(task);
   const selectedAgent = await selectAgent(classification.taskType);
@@ -283,6 +416,37 @@ export async function routeTaskWithLLM(task: string): Promise<RouteResult> {
   // First get rule-based result as fallback
   const ruleBasedResult = await routeTask(task);
 
+  // Try OpenRouter first if enabled
+  if ((config.adapters as any).openrouter?.enabled) {
+    const preferred = (config.adapters as any).openrouter?.model || 'z-ai/glm-4.7';
+    const compactTask = buildRouterContext(task);
+    const prompt = `${ROUTER_SYSTEM_PROMPT}\n\n${compactTask}`;
+    const modelsToTry = [preferred, 'z-ai/glm-4.6'].filter(Boolean);
+
+    for (const model of modelsToTry) {
+    const response = await runOpenRouter(prompt, model);
+      if (response.error || !response.content) {
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(extractRouterJson(response.content));
+        if (parsed.agent && typeof parsed.confidence === 'number') {
+          if (CAPABILITY_CASCADE.includes(parsed.agent as any)) {
+            return {
+              agent: parsed.agent,
+              confidence: parsed.confidence,
+              taskType: parsed.taskType || ruleBasedResult.taskType,
+              reasoning: parsed.reasoning,
+              suggestedHarness: ruleBasedResult.suggestedHarness,
+            };
+          }
+        }
+      } catch {
+        // Fall through to other routers
+      }
+    }
+  }
+
   // Try LLM routing if Ollama is available
   if (config.adapters.ollama.enabled) {
     try {
@@ -291,22 +455,12 @@ export async function routeTaskWithLLM(task: string): Promise<RouteResult> {
         model: config.routerModel,
         messages: [{
           role: 'user',
-          content: `Classify this task and choose the best agent.
-
-Available agents (in capability order):
-- codex: Most capable - complex architecture, multi-file refactoring, deep debugging
-- claude: Very capable - coding, analysis, documentation
-- gemini: Good for analysis, research, explanations, documentation
-- factory: Alternative model (GLM-4.7) - good general capability
-
-Task: ${task}
-
-Respond with JSON: {"agent":"...","confidence":0.X,"taskType":"...","reasoning":"..."}`
+          content: `${ROUTER_SYSTEM_PROMPT}\n\n${buildRouterContext(task)}`
         }],
         format: 'json'
       });
 
-      const parsed = JSON.parse(response.message.content);
+      const parsed = JSON.parse(extractRouterJson(response.message.content));
       if (parsed.agent && typeof parsed.confidence === 'number') {
         // Validate agent is in our cascade
         if (CAPABILITY_CASCADE.includes(parsed.agent as any)) {
@@ -333,6 +487,11 @@ Respond with JSON: {"agent":"...","confidence":0.X,"taskType":"...","reasoning":
 export async function isRouterAvailable(): Promise<boolean> {
   try {
     const config = getConfig();
+    const openrouter = (config.adapters as any).openrouter as { enabled?: boolean; apiKey?: string } | undefined;
+    if (openrouter?.enabled) {
+      const apiKey = openrouter.apiKey || process.env.OPENROUTER_API_KEY;
+      if (apiKey) return true;
+    }
     if (!config.adapters.ollama.enabled) return false;
 
     const ollama = getOllama();

@@ -478,7 +478,7 @@ export function getCampaignMetrics(projectId: string): CampaignMetricsAggregate 
   const domainRow = db.prepare(`
     SELECT
       COUNT(*) as total,
-      SUM(CASE WHEN status = 'active' OR status = 'in_progress' THEN 1 ELSE 0 END) as active,
+      SUM(CASE WHEN status IN ('active', 'in_progress', 'running') THEN 1 ELSE 0 END) as active,
       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
     FROM campaign_domains
     WHERE project_id = ?

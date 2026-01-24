@@ -1,6 +1,6 @@
 # PuzldAI - Game System Implementation Plan
 
-**Last Updated:** 2026-01-20
+**Last Updated:** 2026-01-24
 **Status:** In Progress
 **Completion:** 10/13 tasks (Game system); 6/6 tasks (CLI orchestration); 4/4 tasks (Ralph/Poet CLI) ✅; 2/10 tasks (Campaign mode)
 
@@ -41,6 +41,8 @@ This document tracks the implementation of game mechanics, CLI improvements, cam
 - [ ] 🔄 Integrate the Ralph Wiggum plan loop into `pk-puzldai` orchestrate/run flows so each task begins with structured planning plus clarifying questions.
 - [ ] Expand `poetiq`, `pk-poet`, and related script aliases (`self-discover`, `adversary`, `pk-poet-activate.py`) into the CLI harness and ensure Claude/Gemini/pk-puzldai each expose the verification-first workflow.
 - [ ] 🔄 Validate every orchestration harness (Gemini CLI, Claude Code, pk-puzldai) with agentic smoke tests and capture results for each to prove their capabilities.
+- [x] Refactor the main agent loop into a minimal Go implementation aligned with the Amp-style tool loop.
+- [x] Wire the Go agent loop as the default non-interactive execution engine (with fallbacks).
 
 
 ### Campaign Mode (Hierarchical Long-Running Agents)
@@ -1690,6 +1692,26 @@ Phase 7 (Docs) can run independently after Phase 2
 ---
 
 ## 🔄 Change Log
+
+### 2026-01-24: Go agent loop default wiring
+
+- Added Go agent loop engine option to the config (default: go).
+- Routed non-interactive agent loop execution through the Go loop when compatible.
+- Built and installed the `puzldai-agent.exe` binary in the user config bin directory.
+
+### 2026-01-24: LLM router prompt + OpenRouter GLM selector
+
+- Added a strict router system prompt to improve intelligent agent selection.
+- Routed LLM-based selection through OpenRouter (GLM 4.7 default) with fallback to Ollama/rule-based logic.
+- Added OpenRouter extraArgs support and Cerebras provider pinning for GLM-4.7 routing.
+- Mapped router default model to the Cerebras custom ID (custom:GLM-4.7-Cerebras-3).
+- Added code-fence and inline JSON extraction for router responses.
+- Added compact router context builder (signal extraction + hard char cap) to reduce OpenRouter token usage.
+
+### 2026-01-24: Go agent loop refactor (minimal orchestration core)
+
+- Added an experimental Go-based agent loop implementing the simple tool-execution cycle.
+- Documented Go orchestrator usage and defaults.
 
 ### 2026-01-20: Campaign persistence and execution logging
 

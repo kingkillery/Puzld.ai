@@ -6,6 +6,7 @@ import type { Tool, ToolCall, ToolResult, AgentMessage } from './tools/types';
 import { globSync } from 'glob';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
+import { getConfig } from '../lib/config';
 import {
   type PermissionRequest,
   type PermissionResult,
@@ -15,6 +16,7 @@ import {
 import { isAbsolutePath, joinPaths, normalizePath } from '../lib/paths';
 import { getContextLimit, type UnifiedMessage, getTextContent } from '../context/unified-message';
 import { prepareContextForAgent } from '../context/context-manager';
+import { runGoAgentLoop } from './go-loop';
 
 const MAX_ITERATIONS = 20;
 
@@ -104,6 +106,10 @@ export interface AgentLoopOptions extends RunOptions {
   unifiedHistory?: UnifiedMessage[];
   /** Callback when user selects "allow all edits" */
   onAllowAllEdits?: () => void;
+  /** Force a specific agent loop engine */
+  engine?: 'ts' | 'go';
+  /** Override maximum iterations (default MAX_ITERATIONS) */
+  maxIterations?: number;
 }
 
 export interface AgentLoopResult {
@@ -278,6 +284,42 @@ export async function runAgentLoop(
   userMessage: string,
   options: AgentLoopOptions = {}
 ): Promise<AgentLoopResult> {
+  const config = getConfig();
+  const engine = options.engine ?? config.agentLoopEngine ?? 'ts';
+  const engineExplicit = options.engine === 'go';
+  const goEnabled = config.goAgent?.enabled ?? true;
+
+  const hasInteractiveCallbacks = Boolean(
+    options.onToolCall ||
+    options.onToolResult ||
+    options.onToolStart ||
+    options.onToolEnd ||
+    options.onDiffPreview ||
+    options.onBatchDiffPreview ||
+    options.onIteration ||
+    options.onPermissionRequest ||
+    options.onAllowAllEdits
+  );
+
+  if (engine === 'go' && goEnabled && adapter.name === 'claude' && !hasInteractiveCallbacks) {
+    const goResult = await runGoAgentLoop(userMessage, {
+      cwd: options.cwd ?? process.cwd(),
+      model: options.model,
+      maxIterations: options.maxIterations,
+    });
+    if (!goResult.error || engineExplicit) {
+      return {
+        content: goResult.error ? goResult.error : goResult.content,
+        model: goResult.model,
+        iterations: 1,
+        toolCalls: [],
+        toolResults: [],
+        tokens: goResult.tokens,
+        duration: goResult.duration,
+      };
+    }
+  }
+
   const tools = options.tools ?? allTools;
   const cwd = options.cwd ?? process.cwd();
   const startTime = Date.now();
@@ -381,7 +423,8 @@ export async function runAgentLoop(
   let iterations = 0;
   let totalTokens = { input: 0, output: 0 };
 
-  while (iterations < MAX_ITERATIONS) {
+  const maxIterations = options.maxIterations ?? MAX_ITERATIONS;
+  while (iterations < maxIterations) {
     iterations++;
 
     // Build prompt with history

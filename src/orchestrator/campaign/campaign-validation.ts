@@ -41,8 +41,21 @@ export async function validateCriterion(
   const expectedExitCode = criterion.expected_exit_code ?? 0;
 
   try {
+    const isWindows = process.platform === 'win32';
+    let checkCommand = criterion.check_command;
+    if (isWindows) {
+      const normalized = checkCommand.trim().toLowerCase();
+      if (normalized === 'true') {
+        checkCommand = 'exit /b 0';
+      } else if (normalized === 'false') {
+        checkCommand = 'exit /b 1';
+      }
+    }
+    const command = isWindows ? 'cmd' : 'sh';
+    const args = isWindows ? ['/c', checkCommand] : ['-c', checkCommand];
+
     // Execute the check command
-    const result = await execa('sh', ['-c', criterion.check_command], {
+    const result = await execa(command, args, {
       cwd,
       timeout: timeoutMs,
       reject: false, // Don't throw on non-zero exit

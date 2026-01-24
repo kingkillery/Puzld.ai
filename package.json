@@ -9,6 +9,7 @@
   "files": [
     "dist",
     "web",
+    "go",
     "assets/logo.jpg",
     "README.md",
     "LICENSE"

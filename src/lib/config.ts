@@ -47,6 +47,7 @@ export interface PulzdConfig {
     gemini: { enabled: boolean; path: string; model?: string };
     codex: { enabled: boolean; path: string; model?: string };
     ollama: { enabled: boolean; model: string; host: string; maxTokens?: number };
+    openrouter?: { enabled: boolean; apiKey?: string; model?: string; baseUrl?: string; extraArgs?: Record<string, unknown> };
     mistral?: { enabled: boolean; path: string; model?: string };
     factory?: {
       enabled: boolean;
@@ -85,6 +86,13 @@ export interface PulzdConfig {
     port: number;
     host: string;
   };
+  agentLoopEngine?: 'ts' | 'go';
+  goAgent?: {
+    enabled?: boolean;
+    binaryPath?: string;
+    maxIters?: number;
+    model?: string;
+  };
 }
 
 const CONFIG_DIR = join(homedir(), '.puzldai');
@@ -122,6 +130,13 @@ const DEFAULT_CONFIG: PulzdConfig = {
     gemini: { enabled: true, path: 'gemini' },
     codex: { enabled: true, path: 'codex' },
     ollama: { enabled: false, model: 'llama3.2', host: 'http://localhost:11434' },
+    openrouter: {
+      enabled: true,
+      model: 'custom:GLM-4.7-Cerebras-3',
+      extraArgs: {
+        provider: { order: ['Cerebras'] }
+      }
+    },
     mistral: { enabled: false, path: 'vibe' },
     factory: {
       enabled: true,
@@ -152,6 +167,10 @@ const DEFAULT_CONFIG: PulzdConfig = {
   mcp: {
     port: 9234,
     host: '127.0.0.1'
+  },
+  agentLoopEngine: 'go',
+  goAgent: {
+    enabled: true
   }
 };
 
