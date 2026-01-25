@@ -10,9 +10,9 @@
 
 import pc from 'picocolors';
 import * as readline from 'readline';
-import { createSpinner } from 'nanospinner';
 import { generatePlan, formatPlanForDisplay } from '../../executor/planner';
 import { execute, type AgentName, type ExecutionPlan, type PlanStep, type StepResult } from '../../executor';
+import { ui } from '../utils/ui';
 
 export interface PlanOptions {
   execute?: boolean;
@@ -25,14 +25,14 @@ export async function planCommand(
   options: PlanOptions
 ): Promise<void> {
   if (!task || task.trim() === '') {
-    console.error(pc.red('Error: No task provided'));
+    ui.error('No task provided');
     console.log(pc.dim('Usage: ai plan "your complex task here"'));
     process.exit(1);
   }
 
   const plannerAgent = (options.planner || 'ollama') as AgentName;
 
-  const spinner = createSpinner('Generating plan with ' + plannerAgent + '...').start();
+  const spinner = ui.spinner('Generating plan with ' + plannerAgent + '...');
   const result = await generatePlan(task, plannerAgent);
 
   if (result.error || !result.plan) {
@@ -41,19 +41,19 @@ export async function planCommand(
   }
 
   spinner.success({ text: 'Plan generated' });
-  console.log(pc.bold('\n--- Generated Plan ---\n'));
+  ui.header('Generated Plan');
   console.log(formatPlanForDisplay(result.plan, result.reasoning));
   console.log();
 
   if (options.execute) {
-    console.log(pc.bold('\n--- Executing Plan ---\n'));
+    ui.header('Executing Plan');
     if (options.interactive) {
-      console.log(pc.cyan('Interactive mode: You will be prompted before each step\n'));
+      ui.info('Interactive mode: You will be prompted before each step');
     }
     await executePlan(result.plan, options.interactive);
   } else {
-    console.log(pc.dim('Run with --execute to run this plan'));
-    console.log(pc.dim('Add --interactive for step-by-step confirmation'));
+    ui.info('Run with --execute to run this plan');
+    ui.detail('Hint', 'Add --interactive for step-by-step confirmation');
   }
 }
 
@@ -80,22 +80,21 @@ function createStepPrompt(totalSteps: number): (step: PlanStep, index: number, p
     if (previousResults.length > 0) {
       const lastResult = previousResults[previousResults.length - 1];
       if (lastResult.content) {
-        console.log();
-        console.log(pc.bold('--- Previous Output ---'));
+        ui.divider();
+        console.log(pc.bold('Previous Output:'));
         console.log(lastResult.content);
-        console.log(pc.bold('--- End Output ---'));
+        ui.divider();
       }
     }
 
     console.log();
-    console.log(pc.bold('Step ' + stepNum + '/' + totalSteps + ': ' + agent));
-    console.log(pc.dim('  Action: ' + step.action));
+    ui.step(stepNum, totalSteps, `${agent}: ${step.action}`);
     console.log(pc.dim('  Prompt: ' + step.prompt.slice(0, 100) + (step.prompt.length > 100 ? '...' : '')));
 
     const answer = await askQuestion(pc.cyan('  Run this step? [Y/n/q] '));
 
     if (answer === 'q' || answer === 'quit') {
-      console.log(pc.yellow('\nAborting plan...'));
+      ui.warn('Aborting plan...');
       process.exit(0);
     }
 
@@ -128,29 +127,31 @@ async function executePlan(plan: ExecutionPlan, interactive?: boolean): Promise<
   console.log();
 
   if (result.status === 'failed') {
-    console.error(pc.red('Plan execution failed'));
+    ui.error('Plan execution failed');
     for (const r of result.results) {
       if (r.error) {
-        console.error(pc.red(`  ${r.stepId}: ${r.error}`));
+        ui.error(`${r.stepId}: ${r.error}`);
       }
     }
     process.exit(1);
   }
 
   if (result.finalOutput) {
-    console.log(pc.bold('--- Final Output ---\n'));
+    ui.divider();
+    console.log(pc.bold('Final Output:'));
     console.log(result.finalOutput);
   }
 
   const duration = Date.now() - startTime;
-  console.log(pc.dim(`\n---`));
-  console.log(pc.dim(`Status: ${result.status} | Time: ${(duration / 1000).toFixed(1)}s`));
+  ui.divider();
+  ui.detail('Status', result.status);
+  ui.detail('Time', `${(duration / 1000).toFixed(1)}s`);
 
   const models = result.results
     .filter(r => r.model)
     .map(r => r.model)
     .join(' → ');
   if (models) {
-    console.log(pc.dim(`Pipeline: ${models}`));
+    ui.detail('Pipeline', models);
   }
 }
