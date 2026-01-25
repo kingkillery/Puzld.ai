@@ -18,6 +18,7 @@ import { getConfig } from '../lib/config';
 import { logRoutingDecision } from '../observation/logger';
 import { adapters } from '../adapters';
 import { runOpenRouter } from '../adapters/openrouter';
+import { getOllamaCircuitBreaker } from '../lib/circuit-breaker';
 
 let ollamaClient: Ollama | null = null;
 
@@ -449,32 +450,44 @@ export async function routeTaskWithLLM(task: string): Promise<RouteResult> {
 
   // Try LLM routing if Ollama is available
   if (config.adapters.ollama.enabled) {
-    try {
-      const ollama = getOllama();
-      const response = await ollama.chat({
-        model: config.routerModel,
-        messages: [{
-          role: 'user',
-          content: `${ROUTER_SYSTEM_PROMPT}\n\n${buildRouterContext(task)}`
-        }],
-        format: 'json'
-      });
+    const ollamaCircuitBreaker = getOllamaCircuitBreaker();
 
-      const parsed = JSON.parse(extractRouterJson(response.message.content));
-      if (parsed.agent && typeof parsed.confidence === 'number') {
-        // Validate agent is in our cascade
-        if (CAPABILITY_CASCADE.includes(parsed.agent as any)) {
-          return {
-            agent: parsed.agent,
-            confidence: parsed.confidence,
-            taskType: parsed.taskType || ruleBasedResult.taskType,
-            reasoning: parsed.reasoning,
-            suggestedHarness: ruleBasedResult.suggestedHarness,
-          };
+    // Check circuit breaker before attempting Ollama call
+    if (!ollamaCircuitBreaker.canExecute()) {
+      // Circuit is open, fall through to rule-based result
+    } else {
+      try {
+        const ollama = getOllama();
+        const response = await ollama.chat({
+          model: config.routerModel,
+          messages: [{
+            role: 'user',
+            content: `${ROUTER_SYSTEM_PROMPT}\n\n${buildRouterContext(task)}`
+          }],
+          format: 'json'
+        });
+
+        // Record success
+        ollamaCircuitBreaker.recordSuccess();
+
+        const parsed = JSON.parse(extractRouterJson(response.message.content));
+        if (parsed.agent && typeof parsed.confidence === 'number') {
+          // Validate agent is in our cascade
+          if (CAPABILITY_CASCADE.includes(parsed.agent as any)) {
+            return {
+              agent: parsed.agent,
+              confidence: parsed.confidence,
+              taskType: parsed.taskType || ruleBasedResult.taskType,
+              reasoning: parsed.reasoning,
+              suggestedHarness: ruleBasedResult.suggestedHarness,
+            };
+          }
         }
+      } catch (err) {
+        // Record failure for circuit breaker
+        ollamaCircuitBreaker.recordFailure((err as Error).message);
+        // Fall through to rule-based result
       }
-    } catch {
-      // Fall through to rule-based result
     }
   }
 

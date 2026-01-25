@@ -18,6 +18,7 @@
 
 import type { Adapter, ModelResponse, RunOptions } from '../lib/types';
 import { getConfig } from '../lib/config';
+import { getOpenRouterCircuitBreaker, CircuitOpenError } from '../lib/circuit-breaker';
 
 // Fast model presets for quick access
 export const FAST_MODELS = {
@@ -82,6 +83,23 @@ export const openrouterAdapter: Adapter = {
       };
     }
 
+    const circuitBreaker = getOpenRouterCircuitBreaker();
+
+    // Check circuit breaker state before making request
+    if (!circuitBreaker.canExecute()) {
+      const stats = circuitBreaker.getStats();
+      const lastFailure = stats.lastFailureTime;
+      const waitTime = lastFailure !== null
+        ? Math.ceil(Math.max(0, 30000 - (Date.now() - lastFailure)) / 1000)
+        : 30;
+      return {
+        content: '',
+        model,
+        duration: Date.now() - startTime,
+        error: `Circuit breaker OPEN: OpenRouter API unavailable. Retry in ${waitTime}s.`
+      };
+    }
+
     try {
       const response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -105,6 +123,10 @@ export const openrouterAdapter: Adapter = {
 
       if (!response.ok) {
         const errorText = await response.text();
+        // Record failure for circuit breaker on server errors or rate limits
+        if (circuitBreaker.isFailureStatus(response.status)) {
+          circuitBreaker.recordFailure(`HTTP ${response.status}`);
+        }
         return {
           content: '',
           model,
@@ -120,6 +142,7 @@ export const openrouterAdapter: Adapter = {
       };
 
       if (data.error) {
+        circuitBreaker.recordFailure(data.error.message || 'API error');
         return {
           content: '',
           model,
@@ -130,6 +153,9 @@ export const openrouterAdapter: Adapter = {
 
       const content = data.choices?.[0]?.message?.content || '';
       const usage = data.usage;
+
+      // Record success for circuit breaker
+      circuitBreaker.recordSuccess();
 
       return {
         content,
@@ -143,6 +169,8 @@ export const openrouterAdapter: Adapter = {
 
     } catch (err: unknown) {
       const error = err as Error;
+      // Record failure for circuit breaker on network/timeout errors
+      circuitBreaker.recordFailure(error.message);
       return {
         content: '',
         model,
@@ -167,9 +195,23 @@ export async function runOpenRouter(
   const apiKey = process.env.OPENROUTER_API_KEY;
   const startTime = Date.now();
   const resolvedModel = resolveModel(model);
+  const circuitBreaker = getOpenRouterCircuitBreaker();
 
   if (!apiKey) {
     return { content: '', error: 'OPENROUTER_API_KEY not set' };
+  }
+
+  // Check circuit breaker state
+  if (!circuitBreaker.canExecute()) {
+    const stats = circuitBreaker.getStats();
+    const waitTime = stats.lastFailureTime
+      ? Math.ceil((30000 - (Date.now() - stats.lastFailureTime)) / 1000)
+      : 30;
+    return {
+      content: '',
+      error: `Circuit breaker OPEN: OpenRouter unavailable. Retry in ${waitTime}s.`,
+      duration: Date.now() - startTime
+    };
   }
 
   try {
@@ -190,6 +232,9 @@ export async function runOpenRouter(
     });
 
     if (!response.ok) {
+      if (circuitBreaker.isFailureStatus(response.status)) {
+        circuitBreaker.recordFailure(`HTTP ${response.status}`);
+      }
       return { content: '', error: `API error: ${response.status}`, duration: Date.now() - startTime };
     }
 
@@ -197,11 +242,14 @@ export async function runOpenRouter(
       choices?: Array<{ message?: { content?: string } }>;
     };
 
+    circuitBreaker.recordSuccess();
+
     return {
       content: data.choices?.[0]?.message?.content || '',
       duration: Date.now() - startTime
     };
   } catch (err) {
+    circuitBreaker.recordFailure((err as Error).message);
     return { content: '', error: (err as Error).message, duration: Date.now() - startTime };
   }
 }
@@ -218,9 +266,23 @@ export async function runOpenRouterStream(
   const apiKey = process.env.OPENROUTER_API_KEY;
   const startTime = Date.now();
   const resolvedModel = resolveModel(model);
+  const circuitBreaker = getOpenRouterCircuitBreaker();
 
   if (!apiKey) {
     return { content: '', error: 'OPENROUTER_API_KEY not set' };
+  }
+
+  // Check circuit breaker state
+  if (!circuitBreaker.canExecute()) {
+    const stats = circuitBreaker.getStats();
+    const waitTime = stats.lastFailureTime
+      ? Math.ceil((30000 - (Date.now() - stats.lastFailureTime)) / 1000)
+      : 30;
+    return {
+      content: '',
+      error: `Circuit breaker OPEN: OpenRouter unavailable. Retry in ${waitTime}s.`,
+      duration: Date.now() - startTime
+    };
   }
 
   try {
@@ -242,11 +304,15 @@ export async function runOpenRouterStream(
     });
 
     if (!response.ok) {
+      if (circuitBreaker.isFailureStatus(response.status)) {
+        circuitBreaker.recordFailure(`HTTP ${response.status}`);
+      }
       return { content: '', error: `API error: ${response.status}`, duration: Date.now() - startTime };
     }
 
     const reader = response.body?.getReader();
     if (!reader) {
+      circuitBreaker.recordFailure('No response body');
       return { content: '', error: 'No response body', duration: Date.now() - startTime };
     }
 
@@ -279,8 +345,10 @@ export async function runOpenRouterStream(
       }
     }
 
+    circuitBreaker.recordSuccess();
     return { content: fullContent, duration: Date.now() - startTime };
   } catch (err) {
+    circuitBreaker.recordFailure((err as Error).message);
     return { content: '', error: (err as Error).message, duration: Date.now() - startTime };
   }
 }
