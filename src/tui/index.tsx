@@ -146,8 +146,12 @@ function App() {
   // Disable mouse tracking to prevent scroll events from triggering input
   const { exit } = useApp();
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = usePersistentState('tuiDraft', '');
   const [inputKey, setInputKey] = useState(0);
+  const [historySearchActive, setHistorySearchActive] = useState(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historySearchIndex, setHistorySearchIndex] = useState(0);
+  const [draftBeforeSearch, setDraftBeforeSearch] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [tokens, setTokens] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -165,6 +169,7 @@ function App() {
   const [session, setSession] = useState<UnifiedSession | null>(null);
   const [updateInfo, setUpdateInfo] = useState<{ current: string; latest: string } | null>(null);
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+  const [showHelpOverlay, setShowHelpOverlay] = useState(false);
   const [ctrlCPressed, setCtrlCPressed] = useState(false);
   const [isReEnteringCollaboration, setIsReEnteringCollaboration] = useState(false); // Track re-enter to avoid duplicate saves
   const [isReEnteringCompare, setIsReEnteringCompare] = useState(false); // Track re-enter to avoid duplicate saves
@@ -559,7 +564,7 @@ function App() {
     return undefined;
   };
 
-  const { addToHistory, navigateHistory } = useHistory();
+  const { history, addToHistory, navigateHistory } = useHistory();
 
   // Check directory trust on startup
   useEffect(() => {
@@ -777,8 +782,30 @@ function App() {
     }
   };
 
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    if (historySearchActive) {
+      setHistorySearchQuery(value);
+    }
+  };
+
+  const historyMatches = useMemo(() => {
+    if (!historySearchActive) return [];
+    const normalized = historySearchQuery.trim().toLowerCase();
+    const items = [...history].reverse();
+    if (!normalized) return items;
+    return items.filter(item => item.toLowerCase().includes(normalized));
+  }, [historySearchActive, historySearchQuery, history]);
+
+  useEffect(() => {
+    if (historySearchActive) {
+      setHistorySearchIndex(0);
+    }
+  }, [historySearchActive, historySearchQuery]);
+
   // Memoize autocomplete items
   const autocompleteItems = useMemo(() => {
+    if (historySearchActive) return [];
     if (!input.startsWith('/')) return [];
     // Don't show autocomplete if user has typed arguments (space + more text)
     const spaceIndex = input.indexOf(' ');
@@ -804,9 +831,12 @@ function App() {
   };
 
   // Handle keyboard shortcuts - only for navigation keys, not regular typing
-  useInput((_, key) => {
+  useInput((keyInput, key) => {
     // Only handle specific navigation/control keys - let TextInput handle all other input
-    const isNavigationKey = key.upArrow || key.downArrow || key.tab || key.escape;
+    const isVimNav = (keyInput === 'j' || keyInput === 'k') && !key.ctrl && !key.meta && !key.shift;
+    const isHelpToggle = keyInput === '?' && !key.ctrl && !key.meta && !key.shift;
+    const isHistoryToggle = key.ctrl && keyInput === 'r';
+    const isNavigationKey = key.upArrow || key.downArrow || key.tab || key.escape || isVimNav || isHelpToggle || isHistoryToggle;
     if (!isNavigationKey) {
       return;
     }
@@ -814,12 +844,43 @@ function App() {
     // Don't handle input in review mode - let DiffReview handle it
     if (mode === 'review') return;
 
+    if (isHelpToggle && mode === 'chat' && input.trim() === '' && !pendingPermission && !pendingDiffPreview && !pendingBatchPreview) {
+      setShowHelpOverlay(v => !v);
+      return;
+    }
+
+    if (showHelpOverlay && key.escape) {
+      setShowHelpOverlay(false);
+      return;
+    }
+
+    if ((key.ctrl && keyInput === 'r') && mode === 'chat' && !pendingPermission && !pendingDiffPreview && !pendingBatchPreview) {
+      setDraftBeforeSearch(input);
+      setHistorySearchQuery(input);
+      setHistorySearchActive(true);
+      setShowHelpOverlay(false);
+      return;
+    }
+
+    if (historySearchActive) {
+      if ((key.upArrow || keyInput === 'k') && historyMatches.length > 0) {
+        setHistorySearchIndex(i => Math.max(0, i - 1));
+      } else if ((key.downArrow || keyInput === 'j') && historyMatches.length > 0) {
+        setHistorySearchIndex(i => Math.min(historyMatches.length - 1, i + 1));
+      } else if (key.escape) {
+        setHistorySearchActive(false);
+        setHistorySearchQuery('');
+        setInput(draftBeforeSearch);
+      }
+      return;
+    }
+
     // When autocomplete is showing, handle navigation
     if (autocompleteItems.length > 0) {
-      if (key.upArrow) {
+      if (key.upArrow || keyInput === 'k') {
         setAutocompleteIndex(i => Math.max(0, i - 1));
         return;
-      } else if (key.downArrow) {
+      } else if (key.downArrow || keyInput === 'j') {
         setAutocompleteIndex(i => Math.min(autocompleteItems.length - 1, i + 1));
         return;
       } else if (key.tab) {
@@ -840,9 +901,9 @@ function App() {
       return;
     }
 
-    if (key.upArrow) {
+    if (key.upArrow || keyInput === 'k') {
       setInput(navigateHistory('up', input));
-    } else if (key.downArrow) {
+    } else if (key.downArrow || keyInput === 'j') {
       setInput(navigateHistory('down', input));
     } else if (key.escape) {
       setInput('');
@@ -979,6 +1040,18 @@ function App() {
 
 
   const handleSubmit = async (value: string) => {
+    if (historySearchActive) {
+      const selected = historyMatches[historySearchIndex];
+      if (selected) {
+        setInput(selected);
+      } else {
+        setInput(draftBeforeSearch);
+      }
+      setHistorySearchActive(false);
+      setHistorySearchQuery('');
+      setInputKey(k => k + 1);
+      return;
+    }
     // Save any active compare/collaboration to history before processing new input (only if there's actual input)
     if (mode === 'compare' && value.trim()) {
       saveCompareToHistory();
@@ -1684,6 +1757,8 @@ Utility:
 Keyboard:
   Tab        - Autocomplete command
   Up/Down    - Navigate autocomplete or history
+  Ctrl+R     - History search
+  ?          - Toggle quick help
   Enter      - Submit or select autocomplete
   Esc        - Cancel/clear
 
@@ -2931,6 +3006,20 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
   const isFirstMessage = messages.length === 0;
   const { rows: terminalHeight } = useTerminalSize();
   const hudHeight = 9; // Lines reserved for HUD
+  const noColor = Boolean(process.env.NO_COLOR);
+  const inputActive = mode === 'chat' && !pendingPermission && !pendingDiffPreview && !pendingBatchPreview && !loading;
+  const hasAutocomplete = mode === 'chat' && autocompleteItems.length > 0 && !loading;
+  const helpOverlayLines = [
+    'Shortcuts:',
+    '  ?: toggle help',
+    '  /: command mode (type /help for full list)',
+    '  ctrl+r: history search',
+    '  tab: autocomplete',
+    '  up/down or j/k: history',
+    '  enter: submit',
+    '  esc: back/clear',
+    '  ctrl+c: cancel/exit'
+  ];
 
   return (
     <Box flexDirection="column" height={terminalHeight} paddingX={1}>
@@ -3389,7 +3478,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                       <Box key={msg.id} marginBottom={1}>
                         {msg.role === 'user' ? (
                           <Box>
-                            <Text color="green" bold>{'> '}</Text>
+                            <Text color={noColor ? undefined : "green"} bold>{'> '}</Text>
                             <Text>{msg.content}</Text>
                             {msg.timestamp && (
                               <Text dimColor> [{formatTimestamp(msg.timestamp)}]</Text>
@@ -3619,8 +3708,8 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                     const desc = parts.slice(1).join('  ');
                     return (
                       <Box key={item.value}>
-                        <Text bold={isSelected} color={isSelected ? '#8CA9FF' : undefined} dimColor={!isSelected}>{cmd}</Text>
-                        <Text color={isSelected ? '#8CA9FF' : undefined} dimColor={!isSelected}> - {desc}</Text>
+                        <Text bold={isSelected} color={noColor ? undefined : (isSelected ? '#8CA9FF' : undefined)} dimColor={!isSelected}>{cmd}</Text>
+                        <Text color={noColor ? undefined : (isSelected ? '#8CA9FF' : undefined)} dimColor={!isSelected}> - {desc}</Text>
                       </Box>
                     );
                   })}
@@ -3640,7 +3729,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
         flexDirection="column"
         paddingX={1}
         borderStyle="double"
-        borderColor="#00ffff"
+        borderColor={noColor ? undefined : 'cyan'}
         minHeight={hudHeight}
       >
         {/* Permission Prompt - shows here instead of main flow if we want it fixed */}
@@ -3666,10 +3755,48 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
           </Box>
         )}
 
+        
+
+        {historySearchActive && (
+          <Box
+            marginBottom={1}
+            borderStyle="round"
+            borderColor={noColor ? undefined : 'gray'}
+            paddingX={1}
+            flexDirection="column"
+          >
+            <Text>History search (Ctrl+R)</Text>
+            <Text dimColor>Query: {historySearchQuery || '(all)'}</Text>
+            {historyMatches.length === 0 ? (
+              <Text dimColor>No matches</Text>
+            ) : (
+              historyMatches.slice(0, 6).map((item, idx) => (
+                <Text key={idx} dimColor={idx !== historySearchIndex}>
+                  {idx === historySearchIndex ? '> ' : '  '}{item}
+                </Text>
+              ))
+            )}
+          </Box>
+        )}
+
+        {showHelpOverlay && (
+          <Box
+            marginBottom={1}
+            borderStyle="round"
+            borderColor={noColor ? undefined : 'gray'}
+            paddingX={1}
+            flexDirection="column"
+          >
+            {helpOverlayLines.map((line, idx) => (
+              <Text key={idx} dimColor={idx !== 0}>{line}</Text>
+            ))}
+          </Box>
+        )}
+
         {/* Notification - shows in HUD above input */}
         {notification && (
           <Box marginBottom={1}>
-            <Text color="#fc3855">ℹ </Text>
+            <Text color={noColor ? undefined : "red"}>ℹ </Text>
             <Text>{notification}</Text>
           </Box>
         )}
@@ -3678,12 +3805,16 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
         <Box flexDirection="row" justifyContent="space-between" alignItems="center">
           <Box flexGrow={1}>
             {mode !== 'collaboration' && mode !== 'compare' && !pendingPermission && !loading && (
-              <Box borderStyle="round" borderColor="gray" paddingX={1}>
-                <Text color="green" bold>{'> '}</Text>
+              <Box
+                borderStyle={inputActive ? 'double' : 'round'}
+                borderColor={noColor ? undefined : (inputActive ? 'cyan' : 'gray')}
+                paddingX={1}
+              >
+                <Text color={noColor ? undefined : "green"} bold>{'> '}</Text>
                 <TextInput
                   key={inputKey}
                   value={input}
-                  onChange={setInput}
+                  onChange={handleInputChange}
                   onSubmit={handleSubmit}
                   placeholder="Ask anything or describe a task..."
                   focus={!showUpdatePrompt}
@@ -3701,6 +3832,10 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
               approvalMode={approvalMode as StatusBarApprovalMode}
               sessionName={session?.name || session?.id?.slice(0, 8)}
               isLoading={loading}
+              mode={mode}
+              hasAutocomplete={hasAutocomplete}
+              inputActive={inputActive}
+              noColor={noColor}
             />
           </Box>
         </Box>
@@ -3713,6 +3848,10 @@ export function startTUI() {
   // Patch console to prevent stray logs from breaking the UI
   patchConsole();
 
+  if (process.env.NO_COLOR) {
+    process.env.FORCE_COLOR = '0';
+  }
+
   // Disable mouse tracking to prevent escape sequence garbage
   process.stdout.write('\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l');
 
@@ -3723,3 +3862,6 @@ export function startTUI() {
     restoreConsole();
   });
 }
+
+
+

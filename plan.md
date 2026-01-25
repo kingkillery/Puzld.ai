@@ -26,6 +26,7 @@ This document tracks the implementation of game mechanics, CLI improvements, cam
 - [ ] Update agents.md with game system documentation
 - [x] Register gemini-safe/codex-safe CLI adapters with auto-redirect and unsafe aliases
 - [x] Agentic smoke harness fixes (Gemini summary and pk-puzldai harness crash)
+- [x] Improve TUI UX (TTY gating, key hints, NO_COLOR handling, vim nav)
 
 ### CLI Orchestration Enhancements (New)
 
@@ -1692,6 +1693,12 @@ Phase 7 (Docs) can run independently after Phase 2
 ---
 
 ## 🔄 Change Log
+
+### 2026-01-24: TUI UX improvements
+
+- Improved TUI UX for hybrid mode (TTY gating), key hints, NO_COLOR handling, and Vim navigation.
+- Added ? shortcut overlay for quick help.
+- Added Ctrl+R history search overlay and draft input persistence.
 
 ### 2026-01-24: Go agent loop default wiring
 

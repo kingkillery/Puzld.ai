@@ -12,6 +12,10 @@ interface StatusBarProps {
   approvalMode?: ApprovalMode;
   sessionName?: string;
   isLoading?: boolean;
+  mode?: string;
+  hasAutocomplete?: boolean;
+  inputActive?: boolean;
+  noColor?: boolean;
 }
 
 export const StatusBar = memo(function StatusBar({
@@ -21,7 +25,11 @@ export const StatusBar = memo(function StatusBar({
   mcpStatus = 'local',
   approvalMode = 'default',
   sessionName,
-  isLoading = false
+  isLoading = false,
+  mode,
+  hasAutocomplete = false,
+  inputActive = false,
+  noColor = false
 }: StatusBarProps) {
   // Format tokens with K suffix for thousands
   const formatTokens = (t: number): string => {
@@ -35,11 +43,11 @@ export const StatusBar = memo(function StatusBar({
   const getMcpDisplay = () => {
     switch (mcpStatus) {
       case 'connected':
-        return <Text color="green">●</Text>;
+        return <Text color={noColor ? undefined : "green"}>●</Text>;
       case 'disconnected':
-        return <Text color="red">○</Text>;
+        return <Text color={noColor ? undefined : "red"}>○</Text>;
       case 'checking':
-        return <Text color="yellow">◐</Text>;
+        return <Text color={noColor ? undefined : "yellow"}>◐</Text>;
       case 'local':
       default:
         return <Text dimColor>○</Text>;
@@ -50,11 +58,11 @@ export const StatusBar = memo(function StatusBar({
   const getApprovalDisplay = () => {
     switch (approvalMode) {
       case 'yolo':
-        return <Text color="red" bold>YOLO</Text>;
+        return <Text color={noColor ? undefined : "red"} bold>YOLO</Text>;
       case 'accept':
-        return <Text color="green">AUTO</Text>;
+        return <Text color={noColor ? undefined : "green"}>AUTO</Text>;
       case 'plan':
-        return <Text color="cyan">PLAN</Text>;
+        return <Text color={noColor ? undefined : "cyan"}>PLAN</Text>;
       case 'default':
       default:
         return <Text dimColor>ASK</Text>;
@@ -63,35 +71,66 @@ export const StatusBar = memo(function StatusBar({
 
   // Keyboard hints based on context
   const getKeyHints = () => {
+    if (mode && mode !== 'chat') {
+      return (
+        <Text dimColor>
+          <Text color={noColor ? undefined : 'gray'}>esc</Text>
+          <Text dimColor>:back</Text>
+        </Text>
+      );
+    }
     if (isLoading) {
       return (
         <Text dimColor>
-          <Text color="gray">esc</Text>
-          <Text dimColor>:stop </Text>
-          <Text color="gray">^S</Text>
+          <Text color={noColor ? undefined : 'gray'}>esc</Text>
+          <Text dimColor>:back </Text>
+          <Text color={noColor ? undefined : 'gray'}>^C</Text>
+          <Text dimColor>:cancel </Text>
+          <Text color={noColor ? undefined : 'gray'}>^S</Text>
           <Text dimColor>:tools</Text>
         </Text>
       );
     }
     return (
       <Text dimColor>
-        <Text color="gray">tab</Text>
+        <Text color={noColor ? undefined : 'gray'}>j/k</Text>
+        <Text dimColor>,</Text>
+        <Text color={noColor ? undefined : 'gray'}>up/down</Text>
+        <Text dimColor>:history </Text>
+        <Text color={noColor ? undefined : 'gray'}>^R</Text>
+        <Text dimColor>:search </Text>
+        <Text color={noColor ? undefined : 'gray'}>tab</Text>
         <Text dimColor>:complete </Text>
-        <Text color="gray">↑↓</Text>
-        <Text dimColor>:history</Text>
+        <Text color={noColor ? undefined : 'gray'}>/</Text>
+        <Text dimColor>:commands </Text>
+        <Text color={noColor ? undefined : 'gray'}>?</Text>
+        <Text dimColor>:help</Text>
+        {hasAutocomplete && (
+          <>
+            <Text dimColor> </Text>
+            <Text color={noColor ? undefined : 'gray'}>enter</Text>
+            <Text dimColor>:select</Text>
+          </>
+        )}
       </Text>
     );
   };
 
   return (
-    <Box borderStyle="double" borderColor="#bd93f9" paddingX={1} marginTop={1} justifyContent="space-between">
+    <Box
+      borderStyle={inputActive ? 'double' : 'round'}
+      borderColor={noColor ? undefined : (inputActive ? 'cyan' : 'gray')}
+      paddingX={1}
+      marginTop={1}
+      justifyContent="space-between"
+    >
       {/* Left section: Agent + Session */}
       <Box>
-        <Text color="yellow" bold>{agent}</Text>
+        <Text color={noColor ? undefined : "yellow"} bold>{agent}</Text>
         {sessionName && (
           <>
             <Text dimColor> @ </Text>
-            <Text color="cyan">{sessionName.length > 12 ? sessionName.slice(0, 12) + '…' : sessionName}</Text>
+            <Text color={noColor ? undefined : "cyan"}>{sessionName.length > 12 ? sessionName.slice(0, 12) + '…' : sessionName}</Text>
           </>
         )}
       </Box>
@@ -102,7 +141,7 @@ export const StatusBar = memo(function StatusBar({
         <Text>{messageCount}</Text>
         <Text dimColor> │ </Text>
         <Text dimColor>tok:</Text>
-        <Text color={tokens > 50000 ? 'yellow' : undefined}>{formatTokens(tokens)}</Text>
+        <Text color={!noColor && tokens > 50000 ? 'yellow' : undefined}>{formatTokens(tokens)}</Text>
       </Box>
 
       {/* Mode indicators */}
@@ -117,7 +156,7 @@ export const StatusBar = memo(function StatusBar({
       <Box>
         {getKeyHints()}
         <Text dimColor> │ </Text>
-        <Text color="gray">/help</Text>
+        <Text color={noColor ? undefined : "gray"}>/help</Text>
       </Box>
     </Box>
   );

@@ -32,3 +32,16 @@ Fix `pk-puzldai` so that:
 - Empty/whitespace prompts, very long prompts, prompts containing quotes/newlines.
 - Windows-specific arg parsing (.cmd shims, PATH resolution).
 - Ensure “disable tools” doesn’t break Claude prompt delivery.
+
+### Phase 7 - TUI Standards Alignment
+- Gate TUI launch on TTY detection in CLI entry.
+- Update status/footer hints and focus indicators.
+- Respect NO_COLOR for terminal color output.
+- Add Vim j/k navigation alongside arrows for history/autocomplete.
+- Add ? shortcut overlay for quick help.
+- Add Ctrl+R history search overlay and draft input persistence.
+
+Verification:
+- Run `pk-puzldai` with no args in a non-interactive shell and confirm help output.
+- Set `NO_COLOR=1` and verify status/footer uses no color.
+- Confirm j/k and up/down navigate history and autocomplete.

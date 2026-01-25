@@ -710,9 +710,14 @@ gameCommand(program);
 // Campaign commands (hierarchical long-running agents)
 campaignCommand(program);
 
-// If no arguments, launch TUI; otherwise parse commands
+// If no arguments, launch TUI only when interactive; otherwise show help
 if (process.argv.length <= 2) {
-  startTUI();
+  const isInteractive = Boolean(process.stdout.isTTY && process.stdin.isTTY);
+  if (isInteractive) {
+    startTUI();
+  } else {
+    program.outputHelp();
+  }
 } else {
   program.parseAsync().then(() => {
     setTimeout(() => process.exit(0), 100);

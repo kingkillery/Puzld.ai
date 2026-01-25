@@ -49,10 +49,46 @@ export function useHistory(maxSize = 50) {
     }
   }, [history, historyIndex, tempInput]);
 
+
+  const searchHistory = useCallback((query: string, direction: 'up' | 'down', currentInput: string): string => {
+    if (history.length === 0) return currentInput;
+
+    const normalized = query.trim().toLowerCase();
+    const startIndex = historyIndex === -1 ? history.length : historyIndex;
+
+    if (!normalized) {
+      return navigateHistory(direction, currentInput);
+    }
+
+    if (direction === 'up') {
+      for (let i = startIndex - 1; i >= 0; i -= 1) {
+        if (history[i].toLowerCase().includes(normalized)) {
+          if (historyIndex === -1) {
+            setTempInput(currentInput);
+          }
+          setHistoryIndex(i);
+          return history[i];
+        }
+      }
+    } else {
+      for (let i = startIndex + 1; i < history.length; i += 1) {
+        if (history[i].toLowerCase().includes(normalized)) {
+          setHistoryIndex(i);
+          return history[i];
+        }
+      }
+      setHistoryIndex(-1);
+      return tempInput;
+    }
+
+    return historyIndex !== -1 ? history[historyIndex] : currentInput;
+  }, [history, historyIndex, tempInput, navigateHistory]);
+
   return {
     history,
     addToHistory,
     navigateHistory,
+    searchHistory,
     historyIndex,
   };
 }
