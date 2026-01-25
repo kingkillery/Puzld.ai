@@ -14,9 +14,9 @@
 import { execa } from 'execa';
 import { readFileSync, existsSync } from 'fs';
 import pc from 'picocolors';
-import { createSpinner } from 'nanospinner';
 import { getConfig, getConfigPath, saveConfig, type PulzdConfig } from '../../lib/config';
 import type { CheckResult } from '../../lib/types';
+import { ui } from '../utils/ui';
 
 interface AuditIssue {
   severity: 'critical' | 'warning' | 'info';
@@ -74,14 +74,11 @@ export async function auditCommand(options: AuditOptions = {}): Promise<void> {
 
   // Header
   if (!options.json) {
-    console.log(pc.bold('\n' + '═'.repeat(60)));
-    console.log(pc.cyan('  PuzldAI System Audit'));
-    console.log(pc.dim('  Comprehensive health check for your AI toolkit'));
-    console.log('═'.repeat(60) + '\n');
+    ui.header('PuzldAI System Audit', 'Comprehensive health check for your AI toolkit');
   }
 
   // Only use spinner in non-JSON mode
-  const spinner = options.json ? null : createSpinner('Running diagnostics...').start();
+  const spinner = options.json ? null : ui.spinner('Running diagnostics...');
 
   // Run all checks in parallel
   const [adapterResults, modelResults, configIssues, envIssues] = await Promise.all([
