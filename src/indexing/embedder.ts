@@ -5,7 +5,7 @@
  * Uses the existing Phase 11 memory infrastructure.
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { promises as fs } from 'fs';
 import { relative, extname } from 'path';
 import { createHash } from 'crypto';
 import { addMemory, initVectorStore } from '../memory/vector-store';
@@ -72,13 +72,18 @@ export async function embedFileStructures(
         continue;
       }
 
-      // Check file size
-      if (!existsSync(structure.path)) {
-        result.skipped++;
-        continue;
+      // Read file if it exists
+      let content: string;
+      try {
+        content = await fs.readFile(structure.path, 'utf-8');
+      } catch (err: any) {
+        // Skip if file not found, otherwise rethrow
+        if (err.code === 'ENOENT') {
+          result.skipped++;
+          continue;
+        }
+        throw err;
       }
-
-      const content = readFileSync(structure.path, 'utf-8');
       if (content.length > opts.maxFileSize) {
         result.skipped++;
         continue;
@@ -157,11 +162,16 @@ export async function embedFile(
     return false;
   }
 
-  if (!existsSync(filePath)) {
-    return false;
+  let content: string;
+  try {
+    content = await fs.readFile(filePath, 'utf-8');
+  } catch (err: any) {
+    // Return false if file not found, otherwise rethrow
+    if (err.code === 'ENOENT') {
+      return false;
+    }
+    throw err;
   }
-
-  const content = readFileSync(filePath, 'utf-8');
   if (content.length > opts.maxFileSize) {
     return false;
   }
