@@ -39,9 +39,9 @@ function generateBannerArt(): string[] {
 
 // Box drawing characters - double lines
 const BOX = {
-  tl: 'â•”', tr: 'â•—', bl: 'â•š', br: 'â• ', 
-  h: 'â• ', v: 'â•‘',
-  lt: 'â• ', rt: 'â•£', tt: 'â•¦', bt: 'â•©',
+  tl: '\u2554', tr: '\u2557', bl: '\u255A', br: '\u255D',
+  h: '\u2550', v: '\u2551',
+  lt: '\u2560', rt: '\u2563', tt: '\u2566', bt: '\u2569',
 };
 
 // Column widths - wider left, narrower right

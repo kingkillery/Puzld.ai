@@ -20,6 +20,7 @@ import {
 } from '../../executor';
 import { loadTemplate, listTemplates } from '../../executor/templates';
 import type { AgentName } from '../../executor/types';
+import { ui } from '../utils/ui';
 
 interface RunCommandOptions {
   agent?: string;
@@ -43,7 +44,7 @@ interface RunCommandOptions {
 
 export async function runCommand(task: string, options: RunCommandOptions): Promise<void> {
   if (!task || task.trim() === '') {
-    console.error(pc.red('Error: No task provided'));
+    ui.error('No task provided');
     console.log(pc.dim('Usage: ai run "your task here"'));
     process.exit(1);
   }
@@ -77,10 +78,11 @@ export async function runCommand(task: string, options: RunCommandOptions): Prom
 async function runSingleAgent(task: string, options: RunCommandOptions): Promise<void> {
   const startTime = Date.now();
 
+  ui.header('Single Agent Execution');
   if (options.agent && options.agent !== 'auto') {
-    console.log(pc.dim(`Using agent: ${options.agent}`));
+    ui.detail('Agent', options.agent);
   } else {
-    console.log(pc.dim('Routing task...'));
+    ui.info('Routing task to best available agent...');
   }
 
   // Agentic mode: use agent loop with tool access
@@ -101,19 +103,21 @@ async function runSingleAgent(task: string, options: RunCommandOptions): Promise
   });
 
   if (result.error) {
-    console.error(pc.red(`\nError: ${result.error}`));
+    ui.error(`Execution failed: ${result.error}`);
     process.exit(1);
   }
 
   if (!streamed && result.content) {
+    ui.divider();
     console.log(result.content);
+    ui.divider();
   }
 
   const duration = Date.now() - startTime;
-  console.log(pc.dim(`\n---`));
-  console.log(pc.dim(`Model: ${result.model} | Time: ${(duration / 1000).toFixed(1)}s`));
+  ui.detail('Model', result.model);
+  ui.detail('Time', `${(duration / 1000).toFixed(1)}s`);
   if (result.tokens) {
-    console.log(pc.dim(`Tokens: ${result.tokens.input} in / ${result.tokens.output} out`));
+    ui.detail('Tokens', `${result.tokens.input} in / ${result.tokens.output} out`);
   }
 }
 
@@ -124,7 +128,7 @@ async function runProfiledTask(task: string, options: RunCommandOptions): Promis
   const profile = orchestration.profiles[profileName];
 
   if (!profile) {
-    console.error(pc.red('Profile not found: ' + profileName));
+    ui.error('Profile not found: ' + profileName);
     process.exit(1);
   }
 
@@ -143,11 +147,11 @@ async function runProfiledTask(task: string, options: RunCommandOptions): Promis
     noCompress: options.noCompress
   };
 
-  console.log(pc.dim(`Profile: ${profileName}`));
-  console.log(pc.dim(`Mode: ${selection.mode}`));
-  console.log(pc.dim(`Rationale: ${selection.rationale}`));
+  ui.header('Profiled Execution', profileName);
+  ui.detail('Mode', selection.mode);
+  ui.detail('Rationale', selection.rationale);
   if (selection.agents.length > 0) {
-    console.log(pc.dim(`Agents: ${selection.agents.join(', ')}`));
+    ui.detail('Agents', selection.agents.join(', '));
   }
   console.log();
 
@@ -173,7 +177,7 @@ async function runProfiledTask(task: string, options: RunCommandOptions): Promis
     });
 
     if (result.error) {
-      console.error(pc.red(`\nError: ${result.error}`));
+      ui.error(`Execution failed: ${result.error}`);
       process.exit(1);
     }
 
@@ -197,16 +201,16 @@ async function runAgenticMode(task: string, options: RunCommandOptions): Promise
   const startTime = Date.now();
   const agentName = options.agent && options.agent !== 'auto' ? options.agent : 'claude';
 
-  console.log(pc.cyan(`\n🤖 Agentic mode enabled - agent can use tools to read/write files\n`));
+  ui.info('Agentic mode enabled - agent can use tools to read/write files');
 
   const adapter = adapters[agentName];
   if (!adapter) {
-    console.error(pc.red(`Error: Unknown agent: ${agentName}`));
+    ui.error(`Unknown agent: ${agentName}`);
     process.exit(1);
   }
 
   if (!(await adapter.isAvailable())) {
-    console.error(pc.red(`Error: Agent ${agentName} is not available. Run 'pk-puzldai check' for details.`));
+    ui.error(`Agent ${agentName} is not available. Run 'pk-puzldai check' for details.`);
     process.exit(1);
   }
 
@@ -238,21 +242,23 @@ async function runAgenticMode(task: string, options: RunCommandOptions): Promise
       }
     });
 
-    console.log(pc.dim(`\n--- Agent Result ---`));
+    ui.header('Agent Result');
     console.log(result.content || '(no content)');
 
     const duration = Date.now() - startTime;
-    console.log(pc.dim(`\n---`));
-    console.log(pc.dim(`Model: ${result.model} | Time: ${(duration / 1000).toFixed(1)}s`));
-    console.log(pc.dim(`Iterations: ${result.iterations} | Tool calls: ${toolCallsCount}`));
+    ui.divider();
+    ui.detail('Model', result.model);
+    ui.detail('Time', `${(duration / 1000).toFixed(1)}s`);
+    ui.detail('Iterations', result.iterations);
+    ui.detail('Tool Calls', toolCallsCount);
     if (result.tokens) {
-      console.log(pc.dim(`Tokens: ${result.tokens.input} in / ${result.tokens.output} out`));
+      ui.detail('Tokens', `${result.tokens.input} in / ${result.tokens.output} out`);
     }
 
   } catch (err) {
     const duration = Date.now() - startTime;
-    console.error(pc.red(`\nAgent loop error: ${(err as Error).message}`));
-    console.log(pc.dim(`Time: ${(duration / 1000).toFixed(1)}s`));
+    ui.error(`Agent loop error: ${(err as Error).message}`);
+    ui.detail('Time', `${(duration / 1000).toFixed(1)}s`);
     process.exit(1);
   }
 }
@@ -264,11 +270,10 @@ async function runPipeline(
   dryRun?: boolean,
   noCompress?: boolean
 ): Promise<void> {
-  console.log(pc.bold('\nRunning pipeline: ') + pipelineStr);
+  ui.header('Running Pipeline', pipelineStr);
   if (interactive) {
-    console.log(pc.cyan('Interactive mode: You will be prompted before each step'));
+    ui.info('Interactive mode: You will be prompted before each step');
   }
-  console.log();
 
   const pipelineOpts = parsePipelineString(pipelineStr);
   const plan = buildPipelinePlan(task, pipelineOpts);
@@ -299,19 +304,18 @@ async function runTemplate(
   const template = loadTemplate(templateName);
 
   if (!template) {
-    console.error(pc.red(`Error: Template "${templateName}" not found`));
-    console.log(pc.dim('Available templates: ' + listTemplates().join(', ')));
+    ui.error(`Template "${templateName}" not found`);
+    ui.info('Available templates: ' + listTemplates().join(', '));
     process.exit(1);
   }
 
-  console.log(pc.bold('\nUsing template: ') + template.name);
+  ui.header('Using Template', template.name);
   if (template.description) {
     console.log(pc.dim(template.description));
   }
   if (interactive) {
-    console.log(pc.cyan('Interactive mode: You will be prompted before each step'));
+    ui.info('Interactive mode: You will be prompted before each step');
   }
-  console.log();
 
   const plan = buildPipelinePlan(task, { steps: template.steps });
   if (noCompress) {
@@ -354,22 +358,21 @@ function createStepPrompt(totalSteps: number): (step: PlanStep, index: number, p
     if (previousResults.length > 0) {
       const lastResult = previousResults[previousResults.length - 1];
       if (lastResult.content) {
-        console.log();
-        console.log(pc.bold('--- Previous Output ---'));
+        ui.divider();
+        console.log(pc.bold('Previous Output:'));
         console.log(lastResult.content);
-        console.log(pc.bold('--- End Output ---'));
+        ui.divider();
       }
     }
 
     console.log();
-    console.log(pc.bold('Step ' + stepNum + '/' + totalSteps + ': ' + agent));
-    console.log(pc.dim('  Action: ' + step.action));
+    ui.step(stepNum, totalSteps, `${agent}: ${step.action}`);
     console.log(pc.dim('  Prompt: ' + step.prompt.slice(0, 100) + (step.prompt.length > 100 ? '...' : '')));
 
     const answer = await askQuestion(pc.cyan('  Run this step? [Y/n/q] '));
 
     if (answer === 'q' || answer === 'quit') {
-      console.log(pc.yellow('\nAborting pipeline...'));
+      ui.warn('Aborting pipeline...');
       process.exit(0);
     }
 
@@ -388,7 +391,7 @@ async function executePlan(plan: ExecutionPlan, interactive?: boolean): Promise<
         currentStep++;
         const step = plan.steps.find(s => s.id === event.stepId);
         const agent = step?.agent || 'auto';
-        console.log(pc.yellow('[' + currentStep + '/' + stepCount + '] ' + agent + ': running...'));
+        console.log(pc.yellow(`\n[${currentStep}/${stepCount}] ${agent}: running...`));
       } else if (event.type === 'complete') {
         const data = event.data as { content?: string; model?: string; duration?: number } | undefined;
         const timeStr = data?.duration ? ' (' + (data.duration / 1000).toFixed(1) + 's)' : '';
@@ -397,8 +400,8 @@ async function executePlan(plan: ExecutionPlan, interactive?: boolean): Promise<
         const step = plan.steps.find(s => s.id === event.stepId);
         const agent = step?.agent || 'auto';
         if (data?.content) {
-          console.log();
-          console.log(pc.bold('--- Output (' + agent + ') ---'));
+          ui.divider();
+          console.log(pc.bold(`Output (${agent}):`));
           console.log(data.content);
         }
       } else if (event.type === 'error') {
@@ -413,24 +416,25 @@ async function executePlan(plan: ExecutionPlan, interactive?: boolean): Promise<
   console.log();
 
   if (result.status === 'failed') {
-    console.error(pc.red('Pipeline failed'));
+    ui.error('Pipeline failed');
     for (const r of result.results) {
       if (r.error) {
-        console.error(pc.red('  ' + r.stepId + ': ' + r.error));
+        ui.error(`${r.stepId}: ${r.error}`);
       }
     }
     process.exit(1);
   }
 
   const duration = Date.now() - startTime;
-  console.log(pc.dim('---'));
-  console.log(pc.dim('Status: ' + result.status + ' | Time: ' + (duration / 1000).toFixed(1) + 's'));
+  ui.divider();
+  ui.detail('Status', result.status);
+  ui.detail('Time', `${(duration / 1000).toFixed(1)}s`);
 
   const models = result.results
     .filter(r => r.model)
     .map(r => r.model)
     .join(' → ');
   if (models) {
-    console.log(pc.dim('Pipeline: ' + models));
+    ui.detail('Pipeline', models);
   }
 }

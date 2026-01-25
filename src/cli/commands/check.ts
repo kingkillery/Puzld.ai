@@ -1,23 +1,22 @@
 import { execa } from 'execa';
 import pc from 'picocolors';
-import { createSpinner } from 'nanospinner';
 import type { CheckResult } from '../../lib/types';
 import { getConfig } from '../../lib/config';
+import { ui } from '../utils/ui';
 
 export async function checkCommand(): Promise<void> {
-  console.log(pc.bold('\nPuzldAI Dependency Check\n'));
+  ui.header('Dependency Check', 'Verifying system requirements and configuration');
 
-  const spinner = createSpinner('Checking dependencies...').start();
+  const spinner = ui.spinner('Checking dependencies...');
   const results = await checkDependencies();
   spinner.stop();
 
   for (const result of results) {
-    const status = result.available ? pc.green('✓') : pc.red('✗');
-    const name = result.available ? result.name : pc.dim(result.name);
-    const version = result.version ? pc.dim(` (${result.version})`) : '';
-    const error = result.error ? pc.red(` - ${result.error}`) : '';
-
-    console.log(`${status} ${name}${version}${error}`);
+    if (result.available) {
+      console.log(`  ${pc.green('✓')} ${result.name}${result.version ? pc.dim(` (${result.version})`) : ''}`);
+    } else {
+      console.log(`  ${pc.red('✗')} ${pc.dim(result.name)}${result.error ? pc.red(` - ${result.error}`) : ''}`);
+    }
   }
 
   const allGood = results.every(r => r.available);
@@ -25,9 +24,9 @@ export async function checkCommand(): Promise<void> {
 
   console.log('');
   if (allGood) {
-    console.log(pc.green('✓ All dependencies ready!'));
+    ui.success('All dependencies ready!');
   } else {
-    console.log(pc.yellow(`${available}/${results.length} dependencies available`));
+    ui.warn(`${available}/${results.length} dependencies available`);
   }
 
   // Show custom model configurations
@@ -54,31 +53,31 @@ export async function checkCommand(): Promise<void> {
   }
 
   if (customModels.length > 0) {
-    console.log('');
+    ui.divider();
     console.log(pc.bold('Custom Model Configurations:'));
     for (const { adapter, model } of customModels) {
-      console.log(`  ${pc.cyan(adapter)}: ${pc.dim(model)}`);
+      console.log(`  ${pc.cyan(adapter.padEnd(10))}: ${pc.dim(model)}`);
     }
   }
 
   // Show factory-specific config if enabled
   if (config.adapters.factory?.enabled) {
     const factory = config.adapters.factory;
-    console.log('');
+    ui.divider();
     console.log(pc.bold('Factory (droid) Settings:'));
-    if (factory.model) console.log(`  Model: ${pc.dim(factory.model)}`);
-    if (factory.autonomy) console.log(`  Autonomy: ${pc.dim(factory.autonomy)}`);
-    if (factory.reasoningEffort) console.log(`  Reasoning: ${pc.dim(factory.reasoningEffort)}`);
-    if (factory.skipPermissions) console.log(`  Skip Permissions: ${pc.yellow('true')}`);
+    if (factory.model) ui.detail('Model', factory.model);
+    if (factory.autonomy) ui.detail('Autonomy', factory.autonomy);
+    if (factory.reasoningEffort) ui.detail('Reasoning', factory.reasoningEffort);
+    if (factory.skipPermissions) ui.detail('Skip Permissions', 'true');
   }
 
   // Show crush-specific config if enabled
   if (config.adapters.crush?.enabled) {
     const crush = config.adapters.crush;
-    console.log('');
+    ui.divider();
     console.log(pc.bold('Crush Settings:'));
-    if (crush.model) console.log(`  Model: ${pc.dim(crush.model)}`);
-    if (crush.autoAccept) console.log(`  Auto Accept: ${pc.yellow('true')}`);
+    if (crush.model) ui.detail('Model', crush.model);
+    if (crush.autoAccept) ui.detail('Auto Accept', 'true');
   }
 }
 

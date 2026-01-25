@@ -5,14 +5,13 @@
  * Automatically selects the best execution mode, agents, and approach.
  */
 
-import { createSpinner } from 'nanospinner';
-import pc from 'picocolors';
 import { adapters } from '../../adapters';
 import { execute } from '../../executor/executor';
 import { buildPKPoetPlan } from '../../executor/pk-poet-builder';
 import { buildPoetiqPlan, buildSelfDiscoverPlan } from '../../executor/factory-modes-builder';
 import { getProjectStructure } from '../../agentic/agent-loop';
 import type { ExecutionPlan, ExecutorConfig } from '../../executor/types';
+import { ui } from '../utils/ui';
 
 /**
  * Task classification for automatic mode selection
@@ -234,7 +233,9 @@ export async function doCommand(
   task: string,
   options: DoCommandOptions = {}
 ): Promise<void> {
-  const spinner = createSpinner('Analyzing task...').start();
+  ui.header('Auto-Orchestrator', 'Analyzing task and selecting best approach');
+  
+  const spinner = ui.spinner('Analyzing task...');
 
   try {
     // Classify the task
@@ -247,13 +248,13 @@ export async function doCommand(
     // Build the smart plan
     const { plan, mode } = await buildSmartPlan(task, taskType, projectStructure);
 
-    spinner.success({ text: `Using ${mode}` });
+    spinner.success({ text: `Selected strategy: ${mode}` });
 
     if (options.verbose) {
       console.log('');
-      console.log(pc.dim('Task:'), task);
-      console.log(pc.dim('Type:'), taskType);
-      console.log(pc.dim('Steps:'), plan.steps.length);
+      ui.detail('Task', task);
+      ui.detail('Type', taskType);
+      ui.detail('Steps', plan.steps.length);
       console.log('');
     }
 
@@ -264,9 +265,9 @@ export async function doCommand(
       onEvent: (event) => {
         if (options.verbose) {
           if (event.type === 'start') {
-            console.log(pc.cyan(`\n> ${event.stepId}`));
+            ui.info(`Starting step: ${event.stepId}`);
           } else if (event.type === 'complete') {
-            console.log(pc.green('  Done'));
+            // Quiet completion in verbose to avoid noise
           }
         }
       },
@@ -277,18 +278,18 @@ export async function doCommand(
     // Output result
     console.log('');
     if (result.status === 'completed') {
-      console.log(pc.green('Done.'));
+      ui.success('Execution completed successfully.');
     } else {
-      console.log(pc.yellow(`Status: ${result.status}`));
+      ui.warn(`Execution finished with status: ${result.status}`);
     }
 
     if (result.finalOutput) {
-      console.log('');
+      ui.divider();
       console.log(result.finalOutput);
+      ui.divider();
     }
 
-    console.log('');
-    console.log(pc.dim(`Completed in ${(result.duration / 1000).toFixed(1)}s`));
+    ui.detail('Duration', `${(result.duration / 1000).toFixed(1)}s`);
 
   } catch (error) {
     spinner.error({ text: `Failed: ${(error as Error).message}` });
