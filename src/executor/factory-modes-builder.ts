@@ -10,7 +10,6 @@
  */
 
 import type { AgentName, ExecutionPlan, PlanStep } from './types';
-import { PROJECT_CONTEXT_PROMPT } from './prompt-utils';
 import { generatePlanId, generateStepId } from './utils';
 
 // ============================================================================

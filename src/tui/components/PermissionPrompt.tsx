@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import type { PermissionRequest, PermissionDecision } from '../../agentic/tools/permissions';
 import path from 'path';
 import { useListNavigation } from '../hooks/useListNavigation';
