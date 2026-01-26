@@ -1,22 +1,33 @@
 export interface User {
   id: string;
-  username: string;
-  passwordHash: string;
-  createdAt: number;
-  updatedAt: number;
+  email: string;
+  username?: string;
+  password_hash?: string;
+  name?: string;
+  role: 'user' | 'admin';
+  created_at: number;
+  updated_at: number;
 }
 
 export interface RefreshToken {
   id: string;
-  userId: string;
-  tokenHash: string;
-  expiresAt: number;
+  user_id: string;
+  token_hash: string;
+  expires_at: number;
+  created_at: number;
   revoked: boolean;
-  createdAt: number;
 }
 
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+}
+
+export interface JWTPayload {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
+  iat?: number;
+  exp?: number;
 }

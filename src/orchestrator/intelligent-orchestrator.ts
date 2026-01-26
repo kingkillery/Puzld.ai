@@ -172,11 +172,25 @@ async function runDelegationMode(
 
   console.log(`[orchestrator] Delegation plan: ${decomposition.length} steps`);
 
+  // Validate decomposition
+  const validationError = validateDecomposition(decomposition);
+  if (validationError) {
+    console.log(`[orchestrator] Invalid decomposition: ${validationError}`);
+    return runSingleAgent(task, options);
+  }
+
   const stepResults = new Map<number, ModelResponse>();
 
   for (const step of decomposition) {
     const stepStart = Date.now();
     const agentName = step.agent;
+
+    // Validate agent name
+    if (!adapters[agentName]) {
+      console.log(`[orchestrator] Unknown agent ${agentName}, skipping step ${step.step}`);
+      continue;
+    }
+
     const adapter = adapters[agentName];
 
     if (!adapter || !(await adapter.isAvailable())) {
@@ -370,6 +384,60 @@ ${lastResult.content}
 
 *Executed via ${workflow.length}-step orchestration:*\n` +
     workflow.map(w => `- ${w.agent} (${w.duration}ms)`).join('\n');
+}
+
+/**
+ * Validate decomposition plan for common errors
+ */
+function validateDecomposition(
+  decomposition: Array<{ step: number; agent: string; task: string; dependsOn: number[] }>
+): string | null {
+  if (!decomposition || !Array.isArray(decomposition)) {
+    return 'decomposition is not an array';
+  }
+
+  if (decomposition.length === 0) {
+    return 'decomposition is empty';
+  }
+
+  const steps = new Set<number>();
+  const agents = Object.keys(adapters);
+
+  for (let i = 0; i < decomposition.length; i++) {
+    const step = decomposition[i];
+
+    if (typeof step.step !== 'number' || !Number.isInteger(step.step)) {
+      return `step ${i} has invalid step number`;
+    }
+
+    if (steps.has(step.step)) {
+      return `duplicate step number: ${step.step}`;
+    }
+    steps.add(step.step);
+
+    if (typeof step.agent !== 'string' || !step.agent) {
+      return `step ${step.step} has missing or invalid agent`;
+    }
+
+    if (!agents.includes(step.agent)) {
+      return `step ${step.step} has unknown agent: ${step.agent}`;
+    }
+
+    if (!Array.isArray(step.dependsOn)) {
+      return `step ${step.step} has invalid dependsOn (not an array)`;
+    }
+
+    for (const dep of step.dependsOn) {
+      if (typeof dep !== 'number' || !Number.isInteger(dep)) {
+        return `step ${step.step} has invalid dependency: ${dep}`;
+      }
+      if (dep === step.step) {
+        return `step ${step.step} depends on itself`;
+      }
+    }
+  }
+
+  return null;
 }
 
 export { runSingleAgent };

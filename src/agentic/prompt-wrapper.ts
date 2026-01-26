@@ -57,6 +57,7 @@ For file operations, add objects to the "files" array:
 Rules:
 - ALWAYS return valid JSON, nothing else
 - If no changes needed, return: {"explanation":"No changes needed because...","files":[]}
+- If the task is ambiguous or you need clarification, return: {"explanation":"I need clarification: what specific change do you want?","files":[]}
 - For edits, "search" must exactly match existing file content
 - Put your reasoning in "explanation", not outside the JSON
 - Do NOT mention tool limitations, file access, or inability to read files

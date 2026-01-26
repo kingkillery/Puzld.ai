@@ -30,7 +30,12 @@ ${input.repoMap}
 Git Context:
 ${input.gitContext}
 
-Return ONLY valid JSON with this schema:
+Output Requirements:
+- Return ONLY valid JSON matching this schema exactly
+- Do NOT include markdown fences or any text outside the JSON
+- All fields are required unless marked optional
+
+JSON Schema:
 {
   "summary": "short planning summary",
   "tasks": [
@@ -65,7 +70,11 @@ Area: ${input.area}
 Goal: ${input.goal}
 Notes: ${input.notes ?? 'none'}
 
-Return ONLY valid JSON with this schema:
+Output Requirements:
+- Return ONLY valid JSON matching this schema exactly
+- Do NOT include markdown fences or any text outside the JSON
+
+JSON Schema:
 {
   "summary": "short planning summary",
   "tasks": [
@@ -102,7 +111,11 @@ ${input.failedTasks}
 Repo Summary:
 ${input.repoSummary}
 
-Return ONLY valid JSON with this schema:
+Output Requirements:
+- Return ONLY valid JSON matching this schema exactly
+- Do NOT include markdown fences or any text outside the JSON
+
+JSON Schema:
 {
   "summary": "short recovery summary",
   "resumePlan": [
@@ -137,7 +150,11 @@ ${input.diffSummary}
 Preferred Strategy:
 ${input.preferredStrategy}
 
-Return ONLY valid JSON with this schema:
+Output Requirements:
+- Return ONLY valid JSON matching this schema exactly
+- Do NOT include markdown fences or any text outside the JSON
+
+JSON Schema:
 {
   "decision": "string",
   "resolutionSteps": ["string"],

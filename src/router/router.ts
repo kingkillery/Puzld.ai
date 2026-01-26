@@ -88,34 +88,47 @@ You must be conservative, accurate, and explicit. You are not solving the task, 
 ## Objective
 Pick the best agent given task requirements, complexity, risk, and expected tool usage.
 
-## Agents (capabilities, in descending order)
-- codex: strongest for deep architecture, complex refactors, multi-file changes, hard debugging
-- claude: strongest generalist for coding + analysis + documentation
-- gemini: strongest for research, analysis, explanations, and synthesis
-- factory: GLM generalist (fallback), good for broad tasks
+## Agent Selection Guidelines (by task type)
+- **Complex coding tasks** (architecture, multi-file refactors, hard debugging, security): CLAUDE or CLAUDE
+- **Analysis/research tasks** (explanations, documentation, comparisons, synthesis): GEMINI
+- **Quick code generation** (simple scripts, prototypes, small edits): GEMINI or CODEX
+- **Safety-sensitive or ambiguous tasks**: CLAUDE (most likely to ask clarifying questions)
 
-## Decision Heuristics
-- If the task mentions multi-file refactors, architecture, migrations, security, performance, or complex debugging → favor codex or claude.
-- If the task is primarily analysis, research, explanation, documentation, or comparison → favor gemini.
-- If the task is simple, short, or routine (small edits, formatting, basic checks) → favor gemini or codex depending on coding vs explanation.
-- If the task is ambiguous or safety-sensitive, choose the agent most likely to ask clarifying questions and produce a safe plan (usually claude).
+## Available Agents
+- claude: Best generalist for complex coding, architecture, debugging, multi-file refactoring
+- gemini: Best for research, analysis, explanations, and synthesis
+- codex: Strong for quick code generation, simple scripts, prototypes
+- factory: GLM generalist fallback for broad tasks
 
-## Output
-Return ONLY valid JSON with this schema:
+## Output Format
+Return ONLY valid JSON matching this schema exactly:
 {
-  "agent": "codex|claude|gemini|factory",
+  "agent": "claude|gemini|codex|factory",
   "confidence": 0.0-1.0,
   "taskType": "high-complexity|medium-complexity|analysis|simple|unknown",
-  "reasoning": "short, concrete reason in 1-2 sentences"
+  "reasoning": "brief rationale in 1-2 sentences"
 }
 
 Rules:
-- Do NOT include markdown or extra keys.
-- Do NOT output analysis or commentary outside JSON.
-- Ensure confidence reflects certainty (low if task is vague).`;
+- Output valid JSON only - no markdown fences, no extra keys
+- confidence reflects certainty (lower for vague tasks)
+- If task is ambiguous, prefer CLAUDE for safety`;
 
-const ROUTER_MAX_CHARS = 1000;
-const ROUTER_SNIPPET_CHARS = 320;
+// Constants for router configuration
+const ROUTER_CACHE_TTL_MS = 30000; // 30 seconds cache TTL
+const ROUTER_MAX_CHARS = 1000; // Maximum characters for router context
+const ROUTER_SNIPPET_CHARS = 320; // Maximum characters for task snippet
+const ROUTER_MIN_COMPLEXITY_LENGTH = 100; // Minimum length for medium complexity
+const ROUTER_HIGH_COMPLEXITY_LENGTH = 300; // Minimum length for high complexity by default
+const ROUTER_PATTERN_MATCH_THRESHOLD = 2; // Number of patterns to suggest pkpoet
+const ROUTER_CONFIDENCE_BASE_HIGH = 0.7; // Base confidence for high complexity matches
+const ROUTER_CONFIDENCE_BASE_MEDIUM = 0.6; // Base confidence for medium complexity matches
+const ROUTER_CONFIDENCE_BASE_ANALYSIS = 0.6; // Base confidence for analysis matches
+const ROUTER_CONFIDENCE_BASE_SIMPLE = 0.7; // Base confidence for simple matches
+const ROUTER_CONFIDENCE_FALLBACK = 0.4; // Fallback confidence when no patterns match
+const ROUTER_CONFIDENCE_LENGTH_BASED = 0.6; // Confidence for length-based complexity
+const ROUTER_CONFIDENCE_LENGTH_MEDIUM = 0.5; // Confidence for medium length tasks
+const ROUTER_MAX_SIGNALS = 5; // Maximum path signals to extract
 
 function extractRouterJson(raw: string): string {
   const trimmed = raw.trim();
@@ -155,7 +168,7 @@ function extractSignals(task: string): string[] {
 
   // File/path hints
   const pathMatches = task.match(/([A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]+/g) || [];
-  signals.push(...pathMatches.slice(0, 5));
+  signals.push(...pathMatches.slice(0, ROUTER_MAX_SIGNALS));
 
   // Language hints
   const langHints = ['typescript', 'javascript', 'go', 'python', 'rust', 'java', 'c#', 'sql'];
@@ -238,13 +251,13 @@ function classifyTask(task: string): ClassificationResult {
       harness = 'feature';
     } else if (/algorithm|complex.*logic|reasoning/i.test(task)) {
       harness = 'codereason';
-    } else if (highMatches.length >= 2 || taskLength > 200) {
+    } else if (highMatches.length >= ROUTER_PATTERN_MATCH_THRESHOLD || taskLength > ROUTER_HIGH_COMPLEXITY_LENGTH) {
       harness = 'pkpoet';
     }
 
     return {
       taskType: 'high-complexity',
-      confidence: Math.min(0.95, 0.7 + (highMatches.length * 0.1)),
+      confidence: Math.min(0.95, ROUTER_CONFIDENCE_BASE_HIGH + (highMatches.length * 0.1)),
       suggestedHarness: harness,
       reasoning: `Matched ${highMatches.length} high-complexity pattern(s)`,
     };
@@ -255,7 +268,7 @@ function classifyTask(task: string): ClassificationResult {
   if (analysisMatches.length > 0) {
     return {
       taskType: 'analysis',
-      confidence: Math.min(0.9, 0.6 + (analysisMatches.length * 0.1)),
+      confidence: Math.min(0.9, ROUTER_CONFIDENCE_BASE_ANALYSIS + (analysisMatches.length * 0.1)),
       reasoning: `Matched ${analysisMatches.length} analysis pattern(s)`,
     };
   }
@@ -265,7 +278,7 @@ function classifyTask(task: string): ClassificationResult {
   if (mediumMatches.length > 0) {
     return {
       taskType: 'medium-complexity',
-      confidence: Math.min(0.85, 0.6 + (mediumMatches.length * 0.1)),
+      confidence: Math.min(0.85, ROUTER_CONFIDENCE_BASE_MEDIUM + (mediumMatches.length * 0.1)),
       reasoning: `Matched ${mediumMatches.length} medium-complexity pattern(s)`,
     };
   }
@@ -275,30 +288,30 @@ function classifyTask(task: string): ClassificationResult {
   if (simpleMatches.length > 0) {
     return {
       taskType: 'simple',
-      confidence: Math.min(0.9, 0.7 + (simpleMatches.length * 0.1)),
+      confidence: Math.min(0.9, ROUTER_CONFIDENCE_BASE_SIMPLE + (simpleMatches.length * 0.1)),
       reasoning: `Matched ${simpleMatches.length} simple pattern(s)`,
     };
   }
 
   // Default: estimate by task length and structure
-  if (taskLength > 300) {
+  if (taskLength > ROUTER_HIGH_COMPLEXITY_LENGTH) {
     return {
       taskType: 'high-complexity',
-      confidence: 0.6,
+      confidence: ROUTER_CONFIDENCE_LENGTH_BASED,
       suggestedHarness: 'pkpoet',
       reasoning: 'Long task description suggests complexity',
     };
-  } else if (taskLength > 100) {
+  } else if (taskLength > ROUTER_MIN_COMPLEXITY_LENGTH) {
     return {
       taskType: 'medium-complexity',
-      confidence: 0.5,
+      confidence: ROUTER_CONFIDENCE_LENGTH_MEDIUM,
       reasoning: 'Moderate task length',
     };
   }
 
   return {
     taskType: 'unknown',
-    confidence: 0.4,
+    confidence: ROUTER_CONFIDENCE_FALLBACK,
     reasoning: 'No clear patterns matched',
   };
 }
@@ -308,11 +321,10 @@ function classifyTask(task: string): ClassificationResult {
  */
 let availabilityCache: Map<string, boolean> | null = null;
 let cacheTime = 0;
-const CACHE_TTL = 30000; // 30 seconds
 
 async function getAvailableAdapters(): Promise<Set<string>> {
   const now = Date.now();
-  if (availabilityCache && (now - cacheTime) < CACHE_TTL) {
+  if (availabilityCache && (now - cacheTime) < ROUTER_CACHE_TTL_MS) {
     return new Set([...availabilityCache.entries()].filter(([_, v]) => v).map(([k]) => k));
   }
 
