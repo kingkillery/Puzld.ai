@@ -14,6 +14,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (!hash) return false;
   return bcrypt.compare(password, hash);
 }
 
@@ -26,9 +27,10 @@ export function hashRefreshToken(token: string): string {
 }
 
 export async function registerUser(username: string, password: string): Promise<User> {
-  const existing = persistence.getUserByUsername(username);
+  // Legacy registration - treat username as email if possible, or just username
+  const existing = persistence.getUserByUsername(username) || persistence.getUserByEmail(username);
   if (existing) {
-    throw new AppError('Username already exists', 409, 'USER_EXISTS');
+    throw new AppError('Username/Email already exists', 409, 'USER_EXISTS');
   }
 
   const passwordHash = await hashPassword(password);
@@ -36,9 +38,11 @@ export async function registerUser(username: string, password: string): Promise<
   const user: User = {
     id: randomUUID(),
     username,
-    passwordHash,
-    createdAt: now,
-    updatedAt: now,
+    email: username.includes('@') ? username : `${username}@local.dev`, // Fallback for legacy
+    password_hash: passwordHash,
+    role: 'user',
+    created_at: now,
+    updated_at: now,
   };
 
   persistence.createUser(user);
@@ -46,8 +50,8 @@ export async function registerUser(username: string, password: string): Promise<
 }
 
 export async function loginUser(username: string, password: string, fastify: FastifyInstance): Promise<AuthTokens> {
-  const user = persistence.getUserByUsername(username);
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  const user = persistence.getUserByUsername(username) || persistence.getUserByEmail(username);
+  if (!user || !user.password_hash || !(await verifyPassword(password, user.password_hash))) {
     throw new AppError('Invalid username or password', 401, 'INVALID_CREDENTIALS');
   }
 
@@ -67,14 +71,14 @@ export async function refreshTokens(refreshToken: string, fastify: FastifyInstan
     throw new AppError('Token revoked', 401, 'TOKEN_REVOKED');
   }
 
-  if (Date.now() > storedToken.expiresAt) {
+  if (Date.now() > storedToken.expires_at) {
     throw new AppError('Token expired', 401, 'TOKEN_EXPIRED');
   }
 
   // Revoke the used refresh token (Rotation)
   persistence.revokeRefreshToken(storedToken.id);
 
-  const user = persistence.getUserById(storedToken.userId);
+  const user = persistence.getUserById(storedToken.user_id);
   if (!user) {
     throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   }
@@ -84,14 +88,13 @@ export async function refreshTokens(refreshToken: string, fastify: FastifyInstan
 
 async function generateTokens(user: User, fastify: FastifyInstance): Promise<AuthTokens> {
   // Access Token (JWT)
-  // Payload follows OAuth2/OIDC conventions where possible
-  const accessToken = fastify.jwt.sign(
-    { 
-      sub: user.id, 
-      username: user.username 
-    }, 
-    { expiresIn: '15m' }
-  );
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role
+  };
+
+  const accessToken = fastify.jwt.sign(payload, { expiresIn: '15m' });
 
   // Refresh Token (Opaque)
   const refreshTokenString = generateRefreshTokenString();
@@ -100,11 +103,11 @@ async function generateTokens(user: User, fastify: FastifyInstance): Promise<Aut
 
   persistence.storeRefreshToken({
     id: randomUUID(),
-    userId: user.id,
-    tokenHash: refreshTokenHash,
-    expiresAt: now + REFRESH_TOKEN_EXPIRY,
+    user_id: user.id,
+    token_hash: refreshTokenHash,
+    expires_at: now + REFRESH_TOKEN_EXPIRY,
     revoked: false,
-    createdAt: now,
+    created_at: now,
   });
 
   return {

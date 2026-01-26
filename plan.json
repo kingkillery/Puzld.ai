@@ -5,26 +5,29 @@
     {
       "id": "step_1",
       "title": "Install Dependencies",
-      "objective": "Install @fastify/jwt and bcrypt for authentication support.",
+      "objective": "Install @fastify/jwt, bcrypt, and axios (for Zoho API calls).",
       "acceptance": ["Dependencies added to package.json", "node_modules updated"],
       "agent": "auto",
-      "action": "fix"
+      "action": "fix",
+      "status": "completed"
     },
     {
       "id": "step_2",
       "title": "Create Auth Types",
-      "objective": "Create src/api/auth/types.ts to define User and Token interfaces.",
-      "acceptance": ["File src/api/auth/types.ts exists", "Interfaces User, RefreshToken, AuthTokens defined"],
+      "objective": "Create src/api/auth/types.ts to define User, Token, and ZohoProfile interfaces.",
+      "acceptance": ["File src/api/auth/types.ts exists", "Interfaces User, RefreshToken, AuthTokens, ZohoProfile defined"],
       "agent": "auto",
-      "action": "code"
+      "action": "code",
+      "status": "completed"
     },
     {
       "id": "step_3",
       "title": "Update Database Schema",
-      "objective": "Add migration for users and refresh_tokens tables in src/memory/database.ts.",
-      "acceptance": ["Migration 9 added", "Tables users and refresh_tokens created on init"],
+      "objective": "Add migration for users (with zoho_id column) and refresh_tokens tables in src/memory/database.ts.",
+      "acceptance": ["Migration added", "Tables users (w/ zoho_id) and refresh_tokens created"],
       "agent": "auto",
-      "action": "code"
+      "action": "code",
+      "status": "completed"
     },
     {
       "id": "step_4",
@@ -32,15 +35,53 @@
       "objective": "Register jwt plugin and auth routes in src/api/server.ts.",
       "acceptance": ["fastify-jwt registered", "authRoutes registered", "authenticate decorator added"],
       "agent": "auto",
-      "action": "code"
+      "action": "code",
+      "status": "completed"
     },
     {
       "id": "step_5",
-      "title": "Verify Authentication",
-      "objective": "Create and run a test script to verify registration, login, and JWT validation.",
-      "acceptance": ["Test script passes", "Users can register and login", "Protected routes require valid JWT"],
+      "title": "Zoho Config Setup",
+      "objective": "Update config loading to read ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, and ZOHO_REDIRECT_URI from env.",
+      "acceptance": ["Config object includes Zoho credentials", "Env vars documented"],
       "agent": "auto",
-      "action": "test"
+      "action": "code",
+      "status": "completed"
+    },
+    {
+      "id": "step_6",
+      "title": "Zoho OAuth Service",
+      "objective": "Create src/api/auth/zoho.ts to handle OAuth URL generation and token exchange.",
+      "acceptance": ["getAuthorizationUrl() implemented", "exchangeCodeForToken() implemented", "getUserProfile() implemented"],
+      "agent": "auto",
+      "action": "code",
+      "status": "completed"
+    },
+    {
+      "id": "step_7",
+      "title": "Zoho Login Routes",
+      "objective": "Implement GET /auth/zoho and GET /auth/zoho/callback in src/api/auth/routes.ts.",
+      "acceptance": ["/auth/zoho redirects to Zoho", "/auth/zoho/callback handles code and logs user in"],
+      "agent": "auto",
+      "action": "code",
+      "status": "completed"
+    },
+    {
+      "id": "step_8",
+      "title": "User Mapping Logic",
+      "objective": "Implement logic to find existing user by Zoho ID or create new one on first login.",
+      "acceptance": ["Existing users logged in", "New users auto-registered via Zoho profile"],
+      "agent": "auto",
+      "action": "code",
+      "status": "completed"
+    },
+    {
+      "id": "step_9",
+      "title": "Verify Full Auth",
+      "objective": "Create and run a test script to verify both local and Zoho-simulated auth flows.",
+      "acceptance": ["Test script passes", "JWT issued after simulated Zoho login"],
+      "agent": "auto",
+      "action": "test",
+      "status": "completed"
     }
   ]
 }

@@ -554,6 +554,55 @@ function runMigrations(database: any): void {
 
     database.prepare("UPDATE metadata SET value = '11' WHERE key = 'schema_version'").run();
   }
+
+  // Migration 12: Update users table for Zoho Auth (Phase 9)
+  if (currentVersion < 12) {
+    // We need to alter the table structure to support OAuth users (nullable password)
+    // and add new fields (email, name, role)
+    database.exec(`
+      -- Create new users table with updated schema
+      CREATE TABLE IF NOT EXISTS users_new (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        username TEXT, -- Made nullable, legacy support
+        password_hash TEXT, -- Made nullable for OAuth users
+        name TEXT,
+        role TEXT DEFAULT 'user' CHECK(role IN ('user', 'admin')),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      -- Copy existing data if any (mapping username to email for legacy users if they look like emails, otherwise null)
+      INSERT INTO users_new (id, email, username, password_hash, created_at, updated_at)
+      SELECT id, username, username, password_hash, created_at, updated_at
+      FROM users;
+
+      -- Drop old table and rename new one
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+
+      -- Re-create indexes
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    `);
+
+    // Ensure refresh_tokens table exists (it was in migration 9, but just in case)
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        revoked INTEGER DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+    `);
+
+    database.prepare("UPDATE metadata SET value = '12' WHERE key = 'schema_version'").run();
+  }
 }
 
 /**

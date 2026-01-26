@@ -1,7 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import * as authService from './service';
+import { apiLogger } from '../../lib/logger';
 
 export async function authRoutes(fastify: FastifyInstance) {
+  // Local Auth Routes
   fastify.post<{ Body: { username: string; password: string } }>('/auth/register', {
     schema: {
       body: {
@@ -95,7 +97,11 @@ export async function authRoutes(fastify: FastifyInstance) {
             sub: { type: 'string' },
             username: { type: 'string' },
             iat: { type: 'number' },
-            exp: { type: 'number' }
+            exp: { type: 'number' },
+            // Add other fields if needed
+            id: { type: 'string' },
+            email: { type: 'string' },
+            role: { type: 'string' }
           }
         }
       }

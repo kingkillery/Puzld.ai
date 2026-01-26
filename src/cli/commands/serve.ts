@@ -148,6 +148,9 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     }
 
     console.log(pc.dim('\nPress Ctrl+C to stop'));
+
+    // Keep process alive
+    await new Promise(() => {});
   } catch (err: unknown) {
     const error = err as Error;
     console.error(pc.red(`Failed to start server: ${error.message}`));
