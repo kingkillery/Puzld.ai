@@ -1,6 +1,6 @@
 # PuzldAI - Game System Implementation Plan
 
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-01-25
 **Status:** In Progress
 **Completion:** 10/13 tasks (Game system); 6/6 tasks (CLI orchestration); 4/4 tasks (Ralph/Poet CLI) ✅; 2/10 tasks (Campaign mode)
 
@@ -1693,6 +1693,13 @@ Phase 7 (Docs) can run independently after Phase 2
 ---
 
 ## 🔄 Change Log
+
+### 2026-01-25: TUI responsiveness + visual cleanup
+
+- Cached banner ASCII art and changelog reads to reduce render overhead.
+- Added compact banner mode for small terminals.
+- Windowed chat history rendering with line-based estimation for long sessions.
+- Applied the updated theme palette to main TUI surfaces (banner, chat, status bar).
 
 ### 2026-01-24: TUI UX improvements
 

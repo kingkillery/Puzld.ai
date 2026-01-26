@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { createTwoFilesPatch } from 'diff';
 import { basename } from 'path';
+import { COLORS } from '../theme';
 import {
   type ProposedEdit,
   getDiffStats,
@@ -20,8 +21,8 @@ const ADD_BG = '#1a3d1a';      // Dark green background
 const REMOVE_BG = '#3d1a1a';   // Dark red background
 const ADD_COLOR = '#4ade80';   // Light green text
 const REMOVE_COLOR = '#f87171'; // Light red text
-const HEADER_COLOR = 'cyan';
-const HIGHLIGHT_COLOR = '#8CA9FF';
+const HEADER_COLOR = COLORS.info;
+const HIGHLIGHT_COLOR = COLORS.highlight;
 
 interface DiffLine {
   type: 'add' | 'remove' | 'context' | 'header';
@@ -257,7 +258,7 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
   if (!currentEdit) {
     return (
       <Box flexDirection="column">
-        <Text color="yellow">No edits to review.</Text>
+        <Text color={COLORS.warning}>No edits to review.</Text>
       </Box>
     );
   }
@@ -285,10 +286,10 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
 
       {/* Header */}
       <Box marginBottom={1}>
-        <Text bold color="yellow">{operationLabel} file </Text>
+        <Text bold color={COLORS.warning}>{operationLabel} file </Text>
         <Text bold>{currentEdit.filePath}</Text>
         {totalEdits > 1 && (
-          <Text color="gray"> ({currentIndex + 1}/{totalEdits})</Text>
+          <Text color={COLORS.muted}> ({currentIndex + 1}/{totalEdits})</Text>
         )}
       </Box>
 
@@ -362,7 +363,7 @@ export function DiffReview({ edits, onComplete, onCancel }: DiffReviewProps) {
       {/* Notification */}
       {notification && (
         <Box>
-          <Text color="yellow">{notification}</Text>
+          <Text color={COLORS.warning}>{notification}</Text>
         </Box>
       )}
 

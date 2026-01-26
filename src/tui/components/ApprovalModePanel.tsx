@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { COLORS } from '../theme';
 
-const HIGHLIGHT_COLOR = '#8CA9FF';
+const HIGHLIGHT_COLOR = COLORS.highlight;
 
 export type ApprovalMode = 'default' | 'plan' | 'accept' | 'yolo';
 
@@ -74,7 +75,7 @@ export function ApprovalModePanel({ currentMode, onSelect, onBack }: ApprovalMod
 
   return (
     <Box flexDirection="column">
-      <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={2} paddingY={1}>
+      <Box borderStyle="single" borderColor={COLORS.border.default} flexDirection="column" paddingX={2} paddingY={1}>
         <Text bold>Approval Mode</Text>
         <Text> </Text>
         {modes.map((mode, idx) => {
@@ -90,13 +91,13 @@ export function ApprovalModePanel({ currentMode, onSelect, onBack }: ApprovalMod
                   </Text>
                 </Box>
                 <Text dimColor>  {mode.description}</Text>
-                {isCurrent && <Text color="#fbbf24">  (current)</Text>}
-                {mode.id === 'yolo' && <Text color="#fc3855">  ⚡</Text>}
+                {isCurrent && <Text color={COLORS.warning}>  (current)</Text>}
+                {mode.id === 'yolo' && <Text color={COLORS.error}>  ⚡</Text>}
               </Box>
               {isSelected && (
                 <Box marginLeft={3} flexDirection="column">
-                  <Text dimColor>  Permissions: <Text color="gray">{mode.permissions}</Text></Text>
-                  <Text dimColor>  File Edits: <Text color="gray">{mode.edits}</Text></Text>
+                  <Text dimColor>  Permissions: <Text color={COLORS.muted}>{mode.permissions}</Text></Text>
+                  <Text dimColor>  File Edits: <Text color={COLORS.muted}>{mode.edits}</Text></Text>
                 </Box>
               )}
             </Box>

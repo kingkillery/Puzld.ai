@@ -34,7 +34,29 @@
       "Bash(pk-puzldai --version:*)",
       "Bash(tree:*)",
       "Bash(npm test:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(npm run test:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm install:*)",
+      "Bash(arp:*)",
+      "Bash(ipconfig:*)",
+      "Bash(findstr:*)",
+      "Bash(nmap:*)",
+      "Bash(powershell -Command \"& ''C:\\\\Program Files \\(x86\\)\\\\Nmap\\\\nmap.exe'' -sV -p 22,80,443,5900,8080,3389 10.0.0.187 10.0.0.188 2>&1\")",
+      "Bash(powershell:*)",
+      "Bash(dir \"C:\\\\Users\\\\prest\\\\Downloads\\\\rpi-imager.exe\")",
+      "Bash(ssh:*)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\prest\\\\.agents\\\\skills\\\\*.md\")",
+      "Bash(python -c \"\nimport paramiko\n\n# Connect to Pi and add Mac''s public key\npi = paramiko.SSHClient\\(\\)\npi.set_missing_host_key_policy\\(paramiko.AutoAddPolicy\\(\\)\\)\npi.connect\\(''100.71.124.50'', username=''pk'', key_filename=''C:/Users/prest/.ssh/id_ed25519''\\)\n\nmac_pubkey = ''ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGg2wwkzwtsbYJHpPyu+M3TChzXpkPIWYzAnraEnfeSl mac-to-windows''\n\n# Check if key already exists\nstdin, stdout, stderr = pi.exec_command\\(''grep -c \"\"mac-to-windows\"\" ~/.ssh/authorized_keys 2>/dev/null || echo 0''\\)\ncount = stdout.read\\(\\).decode\\(\\).strip\\(\\)\nif count == ''0'':\n    stdin, stdout, stderr = pi.exec_command\\(f''echo \"\"{mac_pubkey}\"\" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys''\\)\n    stdout.read\\(\\)\n    print\\(''Mac key added to Pi authorized_keys''\\)\nelse:\n    print\\(''Mac key already present on Pi''\\)\n\npi.close\\(\\)\n\n# Connect to Mac and add Pi''s host key to known_hosts\nmac = paramiko.SSHClient\\(\\)\nmac.set_missing_host_key_policy\\(paramiko.AutoAddPolicy\\(\\)\\)\nmac.connect\\(''100.76.176.119'', username=''k'', key_filename=''C:/Users/prest/.ssh/id_ed25519''\\)\n\nstdin, stdout, stderr = mac.exec_command\\(''ssh-keyscan -H 100.71.124.50 >> ~/.ssh/known_hosts 2>/dev/null && echo \"\"Pi host key added to Mac\"\"''\\)\nprint\\(stdout.read\\(\\).decode\\(\\).strip\\(\\)\\)\n\nmac.close\\(\\)\nprint\\(''Done''\\)\n\")",
+      "Bash(python -c \"\nimport paramiko\n\npi = paramiko.SSHClient\\(\\)\npi.set_missing_host_key_policy\\(paramiko.AutoAddPolicy\\(\\)\\)\npi.connect\\(''100.71.124.50'', username=''pk'', key_filename=''C:/Users/prest/.ssh/id_ed25519''\\)\n\n# Write clean authorized_keys with all three keys\nkeys = ''''''ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIObLSxBAG3EUiQ5vVcdsd5kgJW8wxEE85LdkraVgEIoW windows-to-mac\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEgSnhJGnKxTQUTq/G30DtHSgmWw8vFLydENbUj5VMSi pi-to-mac\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGg2wwkzwtsbYJHpPyu+M3TChzXpkPIWYzAnraEnfeSl mac-to-pi\n''''''\n\nsftp = pi.open_sftp\\(\\)\nwith sftp.open\\(''/home/pk/.ssh/authorized_keys'', ''w''\\) as f:\n    f.write\\(keys\\)\nsftp.close\\(\\)\n\n# Fix permissions\nstdin, stdout, stderr = pi.exec_command\\(''chmod 600 ~/.ssh/authorized_keys && cat ~/.ssh/authorized_keys''\\)\nprint\\(stdout.read\\(\\).decode\\(\\)\\)\n\npi.close\\(\\)\nprint\\(''Authorized keys cleaned up''\\)\n\")",
+      "Bash(whoami:*)",
+      "Bash(python -c \"\nimport os\npath = r''C:\\\\ProgramData\\\\ssh\\\\administrators_authorized_keys''\npi_key = ''ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEgSnhJGnKxTQUTq/G30DtHSgmWw8vFLydENbUj5VMSi pi-to-windows''\nmac_key = ''ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGg2wwkzwtsbYJHpPyu+M3TChzXpkPIWYzAnraEnfeSl mac-to-windows''\n\ntry:\n    with open\\(path, ''r''\\) as f:\n        existing = f.read\\(\\)\n    print\\(f''Current contents: {repr\\(existing\\)}''\\)\nexcept Exception as e:\n    print\\(f''Read error: {e}''\\)\n    existing = ''''\n\ntry:\n    with open\\(path, ''a''\\) as f:\n        if pi_key not in existing:\n            f.write\\(pi_key + ''\\\\n''\\)\n            print\\(''Pi key appended''\\)\n        else:\n            print\\(''Pi key already present''\\)\nexcept Exception as e:\n    print\\(f''Write error: {e}''\\)\n\")",
+      "Bash(git -C \"C:\\\\ProgramData\\\\ssh\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\prest\\\\.ssh\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\prest\\\\OneDrive\\\\Desktop\\\\Desktop-Projects\\\\OtherCLIMCP\\\\Puzld.ai\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\prest\\\\OneDrive\\\\Desktop\\\\Desktop-Projects\\\\OtherCLIMCP\\\\Puzld.ai\" log --oneline -10)",
+      "Bash(git -C \"C:\\\\Users\\\\prest\\\\OneDrive\\\\Desktop\\\\Desktop-Projects\\\\OtherCLIMCP\\\\Puzld.ai\" diff --stat)",
+      "Bash(git -C \"C:\\\\Users\\\\prest\\\\OneDrive\\\\Desktop\\\\Desktop-Projects\\\\OtherCLIMCP\\\\Puzld.ai\" add src/adapters/utils.ts src/executor/prompt-utils.ts src/executor/utils.ts src/lib/formatters.ts src/tui/hooks/useListNavigation.ts src/tui/theme.ts src/adapters/claude.ts src/adapters/factory.ts src/adapters/gemini.ts src/adapters/mistral.ts src/cli/commands/factory-modes.ts src/cli/commands/pkpoet.ts src/executor/factory-modes-builder.ts src/executor/plan-builders.ts src/tui/components/AgentPanel.tsx src/tui/components/AgentStatus.tsx src/tui/components/ApprovalModePanel.tsx src/tui/components/Banner.tsx src/tui/components/CampaignPanel.tsx src/tui/components/CollaborationView.tsx src/tui/components/CompareView.tsx src/tui/components/DiffReview.tsx src/tui/components/DomainProgress.tsx src/tui/components/IndexPanel.tsx src/tui/components/ModelPanel.tsx src/tui/components/ObservePanel.tsx src/tui/components/PermissionPrompt.tsx src/tui/components/SessionsManager.tsx src/tui/components/SingleFileDiff.tsx src/tui/components/StatusBar.tsx src/tui/components/TrustPrompt.tsx src/tui/components/UpdatePrompt.tsx src/tui/components/WorkflowsManager.tsx src/tui/index.tsx plan.md .claude/settings.local.json)"
     ]
   }
 }

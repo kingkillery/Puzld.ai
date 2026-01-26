@@ -1,15 +1,7 @@
 import { Box, Text } from 'ink';
 import type { CampaignTask } from '../../orchestrator/campaign/campaign-state.js';
 import type { EnhancedCampaignTask, DomainStatus } from '../../orchestrator/campaign/campaign-types.js';
-
-const COLORS = {
-  primary: '#8CA9FF',
-  success: 'green',
-  warning: 'yellow',
-  error: 'red',
-  muted: 'gray',
-  info: 'cyan'
-};
+import { COLORS } from '../theme';
 
 interface DomainData {
   name: string;

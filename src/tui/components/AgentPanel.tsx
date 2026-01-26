@@ -1,7 +1,6 @@
-import { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
-
-const HIGHLIGHT_COLOR = '#8CA9FF';
+import { Box, Text } from 'ink';
+import { useListNavigation } from '../hooks/useListNavigation';
+import { COLORS } from '../theme';
 
 interface AgentOption {
   id: string;
@@ -29,23 +28,17 @@ export function AgentPanel({ currentAgent, agentStatus, onSelect, onBack }: Agen
   ];
 
   const currentIndex = agents.findIndex(a => a.id === currentAgent);
-  const [selectedIndex, setSelectedIndex] = useState(currentIndex >= 0 ? currentIndex : 0);
-
-  useInput((_, key) => {
-    if (key.escape) {
-      onBack();
-    } else if (key.upArrow) {
-      setSelectedIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setSelectedIndex(i => Math.min(agents.length - 1, i + 1));
-    } else if (key.return) {
-      onSelect(agents[selectedIndex].id);
-    }
+  
+  const { selectedIndex } = useListNavigation({
+    items: agents,
+    initialIndex: currentIndex >= 0 ? currentIndex : 0,
+    onSelect: (agent) => onSelect(agent.id),
+    onBack
   });
 
   return (
     <Box flexDirection="column">
-      <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={2} paddingY={1}>
+      <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={2} paddingY={1}>
         <Text bold>Select Agent</Text>
         <Text> </Text>
         {agents.map((agent, idx) => {
@@ -53,9 +46,9 @@ export function AgentPanel({ currentAgent, agentStatus, onSelect, onBack }: Agen
           const isCurrent = agent.id === currentAgent;
           return (
             <Box key={agent.id}>
-              <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
+              <Text color={COLORS.highlight}>{isSelected ? '❯' : ' '} </Text>
               <Box width={14}>
-                <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                   {agent.name}
                 </Text>
               </Box>

@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { COLORS } from '../theme';
 import { getParentDirectory } from '../../trust';
 
 interface TrustPromptProps {
@@ -50,16 +51,16 @@ export const TrustPrompt: React.FC<TrustPromptProps> = ({
   return (
     <Box flexDirection="column" paddingX={1}>
       {/* Separator line */}
-      <Text color="#fbbf24">{'─'.repeat(120)}</Text>
+      <Text color={COLORS.warning}>{'─'.repeat(120)}</Text>
 
       {/* Header */}
       <Box marginBottom={1}>
-        <Text color="#fbbf24" bold>Accessing workspace:</Text>
+        <Text color={COLORS.warning} bold>Accessing workspace:</Text>
       </Box>
 
       {/* Directory path */}
       <Box marginBottom={1}>
-        <Text color="#ffffff" bold>{directory}</Text>
+        <Text color={COLORS.info} bold>{directory}</Text>
       </Box>
 
       {/* Safety message */}
@@ -79,7 +80,7 @@ export const TrustPrompt: React.FC<TrustPromptProps> = ({
       {/* What PuzldAI will do */}
       <Box marginBottom={1}>
         <Text>
-          PuzldAI will be able to <Text color="#fbbf24">read</Text>, <Text color="#fbbf24">edit</Text>, and <Text color="#fbbf24">execute files</Text> here.
+          PuzldAI will be able to <Text color={COLORS.warning}>read</Text>, <Text color={COLORS.warning}>edit</Text>, and <Text color={COLORS.warning}>execute files</Text> here.
         </Text>
       </Box>
 
@@ -87,7 +88,7 @@ export const TrustPrompt: React.FC<TrustPromptProps> = ({
       <Box flexDirection="column">
         {options.map((option, index) => (
           <Box key={index}>
-            <Text color={selectedIndex === index ? '#8CA9FF' : undefined}>
+            <Text color={selectedIndex === index ? COLORS.highlight : undefined}>
               {selectedIndex === index ? '> ' : '  '}
               {index + 1}. {option.label}
             </Text>

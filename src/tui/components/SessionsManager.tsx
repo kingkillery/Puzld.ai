@@ -8,8 +8,8 @@ import {
   getUnifiedSessionStats,
   type UnifiedSession,
 } from '../../context';
-
-const HIGHLIGHT_COLOR = '#8CA9FF';
+import { useListNavigation } from '../hooks/useListNavigation';
+import { COLORS } from '../theme';
 
 type View = 'menu' | 'list' | 'session' | 'confirm-delete' | 'confirm-clear';
 
@@ -57,11 +57,7 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
     { label: `${currentAgent || 'Current'} Agent Sessions`, value: 'agent', hint: `Filter by ${currentAgent || 'current agent'}` }
   ];
 
-  // Track indices
-  const [menuIndex, setMenuIndex] = useState(0);
-  const [listIndex, setListIndex] = useState(0);
-  const [actionIndex, setActionIndex] = useState(0);
-  const [confirmIndex, setConfirmIndex] = useState(1); // Default to "No"
+
 
   // Session actions
   const sessionActions = [
@@ -70,88 +66,54 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
     { label: 'Delete', value: 'delete', hint: 'Remove session permanently' }
   ];
 
-  // Handle Esc to go back
-  useInput((_, key) => {
-    if (key.escape) {
-      if (view === 'menu') {
-        onBack();
-      } else if (view === 'list') {
-        setView('menu');
-        setListIndex(0);
-      } else if (view === 'session') {
-        setView('list');
-        setSelectedSessionId(null);
-        setActionIndex(0);
-        setError(null);
-      } else if (view === 'confirm-delete' || view === 'confirm-clear') {
-        setView('session');
-        setConfirmIndex(1);
-      }
-    }
-  });
+  const confirmItems = [{ label: 'Yes', value: 0 }, { label: 'No', value: 1 }];
 
-  // Handle menu keyboard
-  useInput((_, key) => {
-    if (view !== 'menu') return;
-    if (key.upArrow) {
-      setMenuIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setMenuIndex(i => Math.min(menuItems.length - 1, i + 1));
-    } else if (key.return) {
-      const item = menuItems[menuIndex];
+  // Menu navigation
+  const { selectedIndex: menuIndex } = useListNavigation({
+    items: menuItems,
+    enabled: view === 'menu',
+    onSelect: (item) => {
       if (item.value === 'all') {
         setFilterAgent(undefined);
       } else {
         setFilterAgent(currentAgent);
       }
       setView('list');
-      setListIndex(0);
+      resetList();
     }
-  }, { isActive: view === 'menu' });
+  });
 
-  // Handle list keyboard
-  useInput((_, key) => {
-    if (view !== 'list') return;
-    if (key.upArrow) {
-      setListIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setListIndex(i => Math.min(sessions.length - 1, i + 1));
-    } else if (key.return) {
-      const session = sessions[listIndex];
-      if (session) {
+  // List navigation
+  const { selectedIndex: listIndex, reset: resetList } = useListNavigation({
+    items: sessions,
+    enabled: view === 'list',
+    onSelect: (session) => {
         setSelectedSessionId(session.id);
         setView('session');
-        setActionIndex(0);
-      }
+        resetActions();
     }
-  }, { isActive: view === 'list' });
+  });
 
-  // Handle session actions keyboard
-  useInput((_, key) => {
-    if (view !== 'session') return;
-    if (key.upArrow) {
-      setActionIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setActionIndex(i => Math.min(sessionActions.length - 1, i + 1));
-    } else if (key.return) {
-      const action = sessionActions[actionIndex];
-      handleSessionAction(action.value);
-    }
-  }, { isActive: view === 'session' });
+  // Session actions navigation
+  const { selectedIndex: actionIndex, reset: resetActions } = useListNavigation({
+    items: sessionActions,
+    enabled: view === 'session',
+    onSelect: (action) => handleSessionAction(action.value)
+  });
 
-  // Handle confirm keyboard
-  useInput((_, key) => {
-    if (view !== 'confirm-delete' && view !== 'confirm-clear') return;
-    if (key.upArrow || key.downArrow) {
-      setConfirmIndex(i => i === 0 ? 1 : 0);
-    } else if (key.return) {
-      if (confirmIndex === 0) {
+  // Confirm navigation
+  const { selectedIndex: confirmIndex, setSelectedIndex: setConfirmIndex, reset: resetConfirm } = useListNavigation({
+    items: confirmItems,
+    initialIndex: 1, // Default to No
+    enabled: view === 'confirm-delete' || view === 'confirm-clear',
+    onSelect: (item) => {
+      if (item.value === 0) {
         // Yes
         if (view === 'confirm-delete' && selectedSessionId) {
           deleteUnifiedSession(selectedSessionId);
           setView('list');
           setSelectedSessionId(null);
-          setListIndex(0);
+          resetList();
         } else if (view === 'confirm-clear' && fullSession) {
           clearUnifiedSessionMessages(fullSession);
           setFullSession(loadUnifiedSession(fullSession.id));
@@ -160,9 +122,31 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
       } else {
         setView('session');
       }
-      setConfirmIndex(1);
+      resetConfirm();
     }
-  }, { isActive: view === 'confirm-delete' || view === 'confirm-clear' });
+  });
+
+  // Handle Esc to go back
+  useInput((_, key) => {
+    if (key.escape) {
+      if (view === 'menu') {
+        onBack();
+      } else if (view === 'list') {
+        setView('menu');
+        resetList();
+      } else if (view === 'session') {
+        setView('list');
+        setSelectedSessionId(null);
+        resetActions();
+        setError(null);
+      } else if (view === 'confirm-delete' || view === 'confirm-clear') {
+        setView('session');
+        resetConfirm();
+      }
+    }
+  });
+
+
 
   // Handle session action
   const handleSessionAction = (action: string) => {
@@ -194,15 +178,15 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
       case 'menu':
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>Manage Sessions</Text>
               <Text> </Text>
               {menuItems.map((item, idx) => {
                 const isSelected = idx === menuIndex;
                 return (
                   <Box key={item.value}>
-                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '>' : ' '} </Text>
-                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                    <Text color={COLORS.highlight}>{isSelected ? '>' : ' '} </Text>
+                    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                       {idx + 1}. {item.label}
                     </Text>
                     <Text dimColor>  {item.hint}</Text>
@@ -218,7 +202,7 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
       case 'list':
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>Sessions {filterAgent ? `(${filterAgent})` : '(all)'}</Text>
               <Text> </Text>
               {sessions.length === 0 ? (
@@ -229,8 +213,8 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
                   return (
                     <Box key={session.id} flexDirection="column">
                       <Box>
-                        <Text color={HIGHLIGHT_COLOR}>{isSelected ? '>' : ' '} </Text>
-                        <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                        <Text color={COLORS.highlight}>{isSelected ? '>' : ' '} </Text>
+                        <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                           {idx + 1}. {session.agentsUsed.join(', ') || 'No agent'}
                         </Text>
                         <Text dimColor>  {session.messageCount} msgs | {session.totalTokens} tokens</Text>
@@ -267,7 +251,7 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
         const stats = getUnifiedSessionStats(fullSession);
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>Session: {fullSession.agentsUsed.join(', ') || 'No agent'}</Text>
               <Text dimColor>ID: {fullSession.id}</Text>
               <Text> </Text>
@@ -290,8 +274,8 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
                 const isSelected = idx === actionIndex;
                 return (
                   <Box key={action.value}>
-                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '>' : ' '} </Text>
-                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                    <Text color={COLORS.highlight}>{isSelected ? '>' : ' '} </Text>
+                    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                       {action.label}
                     </Text>
                     <Text dimColor>  {action.hint}</Text>
@@ -308,7 +292,7 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
       case 'confirm-delete':
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="red" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="red" flexDirection="column" paddingX={1}>
               <Text bold color="red">Delete Session?</Text>
               <Text dimColor>This cannot be undone.</Text>
               <Text> </Text>
@@ -316,8 +300,8 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
                 const isSelected = idx === confirmIndex;
                 return (
                   <Box key={idx}>
-                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '>' : ' '} </Text>
-                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                    <Text color={COLORS.highlight}>{isSelected ? '>' : ' '} </Text>
+                    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                       {label}
                     </Text>
                   </Box>
@@ -330,7 +314,7 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
       case 'confirm-clear':
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="yellow" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="yellow" flexDirection="column" paddingX={1}>
               <Text bold color="yellow">Clear Session History?</Text>
               <Text dimColor>All messages will be removed. Session will remain.</Text>
               <Text> </Text>
@@ -338,8 +322,8 @@ export function SessionsManager({ onBack, onLoadSession, currentAgent }: Session
                 const isSelected = idx === confirmIndex;
                 return (
                   <Box key={idx}>
-                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '>' : ' '} </Text>
-                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                    <Text color={COLORS.highlight}>{isSelected ? '>' : ' '} </Text>
+                    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                       {label}
                     </Text>
                   </Box>

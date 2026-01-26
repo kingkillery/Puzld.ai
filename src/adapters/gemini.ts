@@ -1,12 +1,9 @@
-import { execa } from 'execa';
-import type { Adapter, ModelResponse, RunOptions } from '../lib/types';
+import { type Adapter, type ModelResponse } from '../lib/types';
 import { getConfig } from '../lib/config';
+import { isBinaryAvailable, executeCli, wrapCliResult, wrapError, type GeminiRunOptions } from './utils';
 
-// Extended options for Gemini with approval mode
-export interface GeminiRunOptions extends RunOptions {
-  /** Gemini CLI approval mode: 'default' (read-only), 'auto_edit', 'yolo' */
-  geminiApprovalMode?: 'default' | 'auto_edit' | 'yolo';
-}
+// Re-export type if needed elsewhere, but it's now in utils for circular avoidance or just used here
+export type { GeminiRunOptions };
 
 export const geminiAdapter: Adapter = {
   name: 'gemini',
@@ -14,14 +11,7 @@ export const geminiAdapter: Adapter = {
   async isAvailable(): Promise<boolean> {
     const config = getConfig();
     if (!config.adapters.gemini.enabled) return false;
-
-    try {
-      const command = process.platform === 'win32' ? 'where' : 'which';
-      await execa(command, [config.adapters.gemini.path]);
-      return true;
-    } catch {
-      return false;
-    }
+    return isBinaryAvailable(config.adapters.gemini.path);
   },
 
   async run(prompt: string, options?: GeminiRunOptions): Promise<ModelResponse> {
@@ -33,17 +23,11 @@ export const geminiAdapter: Adapter = {
     const usePromptStdin = prompt.length > maxPromptChars;
 
     try {
-      // Gemini CLI uses -m for model selection, --output-format json for token usage
-      // Note: Gemini CLI auto-reads project context - no reliable way to disable this
       const args: string[] = ['--output-format', 'json'];
 
-      // Add approval mode flag based on option
-      // Note: Gemini CLI does NOT have a --yolo flag
-      // Use --approval-mode with 'auto_edit' for both 'yolo' and 'auto_edit'
       if (geminiApprovalMode === 'yolo' || geminiApprovalMode === 'auto_edit') {
         args.push('--approval-mode', 'auto_edit');
       }
-      // 'default' or undefined = no flag (read-only mode)
 
       if (model) {
         args.push('-m', model);
@@ -53,39 +37,25 @@ export const geminiAdapter: Adapter = {
         args.push('--', prompt);
       }
 
-      const { stdout, stderr, exitCode } = await execa(
-        config.adapters.gemini.path,
-        args,
-        {
-          timeout: config.timeout,
-          cancelSignal: options?.signal,
-          reject: false,
-          input: usePromptStdin ? prompt : undefined,
-          stdin: usePromptStdin ? 'pipe' : 'ignore'
-        }
-      );
+      const result = await executeCli('gemini', config.adapters.gemini.path, args, {
+        ...options,
+        timeout: config.timeout,
+        input: usePromptStdin ? prompt : undefined
+      });
 
-      const modelName = model ? `gemini/${model}` : 'gemini';
-
-      // Debug logging for compare mode issues
+      // Debug logging
       if (config.logLevel === 'debug') {
-        console.log(`[gemini] exitCode=${exitCode} stdout.length=${stdout?.length || 0} stderr.length=${stderr?.length || 0}`);
-        if (stderr) console.log(`[gemini] stderr: ${stderr.slice(0, 200)}`);
-        if (!stdout) console.log(`[gemini] stdout is empty!`);
+        console.log(`[gemini] exitCode=${result.exitCode} stdout.length=${result.stdout?.length || 0} stderr.length=${result.stderr?.length || 0}`);
+        if (result.stderr) console.log(`[gemini] stderr: ${result.stderr.slice(0, 200)}`);
       }
 
-      if (stderr && !stdout) {
-        return {
-          content: '',
-          model: modelName,
-          duration: Date.now() - startTime,
-          error: stderr
-        };
+      if (result.stderr && !result.stdout) {
+        return wrapCliResult(result);
       }
 
       // Parse JSON response to extract content and tokens
       try {
-        const json = JSON.parse(stdout);
+        const json = JSON.parse(result.stdout);
 
         // Sum tokens from all models used
         let inputTokens = 0;
@@ -97,36 +67,20 @@ export const geminiAdapter: Adapter = {
           }
         }
 
-        return {
-          content: json.response || '',
-          model: modelName,
-          duration: Date.now() - startTime,
-          tokens: (inputTokens || outputTokens) ? {
-            input: inputTokens,
-            output: outputTokens
-          } : undefined
-        };
+        return wrapCliResult(result, json.response || '', (inputTokens || outputTokens) ? {
+          input: inputTokens,
+          output: outputTokens
+        } : undefined);
       } catch (parseErr) {
         // Fallback if JSON parsing fails
         if (config.logLevel === 'debug') {
           console.log(`[gemini] JSON parse failed: ${parseErr}`);
-          console.log(`[gemini] Raw stdout: ${stdout?.slice(0, 500)}`);
         }
-        return {
-          content: stdout || '',
-          model: modelName,
-          duration: Date.now() - startTime
-        };
+        return wrapCliResult(result);
       }
     } catch (err: unknown) {
-      const error = err as Error;
-      const modelName = model ? `gemini/${model}` : 'gemini';
-      return {
-        content: '',
-        model: modelName,
-        duration: Date.now() - startTime,
-        error: error.message
-      };
+      return wrapError(err, model ? `gemini/${model}` : 'gemini', startTime);
     }
   }
 };
+

@@ -10,13 +10,13 @@ import {
   deleteTemplate
 } from '../../executor/templates';
 import { parsePipelineString } from '../../executor';
-
-const HIGHLIGHT_COLOR = '#8CA9FF';
+import { useListNavigation } from '../hooks/useListNavigation';
+import { COLORS } from '../theme';
 
 // Custom item component with blue highlight
 function CustomItem({ isSelected, label }: ItemProps) {
   return (
-    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
       {label}
     </Text>
   );
@@ -26,7 +26,7 @@ function CustomItem({ isSelected, label }: ItemProps) {
 function CustomIndicator({ isSelected }: { isSelected?: boolean }) {
   return (
     <Box marginRight={1}>
-      <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '}</Text>
+      <Text color={COLORS.highlight}>{isSelected ? '❯' : ' '}</Text>
     </Box>
   );
 }
@@ -51,7 +51,6 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
   const [originalPipeline, setOriginalPipeline] = useState('');
   const [editPhase, setEditPhase] = useState<'menu' | 'agent' | 'role'>('menu');
   const [editAgent, setEditAgent] = useState('');
-  const [editActionIndex, setEditActionIndex] = useState(0);
 
   // Edit menu actions
   const editActions = [
@@ -60,16 +59,11 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
     { label: 'Remove last', value: 'remove-last', hint: '' }
   ];
 
-  // Handle edit keyboard (menu navigation)
-  useInput((_, key) => {
-    if (view !== 'edit' || editPhase !== 'menu') return;
-
-    if (key.upArrow) {
-      setEditActionIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setEditActionIndex(i => Math.min(editActions.length - 1, i + 1));
-    } else if (key.return) {
-      const action = editActions[editActionIndex];
+  // Edit mode menu navigation
+  const { selectedIndex: editActionIndex, reset: resetEditActions } = useListNavigation({
+    items: editActions,
+    enabled: view === 'edit' && editPhase === 'menu',
+    onSelect: (action) => {
       if (action.value === 'add') {
         setEditPhase('agent');
         setInputValue('');
@@ -90,7 +84,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
         }
       }
     }
-  }, { isActive: view === 'edit' && editPhase === 'menu' });
+  });
 
   // Handle Esc to go back
   useInput((_, key) => {
@@ -126,18 +120,11 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
     { label: 'Create new workflow', value: 'create', hint: 'Enter to create' }
   ];
 
-  // Track menu selection index
-  const [menuIndex, setMenuIndex] = useState(0);
-
-  // Handle menu keyboard
-  useInput((_, key) => {
-    if (view !== 'menu') return;
-    if (key.upArrow) {
-      setMenuIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setMenuIndex(i => Math.min(menuItems.length - 1, i + 1));
-    } else if (key.return) {
-      const item = menuItems[menuIndex];
+  // Menu navigation
+  const { selectedIndex: menuIndex } = useListNavigation({
+    items: menuItems,
+    enabled: view === 'menu',
+    onSelect: (item) => {
       if (item.value === 'create') {
         setView('create');
         setCreateStep('name');
@@ -147,7 +134,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
         setView('list');
       }
     }
-  }, { isActive: view === 'menu' });
+  });
 
   // Build items for the workflows list - built-in first, then custom
   const listItems = workflows.map(name => {
@@ -164,24 +151,15 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
     return a.label.localeCompare(b.label);
   });
 
-  // Track list selection index
-  const [listIndex, setListIndex] = useState(0);
-
-  // Handle list keyboard
-  useInput((_, key) => {
-    if (view !== 'list') return;
-    if (key.upArrow) {
-      setListIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setListIndex(i => Math.min(listItems.length - 1, i + 1));
-    } else if (key.return) {
-      const item = listItems[listIndex];
-      if (item) {
-        setSelectedWorkflow(item.value);
-        setView('workflow');
-      }
+  // List navigation
+  const { selectedIndex: listIndex, reset: resetList } = useListNavigation({
+    items: listItems,
+    enabled: view === 'list',
+    onSelect: (item) => {
+      setSelectedWorkflow(item.value);
+      setView('workflow');
     }
-  }, { isActive: view === 'list' });
+  });
 
   // Workflow action items
   const workflowActions = [
@@ -189,23 +167,12 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
     { label: 'Delete', value: 'delete', hint: 'Enter to remove' }
   ];
 
-  // Track workflow action index
-  const [actionIndex, setActionIndex] = useState(0);
-
-  // Handle workflow keyboard
-  useInput((_, key) => {
-    if (view !== 'workflow') return;
-    if (key.upArrow) {
-      setActionIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setActionIndex(i => Math.min(workflowActions.length - 1, i + 1));
-    } else if (key.return) {
-      const item = workflowActions[actionIndex];
-      if (item) {
-        handleWorkflowAction({ value: item.value });
-      }
-    }
-  }, { isActive: view === 'workflow' });
+  // Workflow actions navigation
+  const { selectedIndex: actionIndex } = useListNavigation({
+    items: workflowActions,
+    enabled: view === 'workflow',
+    onSelect: (item) => handleWorkflowAction({ value: item.value })
+  });
 
   // Handle workflow action
   const handleWorkflowAction = (item: { value: string }) => {
@@ -225,7 +192,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
           setEditPhase('menu');
           setEditAgent('');
           setInputValue('');
-          setEditActionIndex(0);
+          resetEditActions();
         }
         break;
       case 'delete':
@@ -336,7 +303,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
       deleteTemplate(selectedWorkflow);
       setView('list');
       setSelectedWorkflow(null);
-      setListIndex(0); // Reset to first item after deletion
+      resetList(); // Reset to first item after deletion
     } else {
       setView('workflow');
     }
@@ -348,15 +315,15 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
       case 'menu':
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>Manage Workflows</Text>
               <Text> </Text>
               {menuItems.map((item, idx) => {
                 const isSelected = idx === menuIndex;
                 return (
                   <Box key={item.value}>
-                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
-                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                    <Text color={COLORS.highlight}>{isSelected ? '❯' : ' '} </Text>
+                    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                       {idx + 1}. {item.label}
                     </Text>
                     <Text dimColor>  {item.hint}</Text>
@@ -370,15 +337,15 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
       case 'list':
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>Workflows List</Text>
               <Text> </Text>
               {listItems.map((item, idx) => {
                 const isSelected = idx === listIndex;
                 return (
                   <Box key={item.value}>
-                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
-                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                    <Text color={COLORS.highlight}>{isSelected ? '❯' : ' '} </Text>
+                    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                       {idx + 1}. {item.label}
                     </Text>
                     <Text dimColor>  {item.isBuiltIn ? '(built-in)' : '(custom)'}</Text>
@@ -394,7 +361,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
         const template = selectedWorkflow ? loadTemplate(selectedWorkflow) : null;
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>{selectedWorkflow}</Text>
               {template?.description && <Text dimColor>{template.description}</Text>}
               <Text> </Text>
@@ -418,8 +385,8 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
                 const isSelected = idx === actionIndex;
                 return (
                   <Box key={action.value}>
-                    <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
-                    <Text color={isSelected ? HIGHLIGHT_COLOR : undefined} bold={isSelected}>
+                    <Text color={COLORS.highlight}>{isSelected ? '❯' : ' '} </Text>
+                    <Text color={isSelected ? COLORS.highlight : undefined} bold={isSelected}>
                       {action.label}
                     </Text>
                     <Text dimColor>  {action.hint}</Text>
@@ -456,13 +423,13 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
       case 'create': {
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Text bold>Create New Workflow</Text>
               <Text> </Text>
               {/* Step 1: Name */}
               <Box>
-                <Text color={createStep === 'name' ? HIGHLIGHT_COLOR : undefined}>{createStep === 'name' ? '❯' : ' '} </Text>
-                <Text color={createStep === 'name' ? HIGHLIGHT_COLOR : undefined} bold={createStep === 'name'}>1. Name</Text>
+                <Text color={createStep === 'name' ? COLORS.highlight : undefined}>{createStep === 'name' ? '❯' : ' '} </Text>
+                <Text color={createStep === 'name' ? COLORS.highlight : undefined} bold={createStep === 'name'}>1. Name</Text>
                 {newWorkflow.name ? (
                   <Text color="green">  ✓ {newWorkflow.name}</Text>
                 ) : createStep === 'name' ? (
@@ -473,8 +440,8 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
               </Box>
               {/* Step 2: Pipeline */}
               <Box>
-                <Text color={createStep === 'pipeline' ? HIGHLIGHT_COLOR : undefined}>{createStep === 'pipeline' ? '❯' : ' '} </Text>
-                <Text color={createStep === 'pipeline' ? HIGHLIGHT_COLOR : undefined} bold={createStep === 'pipeline'}>2. Pipeline</Text>
+                <Text color={createStep === 'pipeline' ? COLORS.highlight : undefined}>{createStep === 'pipeline' ? '❯' : ' '} </Text>
+                <Text color={createStep === 'pipeline' ? COLORS.highlight : undefined} bold={createStep === 'pipeline'}>2. Pipeline</Text>
                 {newWorkflow.pipeline ? (
                   <Text color="green">  ✓ {newWorkflow.pipeline}</Text>
                 ) : createStep === 'pipeline' ? (
@@ -485,8 +452,8 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
               </Box>
               {/* Step 3: Description */}
               <Box>
-                <Text color={createStep === 'description' ? HIGHLIGHT_COLOR : undefined}>{createStep === 'description' ? '❯' : ' '} </Text>
-                <Text color={createStep === 'description' ? HIGHLIGHT_COLOR : undefined} bold={createStep === 'description'}>3. Description</Text>
+                <Text color={createStep === 'description' ? COLORS.highlight : undefined}>{createStep === 'description' ? '❯' : ' '} </Text>
+                <Text color={createStep === 'description' ? COLORS.highlight : undefined} bold={createStep === 'description'}>3. Description</Text>
                 <Text dimColor>  (optional)</Text>
               </Box>
               <Text> </Text>
@@ -544,7 +511,7 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
         const lastStep = editSteps.length > 0 ? editSteps[editSteps.length - 1] : null;
         return (
           <Box flexDirection="column">
-            <Box borderStyle="round" borderColor="gray" flexDirection="column" paddingX={1}>
+            <Box borderStyle="single" borderColor="gray" flexDirection="column" paddingX={1}>
               <Box>
                 <Text bold>Edit: </Text>
                 <Text>{selectedWorkflow}</Text>
@@ -569,9 +536,9 @@ export function WorkflowsManager({ onBack, onRun }: WorkflowsManagerProps) {
                     const isDisabled = action.value === 'remove-last' && editSteps.length === 0;
                     return (
                       <Box key={action.value}>
-                        <Text color={HIGHLIGHT_COLOR}>{isSelected ? '❯' : ' '} </Text>
+                        <Text color={COLORS.highlight}>{isSelected ? '❯' : ' '} </Text>
                         <Text
-                          color={isSelected ? HIGHLIGHT_COLOR : undefined}
+                          color={isSelected ? COLORS.highlight : undefined}
                           bold={isSelected}
                           dimColor={isDisabled}
                         >

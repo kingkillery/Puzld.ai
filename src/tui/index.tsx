@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { Banner, WelcomeMessage } from './components/Banner';
 import { TrustPrompt } from './components/TrustPrompt';
 import { ApprovalModePanel, type ApprovalMode } from './components/ApprovalModePanel';
+import { COLORS } from './theme';
 
 import { isDirectoryTrusted, trustDirectory, getParentDirectory, getTrustedDirectories, untrustDirectory } from '../trust';
 import { useHistory } from './hooks/useHistory';
@@ -123,6 +124,15 @@ function formatTimestamp(ts?: number): string {
   const date = new Date(ts);
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
+
+const estimateWrappedLines = (text: string, width: number) => {
+  if (!text) return 0;
+  const safeWidth = Math.max(20, width);
+  return text.split('\n').reduce((sum, line) => {
+    const lineLen = line.length || 1;
+    return sum + Math.max(1, Math.ceil(lineLen / safeWidth));
+  }, 0);
+};
 
 let messageId = 0;
 const nextId = () => String(++messageId);
@@ -3004,11 +3014,40 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
   };
 
   const isFirstMessage = messages.length === 0;
-  const { rows: terminalHeight } = useTerminalSize();
+  const { rows: terminalHeight, columns: terminalWidth } = useTerminalSize();
   const hudHeight = 9; // Lines reserved for HUD
+  const isCompact = terminalHeight < 28 || terminalWidth < 100;
   const noColor = Boolean(process.env.NO_COLOR);
   const inputActive = mode === 'chat' && !pendingPermission && !pendingDiffPreview && !pendingBatchPreview && !loading;
   const hasAutocomplete = mode === 'chat' && autocompleteItems.length > 0 && !loading;
+  const maxVisibleLines = Math.max(10, terminalHeight - hudHeight - (isCompact ? 6 : 14));
+  const visibleMessages = useMemo(() => {
+    if (mode !== 'chat') return messages;
+    if (messages.length === 0) return messages;
+    const width = Math.max(40, terminalWidth - 6);
+    const selected: Message[] = [];
+    let usedLines = 0;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const msg = messages[i];
+      let lines = 2;
+      if (msg.role === 'user') {
+        lines += estimateWrappedLines(msg.content, width);
+      } else if (msg.role === 'assistant') {
+        lines += estimateWrappedLines(msg.content, width);
+        if (msg.agent) lines += 1;
+      } else if (msg.role === 'compare') {
+        lines += 6;
+      } else if (msg.role === 'collaboration') {
+        lines += 8;
+      }
+      if (usedLines + lines > maxVisibleLines && selected.length > 0) break;
+      usedLines += lines;
+      selected.push(msg);
+      if (usedLines >= maxVisibleLines) break;
+    }
+    return selected.reverse();
+  }, [messages, maxVisibleLines, mode, terminalWidth]);
+  const hiddenMessageCount = Math.max(0, messages.length - visibleMessages.length);
   const helpOverlayLines = [
     'Shortcuts:',
     '  ?: toggle help',
@@ -3025,7 +3064,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
     <Box flexDirection="column" height={terminalHeight} paddingX={1}>
       {/* Main Content Area - Flexible height */}
       <Box flexDirection="column" flexGrow={1} overflow="hidden">
-        <Banner version={pkg.version} agents={agentStatus} />
+        <Banner version={pkg.version} agents={agentStatus} minimal={isCompact} />
 
         {/* Update Prompt */}
         {
@@ -3411,11 +3450,16 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
               {/* Messages - hide when active compare/collaboration to prevent terminal scroll */}
               {(mode === 'chat' || mode === 'plan') && (
                 <Box flexDirection="column" marginBottom={1} width="100%">
-                  {messages.map((msg) => (
+                  {hiddenMessageCount > 0 && mode === 'chat' && (
+                    <Box marginBottom={1}>
+                      <Text dimColor>{hiddenMessageCount} older message(s) hidden. Resize or use /sessions to view.</Text>
+                    </Box>
+                  )}
+                  {visibleMessages.map((msg) => (
                     msg.role === 'compare' && msg.compareResults ? (
                       // Compact view for historical compare results (like collaboration)
                       <Box key={msg.id} flexDirection="column" width="100%">
-                        <Text color="#fc8657">─── <Text bold>Compare</Text> <Text color="gray">[completed]</Text> ───</Text>
+                        <Text color={COLORS.accent}>─── <Text bold>Compare</Text> <Text color={COLORS.muted}>[completed]</Text> ───</Text>
                         <Box height={1} />
                         <Box flexDirection="row" width="100%">
                           {msg.compareResults.map((result, i) => {
@@ -3431,7 +3475,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                               <Box
                                 key={i}
                                 flexDirection="column"
-                                borderStyle="round"
+                                borderStyle="single"
                                 borderColor={isError ? 'red' : 'gray'}
                                 flexGrow={1}
                                 flexBasis={0}
@@ -3440,7 +3484,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                               >
                                 {/* Header */}
                                 <Box paddingX={1}>
-                                  <Text bold color="#06ba9e">{result.agent}</Text>
+                                  <Text bold color={COLORS.agent}>{result.agent}</Text>
                                   {isError && <Text color="red"> ✗</Text>}
                                   {result.duration && <Text dimColor> {(result.duration / 1000).toFixed(1)}s</Text>}
                                 </Box>
@@ -3460,7 +3504,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                         </Box>
                         <Box marginTop={1}>
                           <Text dimColor>Press </Text>
-                          <Text color="#fc8657">Ctrl+E</Text>
+                          <Text color={COLORS.accent}>Ctrl+E</Text>
                           <Text dimColor> to expand this compare result</Text>
                         </Box>
                       </Box>
@@ -3492,16 +3536,16 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                             )}
                             {msg.agent === 'autopilot' ? (
                               <Text>
-                                <Text color="#fc8657">──</Text>
-                                <Text bold color="#06ba9e"> {msg.agent} </Text>
+                                <Text color={COLORS.accent}>──</Text>
+                                <Text bold color={COLORS.agent}> {msg.agent} </Text>
                                 <Text color="yellow">[Autopilot Mode]</Text>
-                                <Text color="#fc8657"> ──</Text>
+                                <Text color={COLORS.accent}> ──</Text>
                               </Text>
                             ) : msg.agent && (
                               <>
                                 <Text>
                                   <Text dimColor>{'─'.repeat(2)} </Text>
-                                  <Text bold color="#06ba9e">{msg.agent}</Text>
+                                  <Text bold color={COLORS.agent}>{msg.agent}</Text>
                                   <Text dimColor> </Text>
                                   <Text color="#666666">[Single]</Text>
                                   <Text dimColor> </Text>
@@ -3534,14 +3578,14 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
               {/* Background Loading Indicator - shows when compare/collaboration hidden but still loading */}
               {(mode === 'chat' || mode === 'plan') && (hasHiddenCompareLoading || hasHiddenCollaborationLoading) && (
                 <Box flexDirection="column" marginBottom={1}>
-                  <Text color="#fc8657">─── <Text bold>{hasHiddenCompareLoading ? 'Compare' : 'Collaboration'}</Text> <Text color="yellow">[running]</Text> ───</Text>
+                  <Text color={COLORS.accent}>─── <Text bold>{hasHiddenCompareLoading ? 'Compare' : 'Collaboration'}</Text> <Text color={COLORS.warning}>[running]</Text> ───</Text>
                   <Box height={1} />
                   <Box flexDirection="row" width="100%">
                     {hasHiddenCompareLoading && compareResults.map((result, i) => (
                       <Box
                         key={i}
                         flexDirection="column"
-                        borderStyle="round"
+                        borderStyle="single"
                         borderColor={result.loading ? 'yellow' : result.error ? 'red' : 'gray'}
                         flexGrow={1}
                         flexBasis={0}
@@ -3549,7 +3593,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                         marginRight={i < compareResults.length - 1 ? 1 : 0}
                       >
                         <Box paddingX={1}>
-                          <Text bold color="#06ba9e">{result.agent}</Text>
+                          <Text bold color={COLORS.agent}>{result.agent}</Text>
                           {result.loading && <Text color="yellow"> ⏳</Text>}
                           {!result.loading && !result.error && <Text color="green"> ✓</Text>}
                           {result.error && <Text color="red"> ✗</Text>}
@@ -3565,7 +3609,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                       <Box
                         key={i}
                         flexDirection="column"
-                        borderStyle="round"
+                        borderStyle="single"
                         borderColor={step.loading ? 'yellow' : step.error ? 'red' : 'gray'}
                         flexGrow={1}
                         flexBasis={0}
@@ -3573,7 +3617,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                         marginRight={i < Math.min(collaborationSteps.length, 3) - 1 ? 1 : 0}
                       >
                         <Box paddingX={1}>
-                          <Text bold color="#06ba9e">{step.agent}</Text>
+                          <Text bold color={COLORS.agent}>{step.agent}</Text>
                           <Text dimColor> [{step.role}]</Text>
                           {step.loading && <Text color="yellow"> ⏳</Text>}
                           {!step.loading && !step.error && <Text color="green"> ✓</Text>}
@@ -3592,7 +3636,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                   )}
                   <Box marginTop={1}>
                     <Text dimColor>Press </Text>
-                    <Text color="#fc8657">Ctrl+E</Text>
+                    <Text color={COLORS.accent}>Ctrl+E</Text>
                     <Text dimColor> to expand | </Text>
                     <Text color="red">Ctrl+C</Text>
                     <Text dimColor> to cancel</Text>
@@ -3708,8 +3752,8 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
                     const desc = parts.slice(1).join('  ');
                     return (
                       <Box key={item.value}>
-                        <Text bold={isSelected} color={noColor ? undefined : (isSelected ? '#8CA9FF' : undefined)} dimColor={!isSelected}>{cmd}</Text>
-                        <Text color={noColor ? undefined : (isSelected ? '#8CA9FF' : undefined)} dimColor={!isSelected}> - {desc}</Text>
+                        <Text bold={isSelected} color={noColor ? undefined : (isSelected ? COLORS.highlight : undefined)} dimColor={!isSelected}>{cmd}</Text>
+                        <Text color={noColor ? undefined : (isSelected ? COLORS.highlight : undefined)} dimColor={!isSelected}> - {desc}</Text>
                       </Box>
                     );
                   })}
@@ -3728,7 +3772,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
       <Box
         flexDirection="column"
         paddingX={1}
-        borderStyle="double"
+        borderStyle="single"
         borderColor={noColor ? undefined : 'cyan'}
         minHeight={hudHeight}
       >
@@ -3760,7 +3804,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
         {historySearchActive && (
           <Box
             marginBottom={1}
-            borderStyle="round"
+            borderStyle="single"
             borderColor={noColor ? undefined : 'gray'}
             paddingX={1}
             flexDirection="column"
@@ -3782,7 +3826,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
         {showHelpOverlay && (
           <Box
             marginBottom={1}
-            borderStyle="round"
+            borderStyle="single"
             borderColor={noColor ? undefined : 'gray'}
             paddingX={1}
             flexDirection="column"
@@ -3806,7 +3850,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
           <Box flexGrow={1}>
             {mode !== 'collaboration' && mode !== 'compare' && !pendingPermission && !loading && (
               <Box
-                borderStyle={inputActive ? 'double' : 'round'}
+                borderStyle="single"
                 borderColor={noColor ? undefined : (inputActive ? 'cyan' : 'gray')}
                 paddingX={1}
               >

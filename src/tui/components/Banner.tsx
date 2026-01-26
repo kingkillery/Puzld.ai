@@ -1,13 +1,14 @@
 import { Box, Text } from 'ink';
+import { COLORS } from '../theme';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import figlet from 'figlet';
 
-// Logo colors
-const RED = '#ff00ff'; // Hot Pink
-const BORDER = '#bd93f9'; // Neon Purple
-const GRAY = 'gray';
+const LOGO_PRIMARY = COLORS.info;
+const LOGO_ACCENT = COLORS.accent;
+const BORDER = COLORS.border.default;
+const GRAY = COLORS.muted;
 
 // Generate ASCII art banner for PK-puzld using figlet with Small font
 // Returns lines that are already interleaved for side-by-side display
@@ -35,6 +36,23 @@ function generateBannerArt(): string[] {
   }
 
   return lines;
+}
+
+let bannerLines: string[] | null = null;
+let cachedChangelog: ChangelogItem[] | null = null;
+
+function getBannerLines(): string[] {
+  if (!bannerLines) {
+    bannerLines = generateBannerArt();
+  }
+  return bannerLines;
+}
+
+function getLatestChangelogCached(): ChangelogItem[] {
+  if (!cachedChangelog) {
+    cachedChangelog = getLatestChangelog();
+  }
+  return cachedChangelog;
 }
 
 // Box drawing characters - double lines
@@ -109,14 +127,14 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
   if (minimal) {
     return (
       <Box marginBottom={1}>
-        <Text bold color="white">PK-Puzld</Text>
+        <Text bold color={LOGO_PRIMARY}>PK-Puzld</Text>
         <Text dimColor> v{version}</Text>
       </Box>
     );
   }
 
   // Get changelog items
-  const changelogItems = changelog || getLatestChangelog();
+  const changelogItems = changelog || getLatestChangelogCached();
 
   // Default order for display: claude, gemini, codex, ollama, mistral, factory
   const agentOrder = ['claude', 'gemini', 'codex', 'ollama', 'mistral', 'factory'];
@@ -186,7 +204,7 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       {/* Top border with version tag */}
       <Box>
         <Text color={BORDER}>{BOX.tl + BOX.h.repeat(3)}</Text>
-        <Text color={RED}> PK-Puzld</Text>
+        <Text color={LOGO_ACCENT}> PK-Puzld</Text>
         <Text dimColor> v{version} </Text>
         <Text color={BORDER}>{BOX.h.repeat(INNER_WIDTH - 3 - ` PK-Puzld v${version} `.length) + BOX.tr}</Text>
       </Box>
@@ -200,25 +218,25 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
 
       {/* ASCII Art Logo section using figlet */}
       {(() => {
-        const bannerLines = generateBannerArt();
-        const logoWidth = bannerLines[0]?.length || 0;
+        const lines = getBannerLines();
+        const logoWidth = lines[0]?.length || 0;
         const logoPadLeft = Math.floor((INNER_WIDTH - logoWidth) / 2);
 
         return (
           <>
-            {bannerLines.map((line, index) => (
+            {lines.map((line, index) => (
               <Box key={`logo-${index}`}>
                 <Text color={BORDER}>{BOX.v}</Text>
                 <Text>{' '.repeat(Math.max(0, logoPadLeft))}</Text>
                 {/* Split line into PK (white) and puzld (red) parts */}
                 {line.includes('  ') ? (
                   <>
-                    <Text bold color="#00ffff">{line.split('  ')[0]}</Text>
+                    <Text bold color={LOGO_PRIMARY}>{line.split('  ')[0]}</Text>
                     <Text>{'  '}</Text>
-                    <Text bold color={RED}>{line.split('  ')[1]}</Text>
+                    <Text bold color={LOGO_ACCENT}>{line.split('  ')[1]}</Text>
                   </>
                 ) : (
-                  <Text bold color="#00ffff">{line}</Text>
+                  <Text bold color={LOGO_PRIMARY}>{line}</Text>
                 )}
                 <Text color={BORDER}>{BOX.v}</Text>
               </Box>

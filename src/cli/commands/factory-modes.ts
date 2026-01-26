@@ -15,7 +15,7 @@ import {
   buildSelfDiscoverPlan,
   buildCodeReasonPlan,
   buildLargeFeaturePlan
-} from '../../executor/plan-builders';
+} from '../../executor/factory-modes-builder';
 import { execute } from '../../executor/executor';
 import type { AgentName, ExecutorConfig } from '../../executor/types';
 import { adapters } from '../../adapters';

@@ -16,26 +16,10 @@ import type {
   ConsensusOptions,
   PickBuildOptions
 } from './types';
+import { PROJECT_CONTEXT_PROMPT, buildCritiquePrompt, buildFixPrompt } from './prompt-utils';
+import { generatePlanId, generateStepId } from './utils';
 
 // Re-export PK-Poet builder
-export { buildPKPoetPlan } from './pk-poet-builder';
-
-// Re-export Factory-Droid mode builders
-export {
-  buildPoetiqPlan,
-  buildAdversaryPlan,
-  buildSelfDiscoverPlan,
-  buildCodeReasonPlan,
-  buildLargeFeaturePlan
-} from './factory-modes-builder';
-
-function generatePlanId(): string {
-  return `plan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function generateStepId(index: number): string {
-  return `step_${index}`;
-}
 
 /**
  * Build a single-agent plan
@@ -88,15 +72,7 @@ export function buildComparePlan(
     prompt: projectStructure
       ? `**Task:** {{prompt}}
 
-**Project Structure:**
-{{project_structure}}
-
-CRITICAL INSTRUCTIONS:
-- You HAVE access to the project structure above - USE IT
-- Do NOT say "I don't have access to tools" or "I cannot read files"
-- Do NOT apologize for limitations - you have all the context you need
-- Give a concrete, actionable response referencing specific files/directories
-- Act as if you can see and understand the entire project`
+${PROJECT_CONTEXT_PROMPT}`
       : '{{prompt}}',
     outputAs: `response_${agent}`,
     // Sequential mode: each step depends on previous
@@ -399,14 +375,7 @@ export function buildCorrectionPlan(
       id: generateStepId(1),
       agent: reviewer,
       action: 'prompt',
-      prompt: `Review and critique this output. Identify issues, suggest improvements, and rate quality (1-10).
-
-**Original task:** {{prompt}}
-
-**Output to review:**
-{{production}}
-
-Provide specific, actionable feedback.`,
+      prompt: buildCritiquePrompt('{{production}}'),
       dependsOn: [generateStepId(0)],
       outputAs: 'review'
     }
@@ -418,17 +387,7 @@ Provide specific, actionable feedback.`,
       id: generateStepId(2),
       agent: producer,
       action: 'prompt',
-      prompt: `Fix the issues identified in this review.
-
-**Original task:** {{prompt}}
-
-**Your previous output:**
-{{production}}
-
-**Review feedback:**
-{{review}}
-
-Provide an improved version addressing all feedback.`,
+      prompt: buildFixPrompt('{{production}}', '{{review}}'),
       dependsOn: [generateStepId(1)],
       outputAs: 'fixed'
     });
@@ -575,19 +534,15 @@ export function buildConsensusPlan(
       id: generateStepId(stepIndex),
       agent,
       action: 'prompt',
-      prompt: `Propose a solution for this task.
+      prompt: projectStructure
+        ? `Propose a solution for this task.
 
 **Task:** {{prompt}}
 
-**Project Structure:**
-{{project_structure}}
+${PROJECT_CONTEXT_PROMPT}`
+        : `Propose a solution for this task.
 
-CRITICAL INSTRUCTIONS:
-- You HAVE access to the project structure above - USE IT
-- Do NOT say "I don't have access to tools" or "I cannot read files"
-- Do NOT apologize for limitations - you have all the context you need
-- Give a concrete, actionable proposal referencing specific files/directories
-- Act as if you can see and understand the entire project`,
+**Task:** {{prompt}}`,
       outputAs: `${agent}_proposal`
     });
     stepIndex++;
@@ -815,7 +770,7 @@ export function buildPickBuildPlan(
  */
 function buildJsonPlanProposalPrompt(projectStructure?: string): string {
   const projectContext = projectStructure
-    ? `\n\n**Project Structure:**\n{{project_structure}}\n\nCRITICAL: Reference specific files/directories from the project structure above.`
+    ? `\n\n${PROJECT_CONTEXT_PROMPT}`
     : '';
 
   return `You are proposing an implementation PLAN for a task. Do NOT write code. Produce a structured plan.
@@ -840,7 +795,7 @@ Respond with ONLY the JSON object. No markdown code fences, no explanation, just
  */
 function buildMarkdownPlanProposalPrompt(projectStructure?: string): string {
   const projectContext = projectStructure
-    ? `\n\n**Project Structure:**\n{{project_structure}}\n\nCRITICAL: Reference specific files/directories from the project structure above.`
+    ? `\n\n${PROJECT_CONTEXT_PROMPT}`
     : '';
 
   return `You are proposing an implementation PLAN for a task. Do NOT write code. Produce a structured plan.

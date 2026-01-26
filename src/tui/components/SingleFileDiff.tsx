@@ -9,14 +9,15 @@ import { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { createTwoFilesPatch } from 'diff';
 import { basename } from 'path';
+import { COLORS } from '../theme';
 
 // Colors - using background colors for highlighted text effect
 const ADD_BG = '#1a3d1a';      // Dark green background
 const REMOVE_BG = '#3d1a1a';   // Dark red background
 const ADD_COLOR = '#4ade80';   // Light green text
 const REMOVE_COLOR = '#f87171'; // Light red text
-const HEADER_COLOR = 'cyan';
-const HIGHLIGHT_COLOR = '#8CA9FF';
+const HEADER_COLOR = COLORS.info;
+const HIGHLIGHT_COLOR = COLORS.highlight;
 
 export type DiffDecision = 'yes' | 'yes-all' | 'no';
 
@@ -146,7 +147,7 @@ export function SingleFileDiff({ filePath, operation, originalContent, newConten
 
       {/* Header */}
       <Box marginBottom={1}>
-        <Text bold color="yellow">{operationLabel} file </Text>
+        <Text bold color={COLORS.warning}>{operationLabel} file </Text>
         <Text bold>{filePath}</Text>
       </Box>
 

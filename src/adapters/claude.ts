@@ -19,6 +19,7 @@ import { extractProposedEdits, type ProposedEdit } from '../lib/edit-review';
 import { getSessionManager, type ManagedSession } from '../interactive/session-manager';
 import { PromptDetector } from '../interactive/prompt-detector';
 import { detectVersion } from '../interactive/version-detector';
+import { isBinaryAvailable, executeCli, wrapCliResult, wrapError } from './utils';
 
 /**
  * Claude CLI Wrapper Guide Reference:
@@ -240,14 +241,7 @@ export const claudeAdapter: Adapter & {
   async isAvailable(): Promise<boolean> {
     const config = getConfig();
     if (!config.adapters.claude.enabled) return false;
-
-    try {
-      const command = process.platform === 'win32' ? 'where' : 'which';
-      await execa(command, [config.adapters.claude.path]);
-      return true;
-    } catch {
-      return false;
-    }
+    return isBinaryAvailable(config.adapters.claude.path);
   },
 
   /**
@@ -350,28 +344,13 @@ export const claudeAdapter: Adapter & {
         outputFormat,
       });
 
-      const { stdout, stderr } = await execa(
-        config.adapters.claude.path,
-        args,
-        {
-          timeout: config.timeout,
-          cancelSignal: options?.signal,
-          reject: false,
-          stdin: 'ignore',
-          stdout: 'pipe',
-          stderr: 'pipe'
-        }
-      );
+      const result = await executeCli('claude', config.adapters.claude.path, args, {
+        ...options,
+        timeout: config.timeout
+      });
 
-      const modelName = model ? `claude/${model}` : 'claude';
-
-      if (stderr && !stdout) {
-        return {
-          content: '',
-          model: modelName,
-          duration: Date.now() - startTime,
-          error: stderr
-        };
+      if (result.stderr && !result.stdout) {
+        return wrapCliResult(result);
       }
 
       if (outputFormat === 'stream-json') {
@@ -385,73 +364,42 @@ export const claudeAdapter: Adapter & {
           }
 
           // Parse all lines (emits events to subscribers)
-          parser.parseAll(stdout);
+          parser.parseAll(result.stdout);
 
           // Get final result
           const resultEvent = parser.getResult();
-          const result: ResultEvent = resultEvent ?? {
+          const evt: ResultEvent = resultEvent ?? {
             type: 'result',
             subtype: 'success',
             result: '',
             isError: false
           };
 
-          return {
-            content: result.result,
-            model: modelName,
-            duration: Date.now() - startTime,
-            tokens: result.usage ? {
-              input: result.usage.input_tokens,
-              output: result.usage.output_tokens
-            } : undefined,
-            error: result.isError ? result.result : undefined
-          };
+          return wrapCliResult(result, evt.result, evt.usage ? {
+            input: evt.usage.input_tokens,
+            output: evt.usage.output_tokens
+          } : undefined, evt.isError ? evt.result : undefined);
         } catch {
           // Fallback if parsing fails
-          return {
-            content: stdout || '',
-            model: modelName,
-            duration: Date.now() - startTime
-          };
+          return wrapCliResult(result);
         }
       }
 
       if (outputFormat === 'json') {
         try {
-          const parsed = JSON.parse(stdout);
-          return {
-            content: parsed.result || '',
-            model: modelName,
-            duration: Date.now() - startTime,
-            tokens: parsed.usage ? {
-              input: parsed.usage.input_tokens,
-              output: parsed.usage.output_tokens
-            } : undefined,
-            error: parsed.is_error ? parsed.result : undefined
-          };
+          const parsed = JSON.parse(result.stdout);
+          return wrapCliResult(result, parsed.result || '', parsed.usage ? {
+            input: parsed.usage.input_tokens,
+            output: parsed.usage.output_tokens
+          } : undefined, parsed.is_error ? parsed.result : undefined);
         } catch {
-          return {
-            content: stdout || '',
-            model: modelName,
-            duration: Date.now() - startTime
-          };
+          return wrapCliResult(result);
         }
       }
 
-      return {
-        content: stdout || '',
-        model: modelName,
-        duration: Date.now() - startTime
-      };
+      return wrapCliResult(result);
     } catch (err: unknown) {
-      const error = err as Error;
-      const modelName = model ? `claude/${model}` : 'claude';
-      return {
-        content: '',
-        model: modelName,
-        duration: Date.now() - startTime,
-        error: error.message
-      };
+      return wrapError(err, model ? `claude/${model}` : 'claude', startTime);
     }
   },
 
@@ -480,29 +428,14 @@ export const claudeAdapter: Adapter & {
       // Prompt must come last
       args.push(prompt);
 
-      const { stdout, stderr } = await execa(
-        config.adapters.claude.path,
-        args,
-        {
-          timeout: config.timeout,
-          cancelSignal: options?.signal,
-          reject: false,
-          stdin: 'ignore',
-          stdout: 'pipe',
-          stderr: 'pipe'
-        }
-      );
+      const result = await executeCli('claude', config.adapters.claude.path, args, {
+        ...options,
+        timeout: config.timeout
+      });
 
-      const modelName = model ? `claude/${model}` : 'claude';
-
-      if (stderr && !stdout) {
+      if (result.stderr && !result.stdout) {
         return {
-          response: {
-            content: '',
-            model: modelName,
-            duration: Date.now() - startTime,
-            error: stderr
-          },
+          response: wrapCliResult(result),
           proposedEdits: [],
           resultEvent: null
         };
@@ -515,10 +448,10 @@ export const claudeAdapter: Adapter & {
         parser.onEvent(options.onToolEvent);
       }
 
-      parser.parseAll(stdout);
+      parser.parseAll(result.stdout);
 
       const resultEvent = parser.getResult();
-      const result: ResultEvent = resultEvent ?? {
+      const evt: ResultEvent = resultEvent ?? {
         type: 'result',
         subtype: 'success',
         result: '',
@@ -526,32 +459,20 @@ export const claudeAdapter: Adapter & {
       };
 
       // Extract proposed edits from permission denials
-      const proposedEdits = extractProposedEdits(result);
+      const proposedEdits = extractProposedEdits(evt);
 
       return {
-        response: {
-          content: result.result,
-          model: modelName,
-          duration: Date.now() - startTime,
-          tokens: result.usage ? {
-            input: result.usage.input_tokens,
-            output: result.usage.output_tokens
-          } : undefined,
-          error: result.isError ? result.result : undefined
-        },
+        response: wrapCliResult(result, evt.result, evt.usage ? {
+          input: evt.usage.input_tokens,
+          output: evt.usage.output_tokens
+        } : undefined, evt.isError ? evt.result : undefined),
         proposedEdits,
-        resultEvent
+        resultEvent: evt
       };
     } catch (err: unknown) {
-      const error = err as Error;
       const modelName = model ? `claude/${model}` : 'claude';
       return {
-        response: {
-          content: '',
-          model: modelName,
-          duration: Date.now() - startTime,
-          error: error.message
-        },
+        response: wrapError(err, modelName, startTime),
         proposedEdits: [],
         resultEvent: null
       };
@@ -649,28 +570,13 @@ export const claudeAdapter: Adapter & {
       outputFormat: 'stream-json',
     });
 
-    const { stdout, stderr } = await execa(
-      config.adapters.claude.path,
-      args,
-      {
-        timeout: options?.timeout ?? config.timeout,
-        cancelSignal: options?.signal,
-        reject: false,
-        stdin: 'ignore',
-        stdout: 'pipe',
-        stderr: 'pipe'
-      }
-    );
+    const result = await executeCli('claude', config.adapters.claude.path, args, {
+      ...options,
+      timeout: options?.timeout ?? config.timeout
+    });
 
-    const modelName = model ? `claude/${model}` : 'claude';
-
-    if (stderr && !stdout) {
-      return {
-        content: '',
-        model: modelName,
-        duration: Date.now() - startTime,
-        error: stderr
-      };
+    if (result.stderr && !result.stdout) {
+      return wrapCliResult(result);
     }
 
     // Parse stream-json response
@@ -678,26 +584,20 @@ export const claudeAdapter: Adapter & {
     if (options?.onToolEvent) {
       parser.onEvent(options.onToolEvent);
     }
-    parser.parseAll(stdout);
+    parser.parseAll(result.stdout);
 
     const resultEvent = parser.getResult();
-    const result: ResultEvent = resultEvent ?? {
+    const evt: ResultEvent = resultEvent ?? {
       type: 'result',
       subtype: 'success',
       result: '',
       isError: false
     };
 
-    return {
-      content: result.result,
-      model: modelName,
-      duration: Date.now() - startTime,
-      tokens: result.usage ? {
-        input: result.usage.input_tokens,
-        output: result.usage.output_tokens
-      } : undefined,
-      error: result.isError ? result.result : undefined
-    };
+    return wrapCliResult(result, evt.result, evt.usage ? {
+      input: evt.usage.input_tokens,
+      output: evt.usage.output_tokens
+    } : undefined, evt.isError ? evt.result : undefined);
   },
 
   /**
@@ -728,54 +628,33 @@ export const claudeAdapter: Adapter & {
       outputFormat: 'stream-json',
     });
 
-    const { stdout, stderr } = await execa(
-      config.adapters.claude.path,
-      args,
-      {
-        timeout: config.timeout,
-        cancelSignal: options?.signal,
-        reject: false,
-        stdin: 'ignore',
-        stdout: 'pipe',
-        stderr: 'pipe'
-      }
-    );
+    const result = await executeCli('claude', config.adapters.claude.path, args, {
+      ...options,
+      timeout: config.timeout
+    });
 
-    const modelName = model ? `claude/${model}` : 'claude';
-
-    if (stderr && !stdout) {
-      return {
-        content: '',
-        model: modelName,
-        duration: Date.now() - startTime,
-        error: stderr
-      };
+    if (result.stderr && !result.stdout) {
+      return wrapCliResult(result);
     }
 
     const parser = new StreamParser();
     if (options?.onToolEvent) {
       parser.onEvent(options.onToolEvent);
     }
-    parser.parseAll(stdout);
+    parser.parseAll(result.stdout);
 
     const resultEvent = parser.getResult();
-    const result: ResultEvent = resultEvent ?? {
+    const evt: ResultEvent = resultEvent ?? {
       type: 'result',
       subtype: 'success',
       result: '',
       isError: false
     };
 
-    return {
-      content: result.result,
-      model: modelName,
-      duration: Date.now() - startTime,
-      tokens: result.usage ? {
-        input: result.usage.input_tokens,
-        output: result.usage.output_tokens
-      } : undefined,
-      error: result.isError ? result.result : undefined
-    };
+    return wrapCliResult(result, evt.result, evt.usage ? {
+      input: evt.usage.input_tokens,
+      output: evt.usage.output_tokens
+    } : undefined, evt.isError ? evt.result : undefined);
   },
 
   /**

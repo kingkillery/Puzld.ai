@@ -10,14 +10,8 @@
  */
 
 import type { AgentName, ExecutionPlan, PlanStep } from './types';
-
-function generatePlanId(mode: string): string {
-  return `${mode}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function generateStepId(phase: string, index: number = 0): string {
-  return `${phase}_${index}`;
-}
+import { PROJECT_CONTEXT_PROMPT } from './prompt-utils';
+import { generatePlanId, generateStepId } from './utils';
 
 // ============================================================================
 // POETIQ MODE - Verification-First Solver

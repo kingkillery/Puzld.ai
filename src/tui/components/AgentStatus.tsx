@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
+import { formatDuration, formatTokens } from '../../lib/formatters';
+import { COLORS, SYMBOLS } from '../theme';
 
 export type AgentPhase = 'thinking' | 'tool_pending' | 'tool_running' | 'analyzing' | 'writing';
 
@@ -15,41 +17,23 @@ interface AgentStatusProps {
   status?: string;
 }
 
-// Animated spinner frames
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-const SPINNER_INTERVAL = 80; // ms per frame
-
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-}
-
-function formatTokens(tokens: number): string {
-  if (tokens >= 1000) {
-    return `${(tokens / 1000).toFixed(1)}k`;
-  }
-  return String(tokens);
-}
+// ms per frame
+const SPINNER_INTERVAL = 80;
 
 function getPhaseDisplay(phase: AgentPhase): { text: string; color: string } {
   switch (phase) {
     case 'thinking':
-      return { text: 'thinking...', color: 'cyan' };
+      return { text: 'thinking...', color: COLORS.info };
     case 'tool_pending':
-      return { text: 'awaiting permission', color: 'yellow' };
+      return { text: 'awaiting permission', color: COLORS.warning };
     case 'tool_running':
-      return { text: 'executing tool', color: 'green' };
+      return { text: 'executing tool', color: COLORS.success };
     case 'analyzing':
-      return { text: 'analyzing results', color: 'magenta' };
+      return { text: 'analyzing results', color: COLORS.accent };
     case 'writing':
-      return { text: 'writing response', color: 'blue' };
+      return { text: 'writing response', color: COLORS.primary };
     default:
-      return { text: 'working...', color: 'gray' };
+      return { text: 'working...', color: COLORS.muted };
   }
 }
 
@@ -89,7 +73,7 @@ export function AgentStatus({
     }
 
     const interval = setInterval(() => {
-      setSpinnerFrame(f => (f + 1) % SPINNER_FRAMES.length);
+      setSpinnerFrame(f => (f + 1) % SYMBOLS.spinner.length);
     }, SPINNER_INTERVAL);
 
     return () => clearInterval(interval);
@@ -110,7 +94,7 @@ export function AgentStatus({
 
   if (!isLoading) return null;
 
-  const spinner = SPINNER_FRAMES[spinnerFrame];
+  const spinner = SYMBOLS.spinner[spinnerFrame];
   const phaseInfo = getPhaseDisplay(phase);
 
   // Calculate pulse intensity (0.5 to 1.0)
@@ -119,8 +103,8 @@ export function AgentStatus({
   return (
     <Box marginTop={1} flexDirection="column">
       <Box>
-        <Text color="magenta">{spinner} </Text>
-        <Text color="magenta" bold>{agentName}</Text>
+        <Text color={COLORS.accent}>{spinner} </Text>
+        <Text color={COLORS.accent} bold>{agentName}</Text>
         {iteration > 1 && (
           <Text dimColor> (iter {iteration})</Text>
         )}
@@ -143,17 +127,17 @@ export function AgentStatus({
       </Box>
       <Box marginLeft={2}>
         <Text dimColor>⏱ </Text>
-        <Text color="yellow">{formatDuration(elapsed)}</Text>
+        <Text color={COLORS.warning}>{formatDuration(elapsed)}</Text>
         {toolCount > 0 && (
           <>
             <Text dimColor> · </Text>
-            <Text color="green">🔧 {toolCount} tool{toolCount !== 1 ? 's' : ''}</Text>
+            <Text color={COLORS.success}>🔧 {toolCount} tool{toolCount !== 1 ? 's' : ''}</Text>
           </>
         )}
         {tokens !== undefined && tokens > 0 && (
           <>
             <Text dimColor> · </Text>
-            <Text color="cyan">↓ {formatTokens(tokens)} tokens</Text>
+            <Text color={COLORS.info}>↓ {formatTokens(tokens)} tokens</Text>
           </>
         )}
         <Text dimColor> · </Text>

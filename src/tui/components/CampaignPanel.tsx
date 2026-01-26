@@ -3,15 +3,8 @@ import { Box, Text, useInput } from 'ink';
 import type { CampaignState, CampaignTask } from '../../orchestrator/campaign/campaign-state.js';
 import type { DriftDetectionResult } from '../../orchestrator/campaign/campaign-types.js';
 import { DomainProgress, DomainSummary } from './DomainProgress.js';
-
-const COLORS = {
-  primary: '#8CA9FF',
-  success: 'green',
-  warning: 'yellow',
-  error: 'red',
-  muted: 'gray',
-  info: 'cyan'
-};
+import { useListNavigation } from '../hooks/useListNavigation';
+import { COLORS } from '../theme';
 
 interface CampaignPanelProps {
   state: CampaignState;
@@ -179,7 +172,6 @@ type ViewMode = 'overview' | 'tasks' | 'domains' | 'drift';
 
 export function CampaignPanel({ state, driftResult, onRefresh, onBack }: CampaignPanelProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
-  const [selectedTask, setSelectedTask] = useState(0);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [, setTick] = useState(0);
 
@@ -188,6 +180,22 @@ export function CampaignPanel({ state, driftResult, onRefresh, onBack }: Campaig
     ? Math.round((counts.completed / state.tasks.length) * 100)
     : 0;
 
+  const maxVisibleTasks = 10;
+
+  const { selectedIndex: selectedTask } = useListNavigation({
+    items: state.tasks,
+    enabled: viewMode === 'tasks'
+  });
+
+  // Handle scrolling when selection changes
+  useEffect(() => {
+    if (selectedTask < scrollOffset) {
+      setScrollOffset(selectedTask);
+    } else if (selectedTask >= scrollOffset + maxVisibleTasks) {
+      setScrollOffset(selectedTask - maxVisibleTasks + 1);
+    }
+  }, [selectedTask, scrollOffset]);
+
   // Auto-refresh timer indicator
   useEffect(() => {
     const interval = setInterval(() => {
@@ -195,28 +203,6 @@ export function CampaignPanel({ state, driftResult, onRefresh, onBack }: Campaig
     }, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  const maxVisibleTasks = 10;
-
-  const scrollTasks = useCallback((direction: 'up' | 'down') => {
-    if (direction === 'up') {
-      setSelectedTask(prev => {
-        const newIdx = Math.max(0, prev - 1);
-        if (newIdx < scrollOffset) {
-          setScrollOffset(Math.max(0, scrollOffset - 1));
-        }
-        return newIdx;
-      });
-    } else {
-      setSelectedTask(prev => {
-        const newIdx = Math.min(state.tasks.length - 1, prev + 1);
-        if (newIdx >= scrollOffset + maxVisibleTasks) {
-          setScrollOffset(Math.min(state.tasks.length - maxVisibleTasks, scrollOffset + 1));
-        }
-        return newIdx;
-      });
-    }
-  }, [scrollOffset, state.tasks.length]);
 
   useInput((input, key) => {
     if (key.escape) {
@@ -235,16 +221,12 @@ export function CampaignPanel({ state, driftResult, onRefresh, onBack }: Campaig
       setViewMode('drift');
     } else if (input === 'o') {
       setViewMode('overview');
-    } else if (key.upArrow && viewMode === 'tasks') {
-      scrollTasks('up');
-    } else if (key.downArrow && viewMode === 'tasks') {
-      scrollTasks('down');
     }
   });
 
   return (
     <Box flexDirection="column">
-      <Box borderStyle="round" borderColor={COLORS.muted} flexDirection="column" paddingX={2} paddingY={1}>
+      <Box borderStyle="single" borderColor={COLORS.muted} flexDirection="column" paddingX={2} paddingY={1}>
         {/* Header */}
         <Box>
           <Text bold color={COLORS.primary}>Campaign: </Text>

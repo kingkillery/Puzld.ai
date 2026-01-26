@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { COLORS } from '../theme';
 
-// Colors
-const BORDER_COLOR = '#fc8657';
-const AGENT_COLOR = '#06ba9e';
+const BORDER_COLOR = COLORS.accent;
+const AGENT_COLOR = COLORS.agent;
 
 export interface CollaborationStep {
   agent: string;
@@ -291,8 +291,8 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
         <Box
           key={i}
           flexDirection="column"
-          borderStyle="round"
-          borderColor={isError ? 'red' : 'gray'}
+          borderStyle="single"
+          borderColor={isError ? COLORS.error : COLORS.border.default}
           flexGrow={1}
           flexBasis={0}
           minWidth={25}
@@ -302,12 +302,12 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
           <Box paddingX={1}>
             <Text bold color={AGENT_COLOR}>{step.agent}</Text>
             <Text color={AGENT_COLOR} dimColor> [{getRoleDisplay(step)}]</Text>
-            {isError && <Text color="red"> ✗</Text>}
+            {isError && <Text color={COLORS.error}> ✗</Text>}
           </Box>
 
           {/* Content */}
           <Box paddingX={1} paddingY={1}>
-            <Text color={isError ? 'red' : 'gray'} wrap="wrap">
+            <Text color={isError ? COLORS.error : COLORS.muted} wrap="wrap">
               {text}
             </Text>
             {truncated && (
@@ -320,7 +320,7 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
 
     return (
       <Box flexDirection="column" width="100%">
-        <Text color={BORDER_COLOR}>─── <Text bold>{getTitle(type, pipelineName).title}</Text> <Text color="gray">[completed]</Text> ───</Text>
+        <Text color={BORDER_COLOR}>─── <Text bold>{getTitle(type, pipelineName).title}</Text> <Text color={COLORS.muted}>[completed]</Text> ───</Text>
         <Box height={1} />
         {rows.map((row, rowIndex) => (
           <Box key={rowIndex} flexDirection="row" width="100%" marginBottom={rowIndex < rows.length - 1 ? 1 : 0}>
@@ -329,7 +329,7 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
         ))}
         <Box marginTop={1}>
           <Text dimColor>Press </Text>
-          <Text color="#fc8657">Ctrl+E</Text>
+          <Text color={COLORS.accent}>Ctrl+E</Text>
           <Text dimColor> to expand this {type} result</Text>
         </Box>
       </Box>
@@ -358,8 +358,8 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
         <Box
           key={globalIndex}
           flexDirection="column"
-          borderStyle="round"
-          borderColor={isError ? 'red' : isLoading ? 'yellow' : isHighlighted ? BORDER_COLOR : 'white'}
+          borderStyle="single"
+          borderColor={isError ? COLORS.error : isLoading ? COLORS.warning : isHighlighted ? BORDER_COLOR : COLORS.border.default}
           flexGrow={1}
           flexBasis={0}
           minWidth={30}
@@ -369,14 +369,14 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
           <Box paddingX={1} flexDirection="column">
             <Text bold color={AGENT_COLOR}>{step.agent}</Text>
             <Text color={AGENT_COLOR}>{getRoleDisplay(step)}</Text>
-            {isError && <Text color="red">[FAILED]</Text>}
+            {isError && <Text color={COLORS.error}>[FAILED]</Text>}
           </Box>
 
           {/* Content */}
           <Box paddingX={1} paddingY={1} flexDirection="column">
             {!isLoading && (
               <>
-                <Text color={isError ? 'red' : undefined} wrap="wrap">
+                <Text color={isError ? COLORS.error : undefined} wrap="wrap">
                   {text}
                 </Text>
                 {truncated && (
@@ -388,11 +388,11 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
 
           {/* Divider + Footer */}
           <Box flexDirection="column">
-            <Text color={isHighlighted ? BORDER_COLOR : 'white'}>{'─'.repeat(25)}</Text>
+            <Text color={isHighlighted ? BORDER_COLOR : COLORS.border.default}>{'─'.repeat(25)}</Text>
             <Box paddingX={1}>
-              <Text color={isLoading ? 'yellow' : 'green'}>●</Text>
+              <Text color={isLoading ? COLORS.warning : COLORS.success}>●</Text>
               {isLoading ? (
-                <Text color="yellow"> running...</Text>
+                <Text color={COLORS.warning}> running...</Text>
               ) : (
                 <Text dimColor> {step.duration ? (step.duration / 1000).toFixed(1) + 's' : '-'}</Text>
               )}
@@ -404,7 +404,7 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
 
     return (
       <Box flexDirection="column" width="100%">
-        <Text bold color={BORDER_COLOR}>─── {getTitle(type, pipelineName).title} <Text color="yellow">[{getTitle(type, pipelineName).mode}]</Text> ───</Text>
+        <Text bold color={BORDER_COLOR}>─── {getTitle(type, pipelineName).title} <Text color={COLORS.warning}>[{getTitle(type, pipelineName).mode}]</Text> ───</Text>
         <Box height={1} />
         {rows.map((row, rowIndex) => {
           const startIndex = rowIndex * maxPerRow;
@@ -432,7 +432,7 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
     const step = steps[expandedIndex];
     const isError = !!step.error;
     const isLoading = !!step.loading;
-    const borderColor = isError ? 'red' : isLoading ? 'yellow' : BORDER_COLOR;
+    const borderColor = isError ? COLORS.error : isLoading ? COLORS.warning : BORDER_COLOR;
 
     const termWidth = process.stdout.columns || 80;
     const statusText = isError ? ' [FAILED]' : isLoading ? ' [loading...]' : '';
@@ -441,24 +441,24 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
 
     return (
       <Box flexDirection="column">
-        <Text bold color={BORDER_COLOR}>─── {getTitle(type, pipelineName).title} <Text color="yellow">[{getTitle(type, pipelineName).mode}]</Text> ───</Text>
+        <Text bold color={BORDER_COLOR}>─── {getTitle(type, pipelineName).title} <Text color={COLORS.warning}>[{getTitle(type, pipelineName).mode}]</Text> ───</Text>
         <Box height={1} />
         {/* Header divider */}
         <Text color={borderColor}>
           ── <Text bold color={AGENT_COLOR}>{step.agent}</Text>
           <Text color={AGENT_COLOR}> [{getRoleDisplay(step)}]</Text>
           <Text dimColor> [expanded]</Text>
-          {isError && <Text color="red"> [FAILED]</Text>}
-          {isLoading && <Text color="yellow"> [loading...]</Text>}
+          {isError && <Text color={COLORS.error}> [FAILED]</Text>}
+          {isLoading && <Text color={COLORS.warning}> [loading...]</Text>}
           {' '}{'─'.repeat(headerDashes)}
         </Text>
 
         {/* Full content */}
         <Box paddingY={1}>
           {isLoading ? (
-            <Text color="yellow">● thinking...</Text>
+            <Text color={COLORS.warning}>● thinking...</Text>
           ) : (
-            <Text color={isError ? 'red' : undefined} wrap="wrap">
+            <Text color={isError ? COLORS.error : undefined} wrap="wrap">
               {step.content || (step.error ? formatError(step.error) : 'No response')}
             </Text>
           )}
@@ -466,7 +466,7 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
 
         {/* Footer */}
         <Text color={borderColor}>
-          <Text color={isLoading ? 'yellow' : 'green'}>●</Text>
+          <Text color={isLoading ? COLORS.warning : 'green'}>●</Text>
           <Text dimColor> {step.duration ? (step.duration / 1000).toFixed(1) + 's' : '-'}</Text>
           <Text dimColor> │ {expandedIndex + 1}/{steps.length} │ ←/→ switch │ Tab = all │ Esc = back</Text>
         </Text>
@@ -492,12 +492,12 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
 
   return (
     <Box flexDirection="column">
-      <Text bold color={BORDER_COLOR}>─── {getTitle(type, pipelineName).title} <Text color="yellow">[{getTitle(type, pipelineName).mode}]</Text> ───</Text>
+      <Text bold color={BORDER_COLOR}>─── {getTitle(type, pipelineName).title} <Text color={COLORS.warning}>[{getTitle(type, pipelineName).mode}]</Text> ───</Text>
       <Box height={1} />
       {steps.map((step, i) => {
         const isError = !!step.error;
         const isLoading = !!step.loading;
-        const borderColor = isError ? 'red' : isLoading ? 'yellow' : BORDER_COLOR;
+        const borderColor = isError ? COLORS.error : isLoading ? COLORS.warning : BORDER_COLOR;
         const durationText = step.duration ? (step.duration / 1000).toFixed(1) + 's' : '-';
 
         return (
@@ -506,17 +506,17 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
             <Text color={borderColor}>
               {'─'.repeat(2)} <Text bold color={AGENT_COLOR}>{step.agent}</Text>
               <Text color={AGENT_COLOR}> [{getRoleDisplay(step)}]</Text>
-              {isError && <Text color="red"> [FAILED]</Text>}
-              {isLoading && <Text color="yellow"> [loading...]</Text>}
+              {isError && <Text color={COLORS.error}> [FAILED]</Text>}
+              {isLoading && <Text color={COLORS.warning}> [loading...]</Text>}
             </Text>
             <Text color={borderColor}>{'─'.repeat(lineLength)}</Text>
 
             {/* Content */}
             <Box paddingY={1}>
               {isLoading ? (
-                <Text color="yellow">● thinking...</Text>
+                <Text color={COLORS.warning}>● thinking...</Text>
               ) : (
-                <Text color={isError ? 'red' : undefined} wrap="wrap">
+                <Text color={isError ? COLORS.error : undefined} wrap="wrap">
                   {step.content || (step.error ? formatError(step.error) : 'No response')}
                 </Text>
               )}
@@ -524,7 +524,7 @@ export function CollaborationView({ type, steps, onExit, onAction, interactive =
 
             {/* Footer divider */}
             <Text color={borderColor}>
-              <Text color={isLoading ? 'yellow' : 'green'}>●</Text>
+              <Text color={isLoading ? COLORS.warning : 'green'}>●</Text>
               <Text dimColor> {durationText}</Text>
             </Text>
             <Text color={borderColor}>{'─'.repeat(lineLength)}</Text>

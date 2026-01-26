@@ -11,7 +11,7 @@
  * Workflow: REASON → DISCOVER → ATTACK → FORTIFY → EXECUTE
  */
 
-import { buildPKPoetPlan } from '../../executor/plan-builders';
+import { buildPKPoetPlan } from '../../executor/pk-poet-builder';
 import { execute } from '../../executor/executor';
 import type { AgentName, PKPoetOptions, ExecutorConfig, PlanStep, StepResult } from '../../executor/types';
 import { adapters } from '../../adapters';

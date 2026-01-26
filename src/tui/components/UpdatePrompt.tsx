@@ -1,4 +1,5 @@
 import { Box, Text, useInput } from 'ink';
+import { COLORS } from '../theme';
 
 interface UpdatePromptProps {
   currentVersion: string;
@@ -20,23 +21,23 @@ export function UpdatePrompt({ currentVersion, latestVersion, onUpdate, onSkip }
     <Box flexDirection="column" marginBottom={1}>
       <Box
         flexDirection="column"
-        borderStyle="round"
-        borderColor="cyan"
+        borderStyle="single"
+        borderColor={COLORS.info}
         paddingX={2}
         paddingY={1}
       >
         <Text>
-          <Text color="cyan">⬆</Text>
+          <Text color={COLORS.info}>⬆</Text>
           <Text> Update available: </Text>
-          <Text color="gray">{currentVersion}</Text>
+          <Text color={COLORS.muted}>{currentVersion}</Text>
           <Text> → </Text>
-          <Text color="green" bold>{latestVersion}</Text>
+          <Text color={COLORS.success} bold>{latestVersion}</Text>
         </Text>
         <Text> </Text>
         <Text>
-          <Text color="cyan">[U]</Text>
+          <Text color={COLORS.info}>[U]</Text>
           <Text> Update now   </Text>
-          <Text color="gray">[S]</Text>
+          <Text color={COLORS.muted}>[S]</Text>
           <Text> Skip</Text>
         </Text>
       </Box>

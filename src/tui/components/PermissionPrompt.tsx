@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { PermissionRequest, PermissionDecision } from '../../agentic/tools/permissions';
 import path from 'path';
+import { useListNavigation } from '../hooks/useListNavigation';
+import { COLORS } from '../theme';
 
 interface PermissionPromptProps {
   request: PermissionRequest;
@@ -25,14 +27,7 @@ const TOOL_TITLES: Record<string, string> = {
 };
 
 export function PermissionPrompt({ request, onDecision }: PermissionPromptProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
-  const selectedIndexRef = useRef(selectedIndex);
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    selectedIndexRef.current = selectedIndex;
-  }, [selectedIndex]);
 
   // Check if this is a glob pattern (contains * or ?) vs a file path
   const isPattern = request.path && (request.path.includes('*') || request.path.includes('?'));
@@ -54,25 +49,16 @@ export function PermissionPrompt({ request, onDecision }: PermissionPromptProps)
     { label: 'No', decision: 'deny' },
   );
 
-  useInput((_, key) => {
-    // Ignore input if already processing
-    if (isProcessing) return;
+  const handleDecision = (decision: PermissionDecision) => {
+    setIsProcessing(true);
+    setImmediate(() => onDecision(decision));
+  };
 
-    if (key.upArrow) {
-      setSelectedIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setSelectedIndex(i => Math.min(options.length - 1, i + 1));
-    } else if (key.return) {
-      // Show processing state immediately
-      setIsProcessing(true);
-      // Capture decision NOW, before setImmediate defers execution
-      const idx = selectedIndexRef.current;
-      const decision = options[idx]?.decision ?? 'allow';
-      setImmediate(() => onDecision(decision));
-    } else if (key.escape) {
-      setIsProcessing(true);
-      setImmediate(() => onDecision('cancel'));
-    }
+  const { selectedIndex } = useListNavigation({
+    items: options,
+    enabled: !isProcessing,
+    onSelect: (option) => handleDecision(option.decision),
+    onBack: () => handleDecision('cancel')
   });
 
   // Use tool-specific title if available, fall back to action-based title
@@ -82,14 +68,14 @@ export function PermissionPrompt({ request, onDecision }: PermissionPromptProps)
   // Show compact processing state
   if (isProcessing) {
     return (
-      <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} paddingY={0} marginBottom={1}>
+      <Box flexDirection="column" borderStyle="single" borderColor="gray" paddingX={1} paddingY={0} marginBottom={1}>
         <Text dimColor>{title}: {options[selectedIndex]?.label}... </Text>
       </Box>
     );
   }
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1} paddingY={1} marginBottom={1}>
+    <Box flexDirection="column" borderStyle="single" borderColor="gray" paddingX={1} paddingY={1} marginBottom={1}>
       <Box marginBottom={1}>
         <Text color="yellow" bold>{title}</Text>
       </Box>
@@ -105,7 +91,7 @@ export function PermissionPrompt({ request, onDecision }: PermissionPromptProps)
       <Box flexDirection="column">
         {options.map((option, i) => (
           <Box key={i}>
-            <Text bold={i === selectedIndex} color={i === selectedIndex ? '#8CA9FF' : undefined} dimColor={i !== selectedIndex}>
+            <Text bold={i === selectedIndex} color={i === selectedIndex ? COLORS.highlight : undefined} dimColor={i !== selectedIndex}>
               {i === selectedIndex ? '>' : ' '} {i + 1}. {option.label}
             </Text>
           </Box>

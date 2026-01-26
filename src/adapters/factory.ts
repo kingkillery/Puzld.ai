@@ -1,4 +1,3 @@
-import { execa } from 'execa';
 import {
   SessionState,
   type Adapter,
@@ -13,6 +12,7 @@ import { getConfig } from '../lib/config';
 import { getSessionManager, type ManagedSession } from '../interactive/session-manager';
 import { PromptDetector } from '../interactive/prompt-detector';
 import { detectVersion } from '../interactive/version-detector';
+import { isBinaryAvailable, executeCli, wrapCliResult, wrapError } from './utils';
 
 /**
  * Factory AI (droid) CLI adapter
@@ -102,15 +102,7 @@ export const factoryAdapter: Adapter & {
   async isAvailable(): Promise<boolean> {
     const config = getConfig();
     if (!config.adapters.factory?.enabled) return false;
-
-    try {
-      // Check if droid CLI is available
-      const command = process.platform === 'win32' ? 'where' : 'which';
-      await execa(command, [config.adapters.factory.path || 'droid']);
-      return true;
-    } catch {
-      return false;
-    }
+    return isBinaryAvailable(config.adapters.factory.path || 'droid');
   },
 
   /**
@@ -258,44 +250,15 @@ export const factoryAdapter: Adapter & {
       // Add the prompt
       args.push(prompt);
 
-      const { stdout, stderr } = await execa(
-        config.adapters.factory?.path || 'droid',
-        args,
-        {
-          timeout: config.timeout,
-          cancelSignal: options?.signal,
-          reject: false,
-          stdin: 'ignore'
-        }
-      );
+      const result = await executeCli('factory', config.adapters.factory?.path || 'droid', args, {
+        ...options,
+        timeout: config.timeout
+      });
 
-      const modelName = model ? `factory/${model}` : 'factory/droid';
-
-      if (stderr && !stdout) {
-        return {
-          content: '',
-          model: modelName,
-          duration: Date.now() - startTime,
-          error: stderr
-        };
-      }
-
-      // Factory droid outputs plain text responses
-      return {
-        content: stdout || '',
-        model: modelName,
-        duration: Date.now() - startTime
-      };
+      return wrapCliResult(result);
 
     } catch (err: unknown) {
-      const error = err as Error;
-      const modelName = model ? `factory/${model}` : 'factory/droid';
-      return {
-        content: '',
-        model: modelName,
-        duration: Date.now() - startTime,
-        error: error.message
-      };
+      return wrapError(err, model ? `factory/${model}` : 'factory/droid', startTime);
     }
   }
 };

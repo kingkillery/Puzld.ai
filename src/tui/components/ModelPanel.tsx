@@ -1,8 +1,8 @@
 import { useState, Fragment } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { getModelSuggestions, isModelAlias } from '../../lib/models';
-
-const HIGHLIGHT = '#8CA9FF';
+import { useListNavigation } from '../hooks/useListNavigation';
+import { COLORS } from '../theme';
 
 type AgentTab = 'claude' | 'gemini' | 'codex' | 'ollama' | 'mistral' | 'factory';
 
@@ -40,7 +40,6 @@ export function ModelPanel({
   onSetFactoryModel
 }: ModelPanelProps) {
   const [tab, setTab] = useState<AgentTab>('claude');
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const [warning, setWarning] = useState<string | undefined>();
 
   const tabs: AgentTab[] = ['claude', 'gemini', 'codex', 'ollama', 'mistral', 'factory'];
@@ -82,34 +81,26 @@ export function ModelPanel({
   const models = getModels();
   const currentModel = getCurrentModel();
 
-  // Handle tab cycling and escape
+  const { selectedIndex, reset } = useListNavigation({
+    items: models,
+    onSelect: (selected) => {
+      if (selected && selected !== '(no models available)') {
+        setModel(selected);
+      }
+    },
+    onBack
+  });
+
+  // Handle tab cycling
   useInput((_, key) => {
-    if (key.escape) {
-      onBack();
-      return;
-    }
     if (key.tab) {
       setTab(t => {
         const idx = tabs.indexOf(t);
         const nextTab = tabs[(idx + 1) % tabs.length];
-        setSelectedIndex(0); // Reset selection when changing tabs
+        reset(); // Reset selection when changing tabs
         setWarning(undefined); // Clear warning
         return nextTab;
       });
-    }
-  });
-
-  // Handle model selection
-  useInput((_, key) => {
-    if (key.upArrow) {
-      setSelectedIndex(i => Math.max(0, i - 1));
-    } else if (key.downArrow) {
-      setSelectedIndex(i => Math.min(models.length - 1, i + 1));
-    } else if (key.return) {
-      const selected = models[selectedIndex];
-      if (selected && selected !== '(no models available)') {
-        setModel(selected);
-      }
     }
   });
 
@@ -131,7 +122,7 @@ export function ModelPanel({
         <Text bold>Model Selection: </Text>
         {tabs.map((t, i) => (
           <Fragment key={t}>
-            <Text inverse={tab === t} color={tab === t ? HIGHLIGHT : undefined}>
+            <Text inverse={tab === t} color={tab === t ? COLORS.highlight : undefined}>
               {' '}{getAgentLabel(t)}{' '}
             </Text>
             {i < tabs.length - 1 && <Text> </Text>}
@@ -166,7 +157,7 @@ export function ModelPanel({
                   </Box>
                 )}
                 <Box>
-                  <Text color={isSelected ? HIGHLIGHT : undefined}>
+                  <Text color={isSelected ? COLORS.highlight : undefined}>
                     {isSelected ? '>' : ' '} {model.padEnd(35)}
                   </Text>
                   {isAlias && <Text dimColor> (latest)</Text>}
