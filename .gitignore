@@ -49,3 +49,11 @@ nul
 
 # Temporary verification logs
 tsc*.txt
+
+# Plugin cache (local runtime state)
+.claude/plugins/cache/
+
+# Editor swap files
+*.swp
+*.swo
+*~

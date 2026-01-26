@@ -3016,7 +3016,8 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
   const isFirstMessage = messages.length === 0;
   const { rows: terminalHeight, columns: terminalWidth } = useTerminalSize();
   const hudHeight = 9; // Lines reserved for HUD
-  const isCompact = terminalHeight < 28 || terminalWidth < 100;
+  const isCompact = terminalHeight < 24 || terminalWidth < 85;
+  const contentWidth = Math.max(60, terminalWidth - 4);
   const noColor = Boolean(process.env.NO_COLOR);
   const inputActive = mode === 'chat' && !pendingPermission && !pendingDiffPreview && !pendingBatchPreview && !loading;
   const hasAutocomplete = mode === 'chat' && autocompleteItems.length > 0 && !loading;
@@ -3024,7 +3025,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
   const visibleMessages = useMemo(() => {
     if (mode !== 'chat') return messages;
     if (messages.length === 0) return messages;
-    const width = Math.max(40, terminalWidth - 6);
+    const width = contentWidth;
     const selected: Message[] = [];
     let usedLines = 0;
     for (let i = messages.length - 1; i >= 0; i -= 1) {
@@ -3064,7 +3065,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
     <Box flexDirection="column" height={terminalHeight} paddingX={1}>
       {/* Main Content Area - Flexible height */}
       <Box flexDirection="column" flexGrow={1} overflow="hidden">
-        <Banner version={pkg.version} agents={agentStatus} minimal={isCompact} />
+        <Banner version={pkg.version} agents={agentStatus} minimal={isCompact} width={contentWidth} />
 
         {/* Update Prompt */}
         {
@@ -3846,8 +3847,12 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
         )}
 
         {/* Input & Key Info HUD */}
-        <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-          <Box flexGrow={1}>
+        <Box
+          flexDirection={isCompact ? 'column' : 'row'}
+          {...(!isCompact ? { justifyContent: 'space-between' as const } : {})}
+          alignItems={isCompact ? 'stretch' : 'center'}
+        >
+          <Box flexGrow={1} flexShrink={0}>
             {mode !== 'collaboration' && mode !== 'compare' && !pendingPermission && !loading && (
               <Box
                 borderStyle="single"
@@ -3867,7 +3872,7 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
             )}
           </Box>
 
-          <Box paddingLeft={2}>
+          <Box {...(isCompact ? {} : { paddingLeft: 2 })} flexShrink={1}>
             <StatusBar
               agent={currentAgent}
               messageCount={messages.length}
@@ -3880,6 +3885,8 @@ ${result.finalSummary ? '\nSummary:\n' + result.finalSummary : ''}
               hasAutocomplete={hasAutocomplete}
               inputActive={inputActive}
               noColor={noColor}
+              compact={isCompact}
+              width={contentWidth}
             />
           </Box>
         </Box>

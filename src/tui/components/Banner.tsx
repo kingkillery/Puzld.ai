@@ -62,10 +62,13 @@ const BOX = {
   lt: '\u2560', rt: '\u2563', tt: '\u2566', bt: '\u2569',
 };
 
-// Column widths - wider left, narrower right
-const LEFT_WIDTH = 54;
-const RIGHT_WIDTH = 20;
-const INNER_WIDTH = LEFT_WIDTH + 1 + RIGHT_WIDTH; // +1 for middle separator = 75, total 77 with borders
+// Default column widths (used when no width prop provided)
+const DEFAULT_LEFT_WIDTH = 54;
+const DEFAULT_RIGHT_WIDTH = 20;
+
+// Breakpoints for adaptive layout
+const MIN_FULL_BANNER_WIDTH = 80;
+const SINGLE_COLUMN_MAX_WIDTH = 95;
 
 interface AgentStatus {
   name: string;
@@ -79,6 +82,7 @@ interface ChangelogItem {
 interface BannerProps {
   version?: string;
   minimal?: boolean;
+  width?: number;
   agents?: AgentStatus[];
   changelog?: ChangelogItem[];
 }
@@ -123,8 +127,11 @@ function getLatestChangelog(): ChangelogItem[] {
   }
 }
 
-export function Banner({ version = '0.1.0', minimal = false, agents = [], changelog }: BannerProps) {
-  if (minimal) {
+export function Banner({ version = '0.1.0', minimal = false, width, agents = [], changelog }: BannerProps) {
+  // Auto-switch to minimal mode when terminal is too narrow for the full banner
+  const useMinimal = minimal || (width !== undefined && width < MIN_FULL_BANNER_WIDTH);
+
+  if (useMinimal) {
     return (
       <Box marginBottom={1}>
         <Text bold color={LOGO_PRIMARY}>PK-Puzld</Text>
@@ -132,6 +139,33 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       </Box>
     );
   }
+
+  // Compute column widths from the width prop or fall back to defaults
+  // Layout: ║ LEFT_WIDTH ║ RIGHT_WIDTH ║  => total = LEFT + RIGHT + 3 borders + 2 implicit
+  // The INNER_WIDTH = LEFT + 1 (mid separator) + RIGHT, total chars = INNER_WIDTH + 2 (outer borders)
+  const showRightPanel = width === undefined || width >= SINGLE_COLUMN_MAX_WIDTH;
+
+  let leftWidth: number;
+  let rightWidth: number;
+
+  if (width !== undefined) {
+    if (showRightPanel) {
+      // Two-column mode: total = leftWidth + 1 (mid border) + rightWidth + 2 (outer borders)
+      // So usable = width - 3 (two outer borders + one mid border)
+      const usable = width - 3;
+      leftWidth = Math.floor(usable * 0.72);
+      rightWidth = usable - leftWidth;
+    } else {
+      // Single-column mode: total = leftWidth + 2 (outer borders)
+      leftWidth = width - 2;
+      rightWidth = 0;
+    }
+  } else {
+    leftWidth = DEFAULT_LEFT_WIDTH;
+    rightWidth = DEFAULT_RIGHT_WIDTH;
+  }
+
+  const innerWidth = showRightPanel ? leftWidth + 1 + rightWidth : leftWidth;
 
   // Get changelog items
   const changelogItems = changelog || getLatestChangelogCached();
@@ -143,14 +177,18 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
     : agentOrder.map(name => ({ name, ready: false }));
 
   const versionLine = `v${version} - Multi-LLM Orchestrator`;
-  const versionPadded = center(versionLine, INNER_WIDTH);
+  const versionPadded = center(versionLine, innerWidth);
 
-  // Divider lines
-  const midLine = BOX.lt + BOX.h.repeat(LEFT_WIDTH) + BOX.tt + BOX.h.repeat(RIGHT_WIDTH) + BOX.rt;
-  const botLine = BOX.bl + BOX.h.repeat(LEFT_WIDTH) + BOX.bt + BOX.h.repeat(RIGHT_WIDTH) + BOX.br;
+  // Divider lines adapt to layout mode
+  const midLine = showRightPanel
+    ? BOX.lt + BOX.h.repeat(leftWidth) + BOX.tt + BOX.h.repeat(rightWidth) + BOX.rt
+    : BOX.lt + BOX.h.repeat(leftWidth) + BOX.rt;
+  const botLine = showRightPanel
+    ? BOX.bl + BOX.h.repeat(leftWidth) + BOX.bt + BOX.h.repeat(rightWidth) + BOX.br
+    : BOX.bl + BOX.h.repeat(leftWidth) + BOX.br;
 
   // Floating divider for left panel (1 space gap on each side)
-  const floatingDivider = ' ' + BOX.h.repeat(LEFT_WIDTH - 2) + ' ';
+  const floatingDivider = ' ' + BOX.h.repeat(Math.max(0, leftWidth - 2)) + ' ';
 
   // Quick start commands
   const commands = [
@@ -159,38 +197,60 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
     ' /workflow code-review "code"',
   ];
 
-  // Helper to render a row with left and right content
-  const renderRow = (leftContent: string, rightContent: string, key: string, leftDim?: boolean) => (
+  // Helper to render a full-width single-column row (no right panel)
+  const renderSingleRow = (content: string, key: string, dim?: boolean) => (
     <Box key={key}>
       <Text color={BORDER}>{BOX.v}</Text>
-      {leftDim ? (
-        <Text dimColor>{pad(leftContent, LEFT_WIDTH)}</Text>
+      {dim ? (
+        <Text dimColor>{pad(content, leftWidth)}</Text>
       ) : (
-        <Text>{pad(leftContent, LEFT_WIDTH)}</Text>
+        <Text>{pad(content, leftWidth)}</Text>
       )}
-      <Text color={BORDER}>{BOX.v}</Text>
-      <Text>{pad(rightContent, RIGHT_WIDTH)}</Text>
       <Text color={BORDER}>{BOX.v}</Text>
     </Box>
   );
 
+  // Helper to render a row with left and right content
+  const renderRow = (leftContent: string, rightContent: string, key: string, leftDim?: boolean) => {
+    if (!showRightPanel) {
+      return renderSingleRow(leftContent, key, leftDim);
+    }
+    return (
+      <Box key={key}>
+        <Text color={BORDER}>{BOX.v}</Text>
+        {leftDim ? (
+          <Text dimColor>{pad(leftContent, leftWidth)}</Text>
+        ) : (
+          <Text>{pad(leftContent, leftWidth)}</Text>
+        )}
+        <Text color={BORDER}>{BOX.v}</Text>
+        <Text>{pad(rightContent, rightWidth)}</Text>
+        <Text color={BORDER}>{BOX.v}</Text>
+      </Box>
+    );
+  };
+
   // Helper to render agent status row (centered in right panel)
   const renderAgentRow = (leftContent: string, agent: AgentStatus, leftDim?: boolean) => {
+    if (!showRightPanel) {
+      return renderSingleRow(leftContent, `agent-${agent.name}`, leftDim);
+    }
+
     const bullet = agent.ready ? '●' : '○';
     const statusText = agent.ready ? 'ready' : 'off';
     // Format: " ● name    status " - bullet colored, rest normal, centered
     const nameAndStatus = `${agent.name.padEnd(7)} ${statusText}`;
     const contentLen = 1 + 1 + nameAndStatus.length; // bullet + space + rest
-    const totalPad = RIGHT_WIDTH - contentLen;
+    const totalPad = rightWidth - contentLen;
     const leftPad = Math.floor(totalPad / 2);
     const rightPad = totalPad - leftPad;
 
     return (
       <Box key={`agent-${agent.name}`}>
         <Text color={BORDER}>{BOX.v}</Text>
-        <Text dimColor={leftDim}>{pad(leftContent, LEFT_WIDTH)}</Text>
+        <Text dimColor={leftDim}>{pad(leftContent, leftWidth)}</Text>
         <Text color={BORDER}>{BOX.v}</Text>
-        <Text>{' '.repeat(leftPad)}</Text>
+        <Text>{' '.repeat(Math.max(0, leftPad))}</Text>
         <Text color={agent.ready ? 'green' : GRAY}>{bullet}</Text>
         <Text> {nameAndStatus}</Text>
         <Text>{' '.repeat(Math.max(0, rightPad))}</Text>
@@ -199,6 +259,15 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
     );
   };
 
+  // Determine whether ASCII art fits in the available inner width
+  const bannerArtLines = getBannerLines();
+  const artWidth = bannerArtLines[0]?.length || 0;
+  const useAsciiArt = artWidth <= innerWidth;
+
+  // Top border tag content for length calculation
+  const tagContent = ` PK-Puzld v${version} `;
+  const topRemainder = Math.max(0, innerWidth - 3 - tagContent.length);
+
   return (
     <Box flexDirection="column" marginBottom={1}>
       {/* Top border with version tag */}
@@ -206,44 +275,51 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
         <Text color={BORDER}>{BOX.tl + BOX.h.repeat(3)}</Text>
         <Text color={LOGO_ACCENT}> PK-Puzld</Text>
         <Text dimColor> v{version} </Text>
-        <Text color={BORDER}>{BOX.h.repeat(INNER_WIDTH - 3 - ` PK-Puzld v${version} `.length) + BOX.tr}</Text>
+        <Text color={BORDER}>{BOX.h.repeat(topRemainder) + BOX.tr}</Text>
       </Box>
 
       {/* Empty padding line */}
       <Box>
         <Text color={BORDER}>{BOX.v}</Text>
-        <Text>{' '.repeat(INNER_WIDTH)}</Text>
+        <Text>{' '.repeat(innerWidth)}</Text>
         <Text color={BORDER}>{BOX.v}</Text>
       </Box>
 
-      {/* ASCII Art Logo section using figlet */}
-      {(() => {
-        const lines = getBannerLines();
-        const logoWidth = lines[0]?.length || 0;
-        const logoPadLeft = Math.floor((INNER_WIDTH - logoWidth) / 2);
+      {/* ASCII Art Logo section or text fallback */}
+      {useAsciiArt ? (
+        (() => {
+          const logoWidth = artWidth;
+          const logoPadLeft = Math.floor((innerWidth - logoWidth) / 2);
 
-        return (
-          <>
-            {lines.map((line, index) => (
-              <Box key={`logo-${index}`}>
-                <Text color={BORDER}>{BOX.v}</Text>
-                <Text>{' '.repeat(Math.max(0, logoPadLeft))}</Text>
-                {/* Split line into PK (white) and puzld (red) parts */}
-                {line.includes('  ') ? (
-                  <>
-                    <Text bold color={LOGO_PRIMARY}>{line.split('  ')[0]}</Text>
-                    <Text>{'  '}</Text>
-                    <Text bold color={LOGO_ACCENT}>{line.split('  ')[1]}</Text>
-                  </>
-                ) : (
-                  <Text bold color={LOGO_PRIMARY}>{line}</Text>
-                )}
-                <Text color={BORDER}>{BOX.v}</Text>
-              </Box>
-            ))}
-          </>
-        );
-      })()}
+          return (
+            <>
+              {bannerArtLines.map((line, index) => (
+                <Box key={`logo-${index}`}>
+                  <Text color={BORDER}>{BOX.v}</Text>
+                  <Text>{' '.repeat(Math.max(0, logoPadLeft))}</Text>
+                  {/* Split line into PK (white) and puzld (red) parts */}
+                  {line.includes('  ') ? (
+                    <>
+                      <Text bold color={LOGO_PRIMARY}>{line.split('  ')[0]}</Text>
+                      <Text>{'  '}</Text>
+                      <Text bold color={LOGO_ACCENT}>{line.split('  ')[1]}</Text>
+                    </>
+                  ) : (
+                    <Text bold color={LOGO_PRIMARY}>{line}</Text>
+                  )}
+                  <Text color={BORDER}>{BOX.v}</Text>
+                </Box>
+              ))}
+            </>
+          );
+        })()
+      ) : (
+        <Box>
+          <Text color={BORDER}>{BOX.v}</Text>
+          <Text bold color={LOGO_PRIMARY}>{center('PK-Puzld', innerWidth)}</Text>
+          <Text color={BORDER}>{BOX.v}</Text>
+        </Box>
+      )}
 
       {/* Version line */}
       <Box>
@@ -255,7 +331,7 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       {/* Empty padding line */}
       <Box>
         <Text color={BORDER}>{BOX.v}</Text>
-        <Text>{' '.repeat(INNER_WIDTH)}</Text>
+        <Text>{' '.repeat(innerWidth)}</Text>
         <Text color={BORDER}>{BOX.v}</Text>
       </Box>
 
@@ -263,13 +339,21 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       <Text color={BORDER}>{midLine}</Text>
 
       {/* Panel headers */}
-      <Box>
-        <Text color={BORDER}>{BOX.v}</Text>
-        <Text bold color="white">{pad(' Quick start', LEFT_WIDTH)}</Text>
-        <Text color={BORDER}>{BOX.v}</Text>
-        <Text bold color="white">{center('Status', RIGHT_WIDTH)}</Text>
-        <Text color={BORDER}>{BOX.v}</Text>
-      </Box>
+      {showRightPanel ? (
+        <Box>
+          <Text color={BORDER}>{BOX.v}</Text>
+          <Text bold color="white">{pad(' Quick start', leftWidth)}</Text>
+          <Text color={BORDER}>{BOX.v}</Text>
+          <Text bold color="white">{center('Status', rightWidth)}</Text>
+          <Text color={BORDER}>{BOX.v}</Text>
+        </Box>
+      ) : (
+        <Box>
+          <Text color={BORDER}>{BOX.v}</Text>
+          <Text bold color="white">{pad(' Quick start', leftWidth)}</Text>
+          <Text color={BORDER}>{BOX.v}</Text>
+        </Box>
+      )}
 
       {/* Command 1 + empty right (offsets agents down) */}
       {renderRow(commands[0] || '', '', 'cmd-1', true)}
@@ -283,11 +367,22 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       {/* Floating divider + Agent 3 */}
       {(() => {
         const agent = defaultAgents[2];
+
+        if (!showRightPanel) {
+          return (
+            <Box key={`agent-${agent.name}`}>
+              <Text color={BORDER}>{BOX.v}</Text>
+              <Text color={BORDER}>{floatingDivider}</Text>
+              <Text color={BORDER}>{BOX.v}</Text>
+            </Box>
+          );
+        }
+
         const bullet = agent.ready ? '●' : '○';
         const statusText = agent.ready ? 'ready' : 'off';
         const nameAndStatus = `${agent.name.padEnd(7)} ${statusText}`;
         const contentLen = 1 + 1 + nameAndStatus.length;
-        const totalPad = RIGHT_WIDTH - contentLen;
+        const totalPad = rightWidth - contentLen;
         const leftPadAmt = Math.floor(totalPad / 2);
         const rightPadAmt = totalPad - leftPadAmt;
         return (
@@ -295,7 +390,7 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
             <Text color={BORDER}>{BOX.v}</Text>
             <Text color={BORDER}>{floatingDivider}</Text>
             <Text color={BORDER}>{BOX.v}</Text>
-            <Text>{' '.repeat(leftPadAmt)}</Text>
+            <Text>{' '.repeat(Math.max(0, leftPadAmt))}</Text>
             <Text color={agent.ready ? 'green' : GRAY}>{bullet}</Text>
             <Text> {nameAndStatus}</Text>
             <Text>{' '.repeat(Math.max(0, rightPadAmt))}</Text>
@@ -307,19 +402,30 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       {/* What's new + Agent 4 */}
       {(() => {
         const agent = defaultAgents[3];
+
+        if (!showRightPanel) {
+          return (
+            <Box key="whatsnew-agent4">
+              <Text color={BORDER}>{BOX.v}</Text>
+              <Text bold color="white">{pad(` What's new in v${version}`, leftWidth)}</Text>
+              <Text color={BORDER}>{BOX.v}</Text>
+            </Box>
+          );
+        }
+
         const bullet = agent.ready ? '●' : '○';
         const statusText = agent.ready ? 'ready' : 'off';
         const nameAndStatus = `${agent.name.padEnd(7)} ${statusText}`;
         const contentLen = 1 + 1 + nameAndStatus.length;
-        const totalPad = RIGHT_WIDTH - contentLen;
+        const totalPad = rightWidth - contentLen;
         const leftPadAmt = Math.floor(totalPad / 2);
         const rightPadAmt = totalPad - leftPadAmt;
         return (
           <Box key="whatsnew-agent4">
             <Text color={BORDER}>{BOX.v}</Text>
-            <Text bold color="white">{pad(` What's new in v${version}`, LEFT_WIDTH)}</Text>
+            <Text bold color="white">{pad(` What's new in v${version}`, leftWidth)}</Text>
             <Text color={BORDER}>{BOX.v}</Text>
-            <Text>{' '.repeat(leftPadAmt)}</Text>
+            <Text>{' '.repeat(Math.max(0, leftPadAmt))}</Text>
             <Text color={agent.ready ? 'green' : GRAY}>{bullet}</Text>
             <Text> {nameAndStatus}</Text>
             <Text>{' '.repeat(Math.max(0, rightPadAmt))}</Text>
@@ -331,20 +437,25 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       {/* Changelog item 1 + Agent 5 (mistral) */}
       {(() => {
         const agent = defaultAgents[4];
+        const item = changelogItems[0];
+
+        if (!showRightPanel) {
+          return renderSingleRow('  - ' + (item?.text || ''), 'changelog-0-agent5', true);
+        }
+
         const bullet = agent.ready ? '●' : '○';
         const statusText = agent.ready ? 'ready' : 'off';
         const nameAndStatus = `${agent.name.padEnd(7)} ${statusText}`;
         const contentLen = 1 + 1 + nameAndStatus.length;
-        const totalPad = RIGHT_WIDTH - contentLen;
+        const totalPad = rightWidth - contentLen;
         const leftPadAmt = Math.floor(totalPad / 2);
         const rightPadAmt = totalPad - leftPadAmt;
-        const item = changelogItems[0];
         return (
           <Box key="changelog-0-agent5">
             <Text color={BORDER}>{BOX.v}</Text>
-            <Text dimColor>{pad('  - ' + (item?.text || ''), LEFT_WIDTH)}</Text>
+            <Text dimColor>{pad('  - ' + (item?.text || ''), leftWidth)}</Text>
             <Text color={BORDER}>{BOX.v}</Text>
-            <Text>{' '.repeat(leftPadAmt)}</Text>
+            <Text>{' '.repeat(Math.max(0, leftPadAmt))}</Text>
             <Text color={agent.ready ? 'green' : GRAY}>{bullet}</Text>
             <Text> {nameAndStatus}</Text>
             <Text>{' '.repeat(Math.max(0, rightPadAmt))}</Text>
@@ -354,22 +465,66 @@ export function Banner({ version = '0.1.0', minimal = false, agents = [], change
       })()}
 
       {/* Changelog item 2 (or blank) + Agent 6 (factory) */}
-      {defaultAgents[5] ? renderAgentRow(
-        changelogItems[1] ? '  - ' + changelogItems[1].text : '',
-        defaultAgents[5],
-        true
+      {defaultAgents[5] ? (
+        showRightPanel ? renderAgentRow(
+          changelogItems[1] ? '  - ' + changelogItems[1].text : '',
+          defaultAgents[5],
+          true
+        ) : renderSingleRow(
+          changelogItems[1] ? '  - ' + changelogItems[1].text : '',
+          'agent-factory-single',
+          true
+        )
       ) : null}
 
       {/* Remaining changelog items (from item 3 onward) */}
-      {changelogItems.slice(2).map((item, i) => (
-        <Box key={`changelog-${i + 2}`}>
-          <Text color={BORDER}>{BOX.v}</Text>
-          <Text dimColor>{pad('  - ' + item.text, LEFT_WIDTH)}</Text>
-          <Text color={BORDER}>{BOX.v}</Text>
-          <Text>{' '.repeat(RIGHT_WIDTH)}</Text>
-          <Text color={BORDER}>{BOX.v}</Text>
-        </Box>
-      ))}
+      {changelogItems.slice(2).map((item, i) => {
+        if (!showRightPanel) {
+          return renderSingleRow('  - ' + item.text, `changelog-${i + 2}`, true);
+        }
+        return (
+          <Box key={`changelog-${i + 2}`}>
+            <Text color={BORDER}>{BOX.v}</Text>
+            <Text dimColor>{pad('  - ' + item.text, leftWidth)}</Text>
+            <Text color={BORDER}>{BOX.v}</Text>
+            <Text>{' '.repeat(rightWidth)}</Text>
+            <Text color={BORDER}>{BOX.v}</Text>
+          </Box>
+        );
+      })}
+
+      {/* In single-column mode, show agent status as a compact row after the main content */}
+      {!showRightPanel && (
+        <>
+          {/* Divider before agents */}
+          <Box>
+            <Text color={BORDER}>{BOX.v}</Text>
+            <Text color={BORDER}>{floatingDivider}</Text>
+            <Text color={BORDER}>{BOX.v}</Text>
+          </Box>
+          {/* Agents header */}
+          <Box>
+            <Text color={BORDER}>{BOX.v}</Text>
+            <Text bold color="white">{pad(' Agents', leftWidth)}</Text>
+            <Text color={BORDER}>{BOX.v}</Text>
+          </Box>
+          {/* Agent status rows in single-column */}
+          {defaultAgents.map(agent => {
+            const bullet = agent.ready ? '●' : '○';
+            const statusText = agent.ready ? 'ready' : 'off';
+            const agentLine = ` ${bullet} ${agent.name.padEnd(10)} ${statusText}`;
+            return (
+              <Box key={`single-agent-${agent.name}`}>
+                <Text color={BORDER}>{BOX.v}</Text>
+                <Text>{'  '}</Text>
+                <Text color={agent.ready ? 'green' : GRAY}>{bullet}</Text>
+                <Text>{pad(` ${agent.name.padEnd(10)} ${statusText}`, leftWidth - 3)}</Text>
+                <Text color={BORDER}>{BOX.v}</Text>
+              </Box>
+            );
+          })}
+        </>
+      )}
 
       {/* Bottom border */}
       <Text color={BORDER}>{botLine}</Text>

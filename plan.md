@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-25
 **Status:** In Progress
-**Completion:** 10/13 tasks (Game system); 6/6 tasks (CLI orchestration); 4/4 tasks (Ralph/Poet CLI) ✅; 2/10 tasks (Campaign mode)
+**Completion:** 10/13 tasks (Game system); 6/6 tasks (CLI orchestration); 4/4 tasks (Ralph/Poet CLI) ✅; 10/10 tasks (Campaign mode) ✅
 
 ---
 
@@ -50,16 +50,16 @@ This document tracks the implementation of game mechanics, CLI improvements, cam
 
 #### Development Tasks
 - [x] Add campaign schema validation tests for planner/recovery/conflict outputs
-- [ ] 🔄 Wire campaign defaults across CLI/engine and ensure stateDir overrides
-- [ ] 🔄 Add repo map + git context injection for planner/recovery
+- [x] Wire campaign defaults across CLI/engine and ensure stateDir overrides
+- [x] Add repo map + git context injection for planner/recovery
 - [x] Add SQLite-backed campaign persistence tables (projects/tasks/execution logs)
 - [x] Persist campaign tasks + execution logs during runs
-- [ ] Add unit tests for campaign queue transitions (pending → in_progress → completed/failed/blocked)
-- [ ] Add unit tests for campaign state versioning and optimistic concurrency handling
-- [ ] Add planner/sub-planner parsing tests for JSON extraction and error handling
-- [ ] Add CLI tests for `campaign` options parsing (`--resume`, `--dry-run`, `--checkpoint-every`)
-- [ ] Add integration test for checkpoint + resume flow with persisted `.campaign/campaign.json`
-- [ ] Add regression test for agent resolution (planner subdroid → factory adapter)
+- [x] Add unit tests for campaign queue transitions (pending → in_progress → completed/failed/blocked)
+- [x] Add unit tests for campaign state versioning and optimistic concurrency handling
+- [x] Add planner/sub-planner parsing tests for JSON extraction and error handling
+- [x] Add CLI tests for `campaign` options parsing (`--resume`, `--dry-run`, `--checkpoint-every`)
+- [x] Add integration test for checkpoint + resume flow with persisted `.campaign/campaign.json`
+- [x] Add regression test for agent resolution (planner subdroid → factory adapter)
 
 #### Testing Best Practices (Campaign Mode)
 - Run `npm run typecheck` after each checkpoint before resuming.
@@ -1693,6 +1693,18 @@ Phase 7 (Docs) can run independently after Phase 2
 ---
 
 ## 🔄 Change Log
+
+### 2026-01-25: Campaign mode development tasks completed
+
+- Resumed campaign `campaign_1768980997272` ("improve the campaign mode") from stale running state.
+- Assessed 8 remaining tasks: found T01, T02, T03, T07 already fully implemented in codebase.
+- Parallelized 4 workers for remaining test gaps (T04, T05, T06, T08).
+- T04: Added 10 optimistic concurrency/version tracking tests to `campaign-checkpoint.test.ts` (33 total).
+- T05: Created `campaign-prompts.test.ts` with 20 tests for `extractJsonFromResponse` (markdown, trailing commas, edge cases).
+- T06: Created `src/cli/commands/campaign.test.ts` with 44 tests for option parsing (defaults, overrides, worker splitting).
+- T08: Created `campaign-agent.test.ts` with 31 tests for `parseAgentSpec`, agent name mapping, role resolution.
+- All 291 campaign tests passing, typecheck clean.
+- Campaign mode: 10/10 tasks complete.
 
 ### 2026-01-25: TUI responsiveness + visual cleanup
 

@@ -18,6 +18,8 @@ interface StatusBarProps {
   hasAutocomplete?: boolean;
   inputActive?: boolean;
   noColor?: boolean;
+  width?: number;
+  compact?: boolean;
 }
 
 export const StatusBar = memo(function StatusBar({
@@ -31,7 +33,9 @@ export const StatusBar = memo(function StatusBar({
   mode,
   hasAutocomplete = false,
   inputActive = false,
-  noColor = false
+  noColor = false,
+  width,
+  compact = false
 }: StatusBarProps) {
   // MCP status display
   const getMcpDisplay = () => {
@@ -63,7 +67,12 @@ export const StatusBar = memo(function StatusBar({
     }
   };
 
-  // Keyboard hints based on context
+  // Effective width for hint tier calculation
+  const effectiveWidth = width ?? 120;
+  const isMinimal = effectiveWidth < 80 || compact;
+  const isAbbreviated = !isMinimal && effectiveWidth < 120;
+
+  // Keyboard hints based on context with 3-tier verbosity
   const getKeyHints = () => {
     if (mode && mode !== 'chat') {
       return (
@@ -74,6 +83,16 @@ export const StatusBar = memo(function StatusBar({
       );
     }
     if (isLoading) {
+      if (isMinimal) {
+        return (
+          <Text dimColor>
+            <Text color={noColor ? undefined : COLORS.muted}>esc</Text>
+            <Text dimColor>:back </Text>
+            <Text color={noColor ? undefined : COLORS.muted}>^C</Text>
+            <Text dimColor>:stop</Text>
+          </Text>
+        );
+      }
       return (
         <Text dimColor>
           <Text color={noColor ? undefined : COLORS.muted}>esc</Text>
@@ -85,6 +104,45 @@ export const StatusBar = memo(function StatusBar({
         </Text>
       );
     }
+
+    // Minimal: width < 80 or compact
+    if (isMinimal) {
+      return (
+        <Text dimColor>
+          <Text color={noColor ? undefined : COLORS.muted}>?</Text>
+          <Text dimColor>:help </Text>
+          <Text color={noColor ? undefined : COLORS.muted}>/</Text>
+          <Text dimColor>:cmd</Text>
+        </Text>
+      );
+    }
+
+    // Abbreviated: width >= 80 and < 120
+    if (isAbbreviated) {
+      return (
+        <Text dimColor>
+          <Text color={noColor ? undefined : COLORS.muted}>j/k</Text>
+          <Text dimColor>:hist </Text>
+          <Text color={noColor ? undefined : COLORS.muted}>^R</Text>
+          <Text dimColor>:srch </Text>
+          <Text color={noColor ? undefined : COLORS.muted}>tab</Text>
+          <Text dimColor>:cpl </Text>
+          <Text color={noColor ? undefined : COLORS.muted}>/</Text>
+          <Text dimColor>:cmd </Text>
+          <Text color={noColor ? undefined : COLORS.muted}>?</Text>
+          <Text dimColor>:help</Text>
+          {hasAutocomplete && (
+            <>
+              <Text dimColor> </Text>
+              <Text color={noColor ? undefined : COLORS.muted}>enter</Text>
+              <Text dimColor>:sel</Text>
+            </>
+          )}
+        </Text>
+      );
+    }
+
+    // Full: width >= 120
     return (
       <Text dimColor>
         <Text color={noColor ? undefined : COLORS.muted}>j/k</Text>
@@ -116,10 +174,10 @@ export const StatusBar = memo(function StatusBar({
       borderColor={noColor ? undefined : (inputActive ? COLORS.info : COLORS.border.default)}
       paddingX={1}
       marginTop={1}
-      justifyContent="space-between"
+      width={width}
     >
       {/* Left section: Agent + Session */}
-      <Box>
+      <Box flexShrink={1} overflow="hidden">
         <Text color={noColor ? undefined : COLORS.warning} bold>{agent}</Text>
         {sessionName && (
           <>
@@ -129,25 +187,35 @@ export const StatusBar = memo(function StatusBar({
         )}
       </Box>
 
+      <Text dimColor> │ </Text>
+
       {/* Center section: Stats */}
-      <Box>
-        <Text dimColor>msgs:</Text>
-        <Text>{messageCount}</Text>
-        <Text dimColor> │ </Text>
+      <Box flexShrink={1} overflow="hidden">
+        {!compact && (
+          <>
+            <Text dimColor>msgs:</Text>
+            <Text>{messageCount}</Text>
+            <Text dimColor> │ </Text>
+          </>
+        )}
         <Text dimColor>tok:</Text>
         <Text color={!noColor && tokens > 50000 ? COLORS.warning : undefined}>{formatTokens(tokens)}</Text>
       </Box>
 
+      <Text dimColor> │ </Text>
+
       {/* Mode indicators */}
-      <Box>
+      <Box flexShrink={1} overflow="hidden">
         <Text dimColor>mode:</Text>
         {getApprovalDisplay()}
         <Text dimColor> │ mcp:</Text>
         {getMcpDisplay()}
       </Box>
 
+      <Text dimColor> │ </Text>
+
       {/* Right section: Key hints */}
-      <Box>
+      <Box flexShrink={1} overflow="hidden">
         {getKeyHints()}
         <Text dimColor> │ </Text>
         <Text color={noColor ? undefined : COLORS.muted}>/help</Text>
