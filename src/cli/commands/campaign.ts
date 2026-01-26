@@ -262,15 +262,15 @@ export function campaignCommand(program: Command): void {
     });
 }
 
-async function executeCampaignRun(
+/**
+ * Build CampaignOptions from CLI opts record.
+ * Extracted as a pure function for testability.
+ */
+export function buildCampaignOptions(
   goal: string,
-  opts: Record<string, unknown>,
-  resume: boolean
-): Promise<void> {
-  console.log(pc.bold('\n🚀 Campaign Mode - Hierarchical Long-Running Agents\n'));
-  console.log(pc.dim(`Goal: ${goal.slice(0, 100)}${goal.length > 100 ? '...' : ''}\n`));
-
-  const options: CampaignOptions = {
+  opts: Record<string, unknown>
+): CampaignOptions {
+  return {
     goal,
     stateDir: opts.state as string | undefined,
     planner: opts.planner as string | undefined,
@@ -285,6 +285,17 @@ async function executeCampaignRun(
     useDroid: opts.useDroid !== false,
     dryRun: opts.dryRun === true
   };
+}
+
+async function executeCampaignRun(
+  goal: string,
+  opts: Record<string, unknown>,
+  resume: boolean
+): Promise<void> {
+  console.log(pc.bold('\n🚀 Campaign Mode - Hierarchical Long-Running Agents\n'));
+  console.log(pc.dim(`Goal: ${goal.slice(0, 100)}${goal.length > 100 ? '...' : ''}\n`));
+
+  const options = buildCampaignOptions(goal, opts);
 
   // Show configuration
   console.log(pc.dim('Configuration:'));

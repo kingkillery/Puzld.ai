@@ -1662,13 +1662,13 @@ Create `test-results.md` with:
 | 6A | Test Integration | ⬜ Not Started | Single | Sequential |
 | 6B | Test Lifecycle | ⬜ Not Started | Single | Sequential |
 | 7 | Documentation | ⬜ Not Started | Single | Anytime |
-| 8A | Orchestration Profiles | ? Completed | Single | Define schema + defaults (default: speed) |
-| 8B | Profile Registry | ? Completed | Single | CLI management + loader |
-| 8C | Auto Plan Selection | ? Completed | Single | Profile-driven mode selection |
-| 8D | Plan Preview | ? Completed | Single | Dry-run + profile flag |
-| 8E | Compression + Telemetry | ? Completed | Single | Context compression + routing logs |
-| 8F | Tests + Docs | ? Completed | Single | Coverage + documentation |
-| 9 | Ralph/Poet CLI Orchestration Mastery | â¬œ Not Started | Single | Plan-first loop + harness verification |
+| 8A | Orchestration Profiles | ✅ Completed | Single | Done 2026-01-11 |
+| 8B | Profile Registry | ✅ Completed | Single | Done 2026-01-11 |
+| 8C | Auto Plan Selection | ✅ Completed | Single | Done 2026-01-11 |
+| 8D | Plan Preview | ✅ Completed | Single | Done 2026-01-11 |
+| 8E | Compression + Telemetry | ✅ Completed | Single | Done 2026-01-11 |
+| 8F | Tests + Docs | ✅ Completed | Single | Done 2026-01-11 |
+| 9 | Ralph/Poet CLI Orchestration Mastery | ✅ Completed | Single | Done 2026-01-11 |
 
 **Legend:**
 - ⬜ Not Started

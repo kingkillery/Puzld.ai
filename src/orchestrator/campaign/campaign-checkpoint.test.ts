@@ -19,7 +19,14 @@ import {
   quickCheckpoint,
   type CheckpointConfig
 } from './campaign-checkpoint.js';
-import type { CampaignState, CampaignTask } from './campaign-state.js';
+import type { CampaignTask } from './campaign-state.js';
+import {
+  createInitialState,
+  saveCampaignState,
+  loadCampaignState,
+  type CampaignState,
+  type CampaignStateInit
+} from './campaign-state.js';
 import type { EnhancedCheckpoint } from './campaign-types.js';
 
 // Test helpers
@@ -556,5 +563,200 @@ describe('Quick Checkpoint Functions', () => {
     expect(checkpoint).toBeDefined();
     expect(checkpoint.id).toBeDefined();
     expect(checkpoint.completed_task_ids).toContain('t1');
+  });
+});
+
+// --- State Versioning & Optimistic Concurrency Tests ---
+
+const stateTestDir = resolve(tmpdir(), `campaign-state-test-${Date.now()}`);
+
+function createTestStateInit(): CampaignStateInit {
+  return {
+    campaignId: `test-campaign-${Date.now()}`,
+    goal: 'Test campaign for versioning',
+    planner: 'claude',
+    subPlanner: 'claude',
+    workers: ['claude'],
+    maxWorkers: 1,
+    checkpointEvery: 5,
+    freshStartEvery: 10,
+    autonomy: 'auto',
+    gitMode: 'campaign-branch',
+    mergeStrategy: 'merge',
+    useDroid: false
+  };
+}
+
+describe('State Versioning', () => {
+  beforeEach(async () => {
+    await fs.mkdir(stateTestDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    try {
+      await fs.rm(stateTestDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should create initial state at version 1', () => {
+    const state = createInitialState(createTestStateInit());
+    expect(state.version).toBe(1);
+  });
+
+  it('should increment version on save', async () => {
+    const stateFile = resolve(stateTestDir, 'version-increment.json');
+    const state = createInitialState(createTestStateInit());
+    expect(state.version).toBe(1);
+
+    await saveCampaignState(stateFile, state);
+    expect(state.version).toBe(2);
+
+    await saveCampaignState(stateFile, state);
+    expect(state.version).toBe(3);
+  });
+
+  it('should persist incremented version to disk', async () => {
+    const stateFile = resolve(stateTestDir, 'version-persist.json');
+    const state = createInitialState(createTestStateInit());
+
+    await saveCampaignState(stateFile, state);
+
+    const loaded = await loadCampaignState(stateFile);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.version).toBe(2);
+  });
+
+  it('should track sequential version increments across multiple saves', async () => {
+    const stateFile = resolve(stateTestDir, 'version-sequential.json');
+    const state = createInitialState(createTestStateInit());
+    expect(state.version).toBe(1);
+
+    // Save 5 times and verify each increment
+    for (let i = 1; i <= 5; i++) {
+      await saveCampaignState(stateFile, state);
+      expect(state.version).toBe(i + 1);
+
+      const loaded = await loadCampaignState(stateFile);
+      expect(loaded!.version).toBe(i + 1);
+    }
+  });
+
+  it('should update the updatedAt timestamp on save', async () => {
+    const stateFile = resolve(stateTestDir, 'version-timestamp.json');
+    const state = createInitialState(createTestStateInit());
+    const originalUpdatedAt = state.updatedAt;
+
+    // Small delay to ensure timestamp differs
+    await new Promise(r => setTimeout(r, 10));
+    await saveCampaignState(stateFile, state);
+
+    expect(state.updatedAt).toBeGreaterThan(originalUpdatedAt);
+  });
+});
+
+describe('Optimistic Concurrency Control', () => {
+  beforeEach(async () => {
+    await fs.mkdir(stateTestDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    try {
+      await fs.rm(stateTestDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  it('should save successfully when expectedVersion matches on-disk version', async () => {
+    const stateFile = resolve(stateTestDir, 'occ-match.json');
+    const state = createInitialState(createTestStateInit());
+
+    // First save: no file on disk, no expectedVersion needed
+    await saveCampaignState(stateFile, state);
+    expect(state.version).toBe(2);
+
+    // Second save: expectedVersion matches on-disk version (2)
+    await saveCampaignState(stateFile, state, 2);
+    expect(state.version).toBe(3);
+  });
+
+  it('should throw conflict error when expectedVersion is stale', async () => {
+    const stateFile = resolve(stateTestDir, 'occ-conflict.json');
+    const state = createInitialState(createTestStateInit());
+
+    // Save once: on-disk version becomes 2
+    await saveCampaignState(stateFile, state);
+    expect(state.version).toBe(2);
+
+    // Save again: on-disk version becomes 3
+    await saveCampaignState(stateFile, state);
+    expect(state.version).toBe(3);
+
+    // Try to save with stale expectedVersion=2 (on-disk is now 3)
+    const staleState = createInitialState(createTestStateInit());
+    let conflictError: Error | null = null;
+    try {
+      await saveCampaignState(stateFile, staleState, 2);
+    } catch (err) {
+      conflictError = err as Error;
+    }
+
+    expect(conflictError).not.toBeNull();
+    expect(conflictError!.message).toContain('version conflict');
+    expect(conflictError!.message).toContain('expected 2');
+    expect(conflictError!.message).toContain('got 3');
+  });
+
+  it('should not throw when expectedVersion is undefined (no concurrency check)', async () => {
+    const stateFile = resolve(stateTestDir, 'occ-no-check.json');
+    const state = createInitialState(createTestStateInit());
+
+    // Save multiple times without expectedVersion - should never throw
+    await saveCampaignState(stateFile, state);
+    await saveCampaignState(stateFile, state);
+    await saveCampaignState(stateFile, state);
+
+    expect(state.version).toBe(4);
+  });
+
+  it('should succeed when no file exists on disk even with expectedVersion', async () => {
+    const stateFile = resolve(stateTestDir, 'occ-no-file.json');
+    const state = createInitialState(createTestStateInit());
+
+    // No file on disk, expectedVersion provided but loadCampaignState returns null
+    // so the conflict check is skipped (current is null)
+    await saveCampaignState(stateFile, state, 1);
+    expect(state.version).toBe(2);
+  });
+
+  it('should simulate concurrent writers with conflict detection', async () => {
+    const stateFile = resolve(stateTestDir, 'occ-concurrent.json');
+
+    // Writer A creates and saves initial state
+    const writerA = createInitialState(createTestStateInit());
+    await saveCampaignState(stateFile, writerA);
+    // On-disk version is now 2, writerA.version is 2
+
+    // Writer B loads the state (sees version 2)
+    const writerB = await loadCampaignState(stateFile);
+    expect(writerB).not.toBeNull();
+    const writerBVersion = writerB!.version; // 2
+
+    // Writer A saves again (on-disk becomes 3)
+    await saveCampaignState(stateFile, writerA);
+    expect(writerA.version).toBe(3);
+
+    // Writer B tries to save with its stale expectedVersion=2
+    let conflictError: Error | null = null;
+    try {
+      await saveCampaignState(stateFile, writerB!, writerBVersion);
+    } catch (err) {
+      conflictError = err as Error;
+    }
+
+    expect(conflictError).not.toBeNull();
+    expect(conflictError!.message).toContain('version conflict');
   });
 });
