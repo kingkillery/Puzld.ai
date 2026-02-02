@@ -244,12 +244,20 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
   });
 
   // Health check
-  fastify.get('/health', async () => {
+  fastify.get('/health', {
+    schema: {
+      response: { 200: healthResponseSchema }
+    }
+  }, async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
   });
 
   // List agents
-  fastify.get('/agents', async () => {
+  fastify.get('/agents', {
+    schema: {
+      response: { 200: agentsResponseSchema }
+    }
+  }, async () => {
     const available = await getAvailableAdaptersFn();
     return {
       agents: Object.keys(adapters),
@@ -258,12 +266,16 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
   });
 
   // Submit task
-  fastify.post<{ Body: { prompt: string; agent?: string } }>('/task', async (request, reply) => {
-    const { prompt, agent } = request.body || {};
-
-    if (!prompt) {
-      return reply.status(400).send({ error: 'prompt is required' });
+  fastify.post<{ Body: { prompt: string; agent?: string } }>('/task', {
+    schema: {
+      body: taskSubmissionSchema,
+      response: {
+        200: taskResponseSchema,
+        400: errorResponseSchema
+      }
     }
+  }, async (request, reply) => {
+    const { prompt, agent } = request.body;
 
     const id = generateId();
     const now = Date.now();
@@ -362,7 +374,21 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
   });
 
   // Get task status
-  fastify.get<{ Params: { id: string } }>('/task/:id', async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>('/task/:id', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', minLength: 1 }
+        }
+      },
+      response: {
+        200: taskStatusResponseSchema,
+        404: errorResponseSchema
+      }
+    }
+  }, async (request, reply) => {
     const { id } = request.params;
 
     // Try cache first
@@ -390,7 +416,17 @@ export async function createServer(options: CreateServerOptions = {}): Promise<R
   });
 
   // SSE stream for task
-  fastify.get<{ Params: { id: string } }>('/task/:id/stream', async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>('/task/:id/stream', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', minLength: 1 }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const { id } = request.params;
 
     let task = await taskCache.get(id);

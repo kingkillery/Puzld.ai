@@ -1,12 +1,11 @@
 /**
  * MCP Bridge Server
  *
- * Local Hono server that receives intents from MCP and executes them.
+ * Local Fastify server that receives intents from MCP and executes them.
  * Runs on localhost:9234 (configurable).
  */
 
-import { Hono } from 'hono';
-import { serve } from '@hono/node-server';
+import Fastify, { type FastifyInstance } from 'fastify';
 import { getConfig, loadConfig } from '../lib/config';
 import { adapters } from '../adapters';
 import { runAgentLoop } from '../agentic/agent-loop';
@@ -87,12 +86,12 @@ function getMachineId(): string {
   return machineId;
 }
 
-// Create Hono app
-export function createBridgeApp(): Hono {
-  const app = new Hono();
+// Create Fastify app
+export function createBridgeApp(): FastifyInstance {
+  const app = Fastify({ logger: false });
 
   // Health check
-  app.get('/mcp/health', async (c) => {
+  app.get('/mcp/health', async () => {
     const startTime = bridgeState.registeredAt || new Date();
     const uptime = Math.floor((Date.now() - startTime.getTime()) / 1000);
 
@@ -110,11 +109,11 @@ export function createBridgeApp(): Hono {
       agents: agentStatus
     };
 
-    return c.json(response);
+    return response;
   });
 
   // Capabilities
-  app.get('/mcp/capabilities', async (c) => {
+  app.get('/mcp/capabilities', async () => {
     const capabilities = await getCapabilities();
 
     const response: CapabilitiesResponse = {
@@ -124,17 +123,17 @@ export function createBridgeApp(): Hono {
       connectedAt: bridgeState.registeredAt?.toISOString()
     };
 
-    return c.json(response);
+    return response;
   });
 
   // Execute intent from MCP
-  app.post('/mcp/execute', async (c) => {
+  app.post<{ Body: ExecuteIntent }>('/mcp/execute', async (request, reply) => {
     try {
-      const intent = await c.req.json<ExecuteIntent>();
+      const intent = request.body;
 
       if (!intent.executionId || !intent.plan) {
         const error: ErrorResponse = { error: 'Invalid intent: missing executionId or plan' };
-        return c.json(error, 400);
+        return reply.status(400).send(error);
       }
 
       const { plan } = intent;
@@ -146,13 +145,13 @@ export function createBridgeApp(): Hono {
 
       if (!adapter) {
         const error: ErrorResponse = { error: `Unknown agent: ${agentName}` };
-        return c.json(error, 400);
+        return reply.status(400).send(error);
       }
 
       // Check availability
       if (!await adapter.isAvailable()) {
         const error: ErrorResponse = { error: `Agent not available: ${agentName}` };
-        return c.json(error, 503);
+        return reply.status(503).send(error);
       }
 
       // Execute based on plan type
@@ -178,7 +177,7 @@ export function createBridgeApp(): Hono {
           error: `Plan type '${plan.type}' not yet supported via MCP bridge`,
           code: 'UNSUPPORTED_PLAN_TYPE'
         };
-        return c.json(error, 501);
+        return reply.status(501).send(error);
       }
 
       const result: ExecuteResult = {
@@ -189,7 +188,7 @@ export function createBridgeApp(): Hono {
         duration: Date.now() - startTime
       };
 
-      return c.json(result);
+      return result;
 
     } catch (err) {
       const error = err as Error;
@@ -198,13 +197,13 @@ export function createBridgeApp(): Hono {
         status: 'failed',
         error: error.message
       };
-      return c.json(result, 500);
+      return reply.status(500).send(result);
     }
   });
 
   // Root endpoint
-  app.get('/', (c) => {
-    return c.json({
+  app.get('/', async () => {
+    return {
       name: 'PuzldAI MCP Bridge',
       version: process.env.npm_package_version || '0.2.91',
       status: bridgeState.running ? 'running' : 'stopped',
@@ -213,7 +212,7 @@ export function createBridgeApp(): Hono {
         'GET  /mcp/capabilities',
         'POST /mcp/execute'
       ]
-    });
+    };
   });
 
   return app;
@@ -231,12 +230,7 @@ export async function startBridge(options: {
 
   const app = createBridgeApp();
 
-  // Start server (server reference kept for potential future graceful shutdown)
-  void serve({
-    fetch: app.fetch,
-    port,
-    hostname: host
-  });
+  await app.listen({ port, host });
 
   bridgeState = {
     running: true,
