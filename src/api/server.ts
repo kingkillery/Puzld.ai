@@ -19,6 +19,7 @@ import {
 } from './schema';
 import { getSummaryGenerator } from '../lib/summary-generator';
 import { AppError } from './errors';
+import { CLEANUP_INTERVAL, CLEANUP_MAX_AGE } from '../lib/timeouts';
 import { type IAsyncCache, createAsyncCache } from '../memory/cache';
 import type { TaskEntry } from './task-persistence';
 
@@ -64,9 +65,8 @@ async function evictFromCache(id: string): Promise<void> {
 // Cleanup tasks older than 1 hour (from database)
 // Cache cleanup is handled by TTLs or explicit eviction.
 setInterval(() => {
-  // Clean database
-  persistence.deleteOldTasks(3600000);
-}, 60000);
+  persistence.deleteOldTasks(CLEANUP_MAX_AGE);
+}, CLEANUP_INTERVAL);
 
 export async function createServer(options: CreateServerOptions = {}): Promise<ReturnType<typeof Fastify>> {
   const fastify = Fastify({ logger: false });

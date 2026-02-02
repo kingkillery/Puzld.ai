@@ -30,8 +30,8 @@ import { getConfig } from '../lib/config';
 import { assembleStepContext, inferStepRole } from '../context/injection';
 import { resolveAgentSelection, resolveInteractiveAgent } from '../lib/agent-selection';
 import { runAdapter as runAdapterUtil } from '../lib/adapter-runner';
+import { TIMEOUT_DEFAULT } from '../lib/timeouts';
 
-const DEFAULT_TIMEOUT = 120000;
 const DEFAULT_MAX_CONCURRENCY = 3;
 
 /**
@@ -511,7 +511,7 @@ async function runInteractiveStep(
     return { content: '', model: agent, error: `Agent ${agent} not available` };
   }
 
-  const timeout = step.timeout ?? config.defaultTimeout ?? DEFAULT_TIMEOUT;
+  const timeout = step.timeout ?? config.defaultTimeout ?? TIMEOUT_DEFAULT;
 
   try {
     const result = await runInteractive(agent, prompt, {

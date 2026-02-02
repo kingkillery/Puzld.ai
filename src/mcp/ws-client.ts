@@ -28,6 +28,7 @@ import { buildComparePlan } from '../executor/plan-builders';
 import { getAgentModelOptions } from '../lib/models';
 import type { AgentName } from '../executor/types';
 import type { CoreCapabilities, ExecutionPlan } from './types';
+import { HEARTBEAT_INTERVAL } from '../lib/timeouts';
 
 import { createHmac, createHash } from 'crypto';
 
@@ -549,7 +550,7 @@ function startHeartbeat(): void {
     clearInterval(state.heartbeatTimer);
   }
 
-  state.heartbeatTimer = setInterval(sendHeartbeat, 30000);
+  state.heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 }
 
 /**

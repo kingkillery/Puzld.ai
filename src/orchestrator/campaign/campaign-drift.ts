@@ -64,7 +64,8 @@ export type DriftCheckReason =
 
 const DEFAULT_AGENT: AgentName = 'claude';
 const DEFAULT_MODEL = 'claude-3-5-sonnet-latest';
-const DEFAULT_TIMEOUT = 60000;
+import { TIMEOUT_EVAL } from '../../lib/timeouts.js';
+const DEFAULT_TIMEOUT = TIMEOUT_EVAL;
 
 /** Default drift detection configuration */
 export const DEFAULT_DRIFT_CONFIG: DriftDetectionConfig = {

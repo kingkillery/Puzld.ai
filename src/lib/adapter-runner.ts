@@ -1,5 +1,6 @@
 import { adapters } from '../adapters';
 import { getConfig } from './config';
+import { TIMEOUT_DEFAULT } from './timeouts';
 import type { AgentName } from '../executor/types';
 import { startObservation, logResponse } from '../observation/logger';
 
@@ -10,8 +11,6 @@ export interface AdapterRunOptions {
   stepId?: string;
   onChunk?: (chunk: string) => void;
 }
-
-const DEFAULT_TIMEOUT = 120000;
 
 export async function runAdapter(
   agent: AgentName,
@@ -36,7 +35,7 @@ export async function runAdapter(
   }
 
   const config = getConfig();
-  const timeout = options.timeout ?? config.timeout ?? DEFAULT_TIMEOUT;
+  const timeout = options.timeout ?? config.timeout ?? TIMEOUT_DEFAULT;
   const timeoutPromise = new Promise<never>((_, reject) => {
     const timer = setTimeout(() => {
       clearTimeout(timer);

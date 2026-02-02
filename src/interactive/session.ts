@@ -8,6 +8,7 @@
 import { spawn, type ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import { getConfig } from '../lib/config';
+import { TIMEOUT_INTERACTIVE } from '../lib/timeouts';
 import type { AgentName } from '../executor/types';
 import {
   generateResponse,
@@ -58,8 +59,8 @@ export class InteractiveSession extends EventEmitter {
     super();
     this.config = {
       maxInteractions: 50,
-      outputTimeout: 10000,  // 10 seconds
-      sessionTimeout: 300000, // 5 minutes
+      outputTimeout: 10_000,
+      sessionTimeout: TIMEOUT_INTERACTIVE,
       responderAgent: 'ollama',
       ...config,
     };

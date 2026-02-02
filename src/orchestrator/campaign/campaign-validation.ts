@@ -14,11 +14,7 @@ import type {
   EnhancedCampaignTask,
   DEFAULT_TASK_CRITERION
 } from './campaign-types.js';
-
-/**
- * Default timeout for criterion validation (30 seconds)
- */
-const DEFAULT_TIMEOUT_MS = 30_000;
+import { TIMEOUT_VALIDATION } from '../../lib/timeouts.js';
 
 /**
  * Maximum output length to capture (prevent memory issues)
@@ -37,7 +33,7 @@ export async function validateCriterion(
   cwd: string
 ): Promise<CriterionResult> {
   const startTime = Date.now();
-  const timeoutMs = (criterion.timeout_seconds ?? 30) * 1000;
+  const timeoutMs = criterion.timeout_seconds ? criterion.timeout_seconds * 1000 : TIMEOUT_VALIDATION;
   const expectedExitCode = criterion.expected_exit_code ?? 0;
 
   try {
